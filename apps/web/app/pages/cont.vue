@@ -96,6 +96,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </p>
         </UCard>
 
+        <NotificationSettingsCard v-if="!user.mustChangePassword" />
+
         <UCard>
           <template #header>
             <h2 class="font-semibold text-highlighted">

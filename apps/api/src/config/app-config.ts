@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { DEFAULT_TASK_HORIZON_DAYS, todayIn } from '@alconst/shared';
 
 /** Configurarea aplicației, citită și validată o singură dată la pornire. */
 export class AppConfig {
@@ -13,9 +14,18 @@ export class AppConfig {
   passwordResetTtlMinutes: number;
   /** Numărul de reverse proxy-uri de încredere din fața API-ului (0 = niciunul). */
   trustProxy: number;
+  /** Fusul orar în care se stabilește „azi” pentru termene. */
+  timeZone: string;
+  /** Cu câte zile în avans se generează task-urile din obligații. */
+  taskHorizonDays: number;
 
   get isProduction(): boolean {
     return this.nodeEnv === 'production';
+  }
+
+  /** Data de azi (`YYYY-MM-DD`) în fusul orar al firmei. */
+  today(): string {
+    return todayIn(this.timeZone);
   }
 
   /** Cookie-urile sunt marcate `Secure` ori de câte ori aplicația este servită prin HTTPS. */
@@ -75,5 +85,12 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   config.sessionTtlDays = integer(env, 'SESSION_TTL_DAYS', 14, 1);
   config.passwordResetTtlMinutes = integer(env, 'PASSWORD_RESET_TTL_MINUTES', 60, 5);
   config.trustProxy = integer(env, 'TRUST_PROXY', 0, 0);
+  config.timeZone = env.APP_TIMEZONE?.trim() || 'Europe/Bucharest';
+  try {
+    new Intl.DateTimeFormat('ro-RO', { timeZone: config.timeZone });
+  } catch {
+    throw new Error(`APP_TIMEZONE invalid: „${config.timeZone}”.`);
+  }
+  config.taskHorizonDays = integer(env, 'TASK_HORIZON_DAYS', DEFAULT_TASK_HORIZON_DAYS, 1);
   return config;
 }

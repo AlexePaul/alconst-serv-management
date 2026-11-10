@@ -30,7 +30,7 @@ const modules = [{
   name: 'Task-uri, obligații și calendar',
   description: 'Obligații recurente, termene, responsabili și notificări.',
   icon: 'i-lucide-calendar-check',
-  available: false
+  available: true
 }, {
   name: 'Documente',
   description: 'Template-uri DOCX, generare automată, editare și arhivă.',
@@ -61,7 +61,21 @@ const modules = [{
             Acțiuni rapide
           </h2>
           <div class="flex flex-wrap gap-2">
-            <UButton to="/clienti?nou=1" icon="i-lucide-plus" label="Adaugă client" />
+            <UButton to="/task-uri?nou=1" icon="i-lucide-plus" label="Creează task" />
+            <UButton
+              to="/task-uri?nou=deplasare"
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-car"
+              label="Programează deplasare"
+            />
+            <UButton
+              to="/clienti?nou=1"
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-building-2"
+              label="Adaugă client"
+            />
             <UButton
               to="/angajati?nou=1"
               color="neutral"
@@ -79,6 +93,8 @@ const modules = [{
             />
           </div>
         </section>
+
+        <DashboardTasksOverview />
 
         <DashboardClientsSummary />
 

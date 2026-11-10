@@ -24,4 +24,22 @@ describe('renderMail', () => {
     expect(mail.html).toContain('Ana &lt;script&gt;');
     expect(mail.html).not.toContain('<script>');
   });
+
+  it('rezumatul zilnic conține doar numere și linkul către aplicație', () => {
+    const mail = renderMail({
+      kind: 'task-digest',
+      to: 'ana@test.ro',
+      firstName: 'Ana',
+      overdueCount: 2,
+      dueTodayCount: 1,
+      dueSoonCount: 0,
+      appUrl: 'https://app.alconst-serv.ro',
+    });
+    expect(mail.subject).toBe('Ai 2 task-uri restante – Alconst Serv');
+    expect(mail.text).toContain('2 task-uri restante');
+    expect(mail.text).toContain('1 task cu termen astăzi');
+    expect(mail.text).not.toContain('zilele următoare');
+    expect(mail.text).toContain('https://app.alconst-serv.ro/task-uri');
+    expect(mail.html).toContain('href="https://app.alconst-serv.ro/task-uri"');
+  });
 });

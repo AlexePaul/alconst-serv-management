@@ -1,7 +1,8 @@
 // Schema bazei de date – Alconst Serv Management.
 // Etapa 1 (Foundation): utilizatori, sesiuni, resetare parolă, jurnal de activitate.
 // Etapa 2: clienți, responsabili, servicii, puncte de lucru, angajați, contracte și tarife.
-// Entitățile pentru task-uri și documente se adaugă în etapele următoare.
+// Etapa 3: obligații recurente, task-uri, notificări.
+// Entitățile pentru documente se adaugă în etapa următoare.
 
 generator client {
   provider = "prisma-client"
@@ -34,11 +35,18 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  sessions            Session[]
-  passwordResetTokens PasswordResetToken[]
-  activityLogs        ActivityLog[]
-  clientAssignments   ClientAssignment[]
-  createdClients      Client[]             @relation("ClientCreatedBy")
+  sessions             Session[]
+  passwordResetTokens  PasswordResetToken[]
+  activityLogs         ActivityLog[]
+  clientAssignments    ClientAssignment[]
+  createdClients       Client[]              @relation("ClientCreatedBy")
+  assignedObligations  Obligation[]          @relation("ObligationAssignee")
+  createdObligations   Obligation[]          @relation("ObligationCreatedBy")
+  assignedTasks        Task[]                @relation("TaskAssignee")
+  createdTasks         Task[]                @relation("TaskCreatedBy")
+  completedTasks       Task[]                @relation("TaskCompletedBy")
+  notifications        Notification[]
+  notificationSettings NotificationSettings?
 
   @@map("users")
 }
@@ -128,6 +136,8 @@ model Client {
   locations   Location[]
   employees   Employee[]
   contracts   Contract[]
+  obligations Obligation[]
+  tasks       Task[]
 
   @@index([name])
   @@map("clients")
@@ -188,8 +198,10 @@ model Location {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  client    Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  employees Employee[]
+  client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  employees   Employee[]
+  obligations Obligation[]
+  tasks       Task[]
 
   @@index([clientId])
   @@map("locations")
@@ -277,4 +289,151 @@ model ContractFee {
   @@index([contractId])
   @@index([serviceId])
   @@map("contract_fees")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Obligații și task-uri
+// ---------------------------------------------------------------------------------------------
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+/// Felul activității. `VISIT` = deplasare la client (mers acolo, completat fișele).
+enum TaskKind {
+  GENERAL
+  VISIT
+}
+
+enum RecurrenceUnit {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+/// Activitate recurentă care trebuie realizată (ex. deplasare lunară, instruire la 3 luni).
+/// Din ea se generează automat task-uri concrete, cu termen și responsabil.
+/// Frecvența este configurată per obligație; nimic nu este fixat în cod.
+model Obligation {
+  id                 String         @id @default(uuid(7)) @db.Uuid
+  title              String
+  description        String?
+  kind               TaskKind       @default(GENERAL)
+  clientId           String?        @db.Uuid
+  locationId         String?        @db.Uuid
+  /// Responsabilul implicit al task-urilor generate.
+  assigneeId         String?        @db.Uuid
+  priority           TaskPriority   @default(NORMAL)
+  recurrenceUnit     RecurrenceUnit
+  /// La câte unități se repetă (ex. MONTH + 3 = la 3 luni).
+  recurrenceInterval Int            @default(1)
+  /// Primul termen; următoarele se calculează de la această dată.
+  startDate          DateTime       @db.Date
+  /// După această dată nu se mai generează task-uri. Null = fără sfârșit.
+  endDate            DateTime?      @db.Date
+  isActive           Boolean        @default(true)
+  searchText         String
+  createdById        String?        @db.Uuid
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  client    Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  location  Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  assignee  User?     @relation("ObligationAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy User?     @relation("ObligationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  tasks     Task[]
+
+  @@index([clientId])
+  @@index([isActive])
+  @@map("obligations")
+}
+
+/// O execuție concretă: ce trebuie făcut, până când și de către cine.
+model Task {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  title          String
+  description    String?
+  /// Observații adăugate pe parcursul execuției.
+  notes          String?
+  kind           TaskKind     @default(GENERAL)
+  status         TaskStatus   @default(TODO)
+  priority       TaskPriority @default(NORMAL)
+  dueDate        DateTime     @db.Date
+  clientId       String?      @db.Uuid
+  locationId     String?      @db.Uuid
+  obligationId   String?      @db.Uuid
+  /// Apariția din obligație pe care o reprezintă task-ul. Împreună cu `obligationId` garantează
+  /// că aceeași apariție nu este generată de două ori, nici la rulări simultane.
+  occurrenceDate DateTime?    @db.Date
+  assigneeId     String?      @db.Uuid
+  createdById    String?      @db.Uuid
+  completedAt    DateTime?
+  completedById  String?      @db.Uuid
+  searchText     String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  client        Client?        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  location      Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  obligation    Obligation?    @relation(fields: [obligationId], references: [id], onDelete: SetNull)
+  assignee      User?          @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy     User?          @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  completedBy   User?          @relation("TaskCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  notifications Notification[]
+
+  @@unique([obligationId, occurrenceDate])
+  @@index([status, dueDate])
+  @@index([assigneeId, status, dueDate])
+  @@index([clientId])
+  @@map("tasks")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Notificări
+// ---------------------------------------------------------------------------------------------
+
+/// Notificare în aplicație pentru un utilizator.
+model Notification {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @db.Uuid
+  type      String
+  title     String
+  body      String?
+  taskId    String?   @db.Uuid
+  /// Cheie care identifică unic motivul notificării (ex. „due-today:<task>:<user>”).
+  /// Constrângerea de unicitate garantează că aceeași notificare nu este creată de două ori.
+  dedupeKey String    @unique
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
+}
+
+/// Preferințele de notificare ale unui utilizator. Fără rând = valorile implicite.
+model NotificationSettings {
+  userId           String    @id @db.Uuid
+  emailEnabled     Boolean   @default(true)
+  /// Cu câte zile înainte de termen se trimite reamintirea (0 = dezactivat).
+  remindDaysBefore Int       @default(3)
+  /// Ultima zi în care a fost trimis rezumatul pe email (cel mult unul pe zi).
+  lastDigestDate   DateTime? @db.Date
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
 }

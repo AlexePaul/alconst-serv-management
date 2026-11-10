@@ -33,6 +33,13 @@ export const ACTIVITY_ACTIONS = [
   'service.created',
   'service.updated',
   'service.deleted',
+  'obligation.created',
+  'obligation.updated',
+  'obligation.deleted',
+  'task.created',
+  'task.updated',
+  'task.status_changed',
+  'task.deleted',
 ] as const;
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
 
@@ -67,6 +74,13 @@ export const ACTIVITY_ACTION_LABELS: Record<ActivityAction, string> = {
   'service.created': 'A adăugat un serviciu',
   'service.updated': 'A modificat un serviciu',
   'service.deleted': 'A șters un serviciu',
+  'obligation.created': 'A adăugat o obligație',
+  'obligation.updated': 'A modificat o obligație',
+  'obligation.deleted': 'A șters o obligație',
+  'task.created': 'A creat un task',
+  'task.updated': 'A modificat un task',
+  'task.status_changed': 'A schimbat statusul unui task',
+  'task.deleted': 'A șters un task',
 };
 
 export interface ActivityLogDto {

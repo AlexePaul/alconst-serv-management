@@ -7,8 +7,8 @@ calendar și documente.
 Aplicația este **strict internă** (fără înregistrare publică, fără portal pentru clienți) și va rula
 la `https://app.alconst-serv.ro`, complet separat de website-ul public `alconst-serv.ro`.
 
-> **Stadiu:** Etapele 1 (Foundation) și 2 (Clienți și angajați) sunt implementate. Urmează
-> task-urile, obligațiile și calendarul. Vezi [docs/roadmap.md](docs/roadmap.md).
+> **Stadiu:** Etapele 1 (Foundation), 2 (Clienți și angajați) și 3 (Task-uri, obligații și
+> calendar) sunt implementate. Urmează documentele. Vezi [docs/roadmap.md](docs/roadmap.md).
 
 ## Tehnologii
 
@@ -118,6 +118,19 @@ Testele e2e folosesc o bază de date separată (`alconst_test`), creată automat
   frecvență (săptămânal, lunar, la N luni, anual, la fiecare deplasare, o singură dată); venit
   lunar estimat; avertizare pentru contractele care expiră.
 - **Pagina principală**: clienți și angajați activi, venit lunar estimat, contracte care expiră.
+
+**Etapa 3 – Task-uri, obligații și calendar**
+
+- **Obligații recurente**: activități care se repetă (deplasări, instruiri), cu frecvență
+  configurabilă, client, punct de lucru și responsabil.
+- **Task-uri** generate automat din obligații sau create manual: tip, responsabil, prioritate,
+  termen, status, observații și istoric de modificări.
+- **Listă** grupată după urgență (restante, azi, următoarele 7 zile, mai târziu) și **calendar**
+  pe lună, săptămână și zi.
+- **Notificări** în aplicație și rezumat zilnic pe email, fără duplicate, cu preferințe per
+  utilizator.
+- **Pagina principală**: restanțe, termenele de azi și din următoarele 7 zile.
+- **Mobil**: bară de navigare rapidă către task-uri, calendar, clienți și notificări.
 
 ## Documentație
 

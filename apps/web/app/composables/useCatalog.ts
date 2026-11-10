@@ -11,13 +11,8 @@ export function useServices() {
   return useLazyAsyncData('services', () => api<ServiceDto[]>('/services'), { default: () => [] })
 }
 
-/** Utilizatorii activi, pentru alegerea responsabililor. Disponibil doar administratorilor. */
+/** Utilizatorii activi (nume și rol), pentru alegerea responsabililor. */
 export function useUserOptions() {
   const api = useApi()
-  const { isAdmin } = useAuth()
-  return useLazyAsyncData(
-    'users:options',
-    () => (isAdmin.value ? api<UserOptionDto[]>('/users/options') : Promise.resolve([])),
-    { default: () => [] }
-  )
+  return useLazyAsyncData('users:options', () => api<UserOptionDto[]>('/users/options'), { default: () => [] })
 }

@@ -25,13 +25,13 @@ microservicii. Separarea este logică (module NestJS, pachete în monorepo), nu 
 
 ## Monorepo
 
-| Pachet              | Rol                                                                                        |
-| ------------------- | ------------------------------------------------------------------------------------------ |
-| `apps/web`          | Interfața (Nuxt SPA). Nu accesează baza de date; vorbește doar cu `/api`.                  |
-| `apps/api`          | REST API. Singurul loc în care se validează și se autorizează operațiunile.                |
-| `apps/worker`       | Procesează job-uri din Redis, în afara cererilor HTTP.                                     |
-| `packages/database` | Schema Prisma, migrările și fabrica de client – folosită de API (și, ulterior, de worker). |
-| `packages/shared`   | Contracte comune: DTO-uri, roluri, coduri de eroare, numele cozilor și payload-urile lor.  |
+| Pachet              | Rol                                                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------------------------- |
+| `apps/web`          | Interfața (Nuxt SPA). Nu accesează baza de date; vorbește doar cu `/api`.                            |
+| `apps/api`          | REST API. Singurul loc în care se validează și se autorizează operațiunile.                          |
+| `apps/worker`       | Procesează job-uri din Redis, în afara cererilor HTTP.                                               |
+| `packages/database` | Schema Prisma, migrările, fabrica de client și generarea task-urilor – folosite de API și de worker. |
+| `packages/shared`   | Contracte comune: DTO-uri, roluri, coduri de eroare, numele cozilor și payload-urile lor.            |
 
 `packages/config` din propunerea inițială a fost omis: un singur `tsconfig.base.json` în rădăcină
 este suficient deocamdată.
@@ -123,8 +123,12 @@ pentru confidențialitate și permite o politică CSP strictă (`connect-src 'se
 | `employees`             | Angajații clienților (date personale)                                    |
 | `contracts`             | Contracte: perioadă, status                                              |
 | `contract_fees`         | Tarifele unui contract: sumă + frecvență, opțional legate de un serviciu |
+| `obligations`           | Activități recurente: frecvență, client, responsabil                     |
+| `tasks`                 | Execuții concrete: termen, status, responsabil, observații               |
+| `notifications`         | Notificările din aplicație, cu o cheie unică anti-duplicat               |
+| `notification_settings` | Preferințele de notificare ale fiecărui utilizator                       |
 
-Entitățile pentru task-uri și documente se adaugă în etapele respective, nu în avans.
+Entitățile pentru documente se adaugă în Etapa 4, nu în avans.
 Cheile primare sunt UUID v7 (ordonabile cronologic).
 
 ### Accesul la clienți
@@ -159,6 +163,47 @@ urmărirea plăților sunt în afara etapelor curente.
 
 Frecvența deplasărilor (când mergem la client) nu ține de contract, ci de obligații și task-uri –
 Etapa 3.
+
+### Obligații și task-uri
+
+O **obligație** descrie ce se repetă (ex. „deplasare la 2 săptămâni la clientul X”); un **task**
+este o execuție concretă, cu termen și responsabil. Un task poate exista și fără obligație.
+
+- **Frecvența** este unitate (`DAY`, `WEEK`, `MONTH`, `YEAR`) + interval, calculată mereu de la
+  primul termen, deci fără derivă: o obligație lunară începută pe 31 cade pe 28/29 februarie și
+  revine pe 31 în martie. Logica este pură, în `packages/shared`, și testată separat.
+- **Generarea** creează task-urile cu termene în următoarele 60 de zile (`TASK_HORIZON_DAYS`).
+  Rulează imediat la salvarea obligației (din API) și din oră în oră (din worker). Constrângerea
+  de unicitate (obligație, apariție) din baza de date face imposibile duplicatele, chiar și la
+  rulări simultane. Termenele trecute nu se generează retroactiv.
+- **Modificarea unei obligații** se propagă doar asupra task-urilor viitoare neîncepute: schimbarea
+  frecvenței le șterge și le regenerează; celelalte modificări le actualizează pe loc, păstrând
+  reprogramările. Task-urile începute, finalizate sau anulate nu sunt atinse.
+- Task-urile generate **nu se șterg, se anulează** – altfel următoarea generare le-ar recrea.
+- Un task nu se finalizează niciodată automat. Generarea unui document (Etapa 4) și execuția
+  activității sunt operațiuni distincte.
+- **Deplasarea** este un tip de task (`VISIT`): mers la client și completarea fișelor. Nu conține
+  nimic despre facturare – facturile se emit separat și nu corespund unu-la-unu cu deplasările.
+- **Istoricul** unui task este citit din jurnalul de activitate, care reține pentru fiecare
+  modificare valoarea veche și cea nouă.
+
+### Notificări
+
+Worker-ul rulează din oră în oră o sarcină idempotentă care:
+
+1. generează task-urile lipsă din obligații;
+2. creează reamintirile: cu N zile înainte de termen (N ales de fiecare utilizator), în ziua
+   termenului și la restanță (în prima zi, apoi o dată la 7 zile);
+3. trimite, după ora 7, cel mult un email-rezumat pe zi celor care au reamintiri noi;
+4. șterge sesiunile și linkurile expirate.
+
+Fiecare reamintire are o cheie care îi descrie motivul (tip, task, destinatar, termen), cu
+constrângere de unicitate în baza de date. Rulările repetate nu pot produce notificări duplicate,
+iar un task reprogramat primește reamintiri noi. Destinatarul este responsabilul task-ului sau, în
+lipsa lui, responsabilii clientului.
+
+„Azi” se stabilește în fusul orar al firmei (`APP_TIMEZONE`, implicit `Europe/Bucharest`), atât în
+API, cât și în worker și în interfață.
 
 ### Căutare
 

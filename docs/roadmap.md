@@ -32,18 +32,26 @@ Aplicația se construiește incremental. Fiecare etapă livrează funcționalit�
 
 Importul din Excel a fost scos din plan: nu există fișiere Excel de migrat.
 
-## Etapa 3 – Task-uri, obligații și calendar
+## Etapa 3 – Task-uri, obligații și calendar ✅
 
-- Obligații recurente configurabile per client (fără frecvențe legale hardcodate), inclusiv
-  deplasările: unele lunare, altele săptămânale sau la 3 luni, uneori cu frecvențe diferite pentru
-  angajați diferiți ai aceluiași client
-- Generarea automată a task-urilor din obligații (job programat în worker)
-- Task-uri: responsabil, prioritate, termen, status, istoric de modificări
-- Calendar (zi / săptămână / lună) și vedere listă
-- Dashboard real: restanțe, azi, următoarele 7 zile, termene apropiate
-- Notificări: în aplicație, email, Web Push (pe iOS doar pentru PWA instalată), fără duplicate
-- Navigare rapidă pe mobil către task-uri și calendar (bară inferioară)
-- Curățarea periodică a sesiunilor și token-urilor expirate
+- [x] Obligații recurente configurabile (zilnic, săptămânal, lunar, anual, la N unități), cu sau
+      fără client, cu punct de lucru și responsabil; nicio frecvență nu este fixată în cod
+- [x] Generarea automată a task-urilor: imediat la salvarea obligației și periodic în worker,
+      fără duplicate, cu 60 de zile în avans
+- [x] Task-uri: tip (activitate / deplasare), responsabil, prioritate, termen, status,
+      observații, istoric de modificări
+- [x] Listă de task-uri grupată după urgență, cu căutare și filtre
+- [x] Calendar: lună, săptămână, zi
+- [x] Pagina principală: restanțe, azi, următoarele 7 zile
+- [x] Notificări în aplicație: atribuire, termen apropiat, termen astăzi, restanță – fără duplicate
+- [x] Rezumat zilnic pe email (cel mult unul pe zi, doar cu numere)
+- [x] Preferințe de notificare per utilizator
+- [x] Bară de navigare rapidă pe mobil
+- [x] Curățarea periodică a sesiunilor și linkurilor expirate
+
+Amânat: **Web Push**. Necesită un service worker propriu, chei VAPID și stocarea abonamentelor,
+iar pe iPhone funcționează doar pentru aplicația instalată pe ecranul principal. Notificările din
+aplicație și emailul acoperă nevoia de bază; Web Push se adaugă în etapa de stabilizare.
 
 ## Etapa 4 – Documente
 
@@ -87,20 +95,27 @@ Importul din Excel a fost scos din plan: nu există fișiere Excel de migrat.
 - **Permisiuni**: un angajat vede și modifică doar clienții lui și își poate adăuga clienți noi.
 - **Încasări**: fiecare client are propriile sume și frecvențe; cerințele se vor rafina pe parcurs,
   deci modelul de tarife este deliberat flexibil.
+- **Deplasări**: o deplasare înseamnă mers la client și completarea fișelor. Este un tip de task,
+  programat de regulă printr-o obligație recurentă.
+- **Facturare**: facturile se emit prin SmartBill și nu sunt legate unu-la-unu de deplasări – pot
+  exista facturi fără deplasare și deplasări fără factură. De aceea deplasările nu conțin nimic
+  despre încasare; integrarea cu SmartBill va fi un modul separat.
 
 ## Întrebări deschise
 
-Nu blochează Etapa 3, dar răspunsurile sunt necesare pe parcurs:
-
 1. **Documente reale** – câte un exemplu din fiecare tip (tematică, decizie, proces-verbal),
-   ideal anonimizate, pentru a testa editorul și a pregăti template-urile (Etapa 4).
-2. **Vizibilitatea sumelor** – acum un angajat vede tarifele clienților lui. Dacă sumele trebuie
+   ideal anonimizate, pentru a testa editorul și a pregăti template-urile. Necesare la începutul
+   Etapei 4.
+2. **Fișele completate la deplasare** – ce sunt exact (fișe de instruire individuală?), cine le
+   semnează și dacă aplicația ar trebui să le genereze sau să țină evidența lor per angajat.
+   Se leagă de Etapa 4 și de „evidența instruirilor”.
+3. **SmartBill** – ce ar trebui să facă integrarea: doar să emită factura din aplicație, sau și să
+   aducă înapoi starea plății? Nu este în etapele curente.
+4. **Ora deplasărilor** – task-urile au doar dată, fără oră. Dacă deplasările se programează la ore
+   fixe, calendarul poate primi și ore.
+5. **Vizibilitatea sumelor** – acum un angajat vede tarifele clienților lui. Dacă sumele trebuie
    să fie vizibile doar administratorilor, este o schimbare mică.
-3. **Urmărirea încasărilor** – aplicația reține ce s-a convenit (tarife și frecvențe), nu și ce
-   s-a încasat efectiv. Dacă vreți evidența plăților (plătit / restant per deplasare sau lună),
-   trebuie stabilit cum arată – se leagă natural de deplasările din Etapa 3.
-4. **Deplasări** – ce înseamnă concret o deplasare (cine merge, la ce punct de lucru, ce se face,
-   ce se încasează) și cum se stabilește frecvența ei pentru fiecare client.
-5. **Mai mulți responsabili pe client** – modelul permite mai mulți; de confirmat că așa se lucrează.
-6. **Ștergerea** – acum un angajat poate șterge puncte de lucru, angajați și contracte ale
+6. **Conținutul emailului zilnic** – acum conține doar numere, ca titlurile task-urilor și numele
+   clienților să nu treacă prin furnizorul de email. Dacă preferați emailuri cu detalii, se poate.
+7. **Ștergerea** – acum un angajat poate șterge puncte de lucru, angajați și contracte ale
    clienților lui, dar nu clientul. De confirmat.

@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { DEFAULT_TASK_HORIZON_DAYS } from '@alconst/shared';
 
 export interface SmtpConfig {
   host: string;
@@ -14,6 +15,13 @@ export interface SmtpConfig {
 export class WorkerConfig {
   nodeEnv: 'development' | 'test' | 'production';
   redisUrl: string;
+  databaseUrl: string;
+  /** Adresa publică a aplicației, pentru linkurile din emailuri. */
+  appUrl: string;
+  /** Fusul orar în care se stabilește „azi” pentru termene și ora trimiterii rezumatului. */
+  timeZone: string;
+  /** Cu câte zile în avans se generează task-urile din obligații. */
+  taskHorizonDays: number;
   /** Expeditorul emailurilor, ex. `Alconst Serv <no-reply@alconst-serv.ro>`. */
   mailFrom: string;
   /** `null` = SMTP neconfigurat; permis doar în dezvoltare, unde emailurile se scriu în log. */
@@ -35,6 +43,25 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv = process.env): WorkerCo
 
   const redisUrl = env.REDIS_URL?.trim();
   if (!redisUrl) throw new Error('Variabila de mediu REDIS_URL este obligatorie.');
+  const databaseUrl = env.DATABASE_URL?.trim();
+  if (!databaseUrl) throw new Error('Variabila de mediu DATABASE_URL este obligatorie.');
+  let appUrl: string;
+  try {
+    appUrl = new URL(env.APP_URL?.trim() ?? '').origin;
+  } catch {
+    throw new Error('APP_URL trebuie să fie un URL valid, ex. https://app.alconst-serv.ro');
+  }
+  const timeZone = env.APP_TIMEZONE?.trim() || 'Europe/Bucharest';
+  try {
+    new Intl.DateTimeFormat('ro-RO', { timeZone });
+  } catch {
+    throw new Error(`APP_TIMEZONE invalid: „${timeZone}”.`);
+  }
+  const horizonRaw = env.TASK_HORIZON_DAYS?.trim();
+  const taskHorizonDays = horizonRaw ? Number(horizonRaw) : DEFAULT_TASK_HORIZON_DAYS;
+  if (!Number.isInteger(taskHorizonDays) || taskHorizonDays < 1) {
+    throw new Error('TASK_HORIZON_DAYS trebuie să fie un număr întreg ≥ 1.');
+  }
 
   const host = env.SMTP_HOST?.trim();
   let smtp: SmtpConfig | null = null;
@@ -59,6 +86,10 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv = process.env): WorkerCo
   const config = new WorkerConfig();
   config.nodeEnv = nodeEnv;
   config.redisUrl = redisUrl;
+  config.databaseUrl = databaseUrl;
+  config.appUrl = appUrl;
+  config.timeZone = timeZone;
+  config.taskHorizonDays = taskHorizonDays;
   config.mailFrom = env.MAIL_FROM?.trim() || 'Alconst Serv <no-reply@alconst-serv.ro>';
   config.smtp = smtp;
   return config;

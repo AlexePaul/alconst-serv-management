@@ -5,12 +5,30 @@
 export const QUEUE_MAIL = 'mail';
 
 /** Uniune discriminată după `kind`; tipurile noi de email se adaugă aici. */
-export type MailJobData = {
-  kind: 'password-reset';
-  to: string;
-  firstName: string;
-  resetUrl: string;
-  expiresInMinutes: number;
-};
+export type MailJobData =
+  | {
+      kind: 'password-reset';
+      to: string;
+      firstName: string;
+      resetUrl: string;
+      expiresInMinutes: number;
+    }
+  | {
+      /**
+       * Rezumatul zilnic al notificărilor noi. Conține doar numere, nu titluri de task-uri sau
+       * nume de clienți: detaliile rămân în aplicație și nu ajung la furnizorul de email.
+       */
+      kind: 'task-digest';
+      to: string;
+      firstName: string;
+      overdueCount: number;
+      dueTodayCount: number;
+      dueSoonCount: number;
+      appUrl: string;
+    };
 
 export type MailJobKind = MailJobData['kind'];
+
+/** Coada activităților periodice: generarea task-urilor, notificări, curățare. */
+export const QUEUE_MAINTENANCE = 'maintenance';
+export const MAINTENANCE_JOB_HOURLY = 'hourly';

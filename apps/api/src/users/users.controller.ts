@@ -16,18 +16,21 @@ import { AdminResetPasswordDto, CreateUserDto, UpdateUserDto } from './dto/users
 import { toUserDto } from './user.mapper.js';
 import { UsersService } from './users.service.js';
 
-/** Administrarea utilizatorilor – exclusiv pentru administratori. */
-@Roles('ADMIN')
+/** Administrarea utilizatorilor – rezervată administratorilor, cu excepția listei scurte de nume. */
 @Controller('users')
 export class UsersController {
   constructor(private readonly users: UsersService) {}
 
+  @Roles('ADMIN')
   @Get()
   async list(): Promise<UserDto[]> {
     return (await this.users.list()).map(toUserDto);
   }
 
-  /** Lista scurtă a utilizatorilor activi, pentru alegerea responsabililor unui client. */
+  /**
+   * Lista scurtă a utilizatorilor activi (doar nume și rol), pentru alegerea responsabililor.
+   * Este disponibilă tuturor: orice utilizator poate atribui un task unui coleg.
+   */
   @Get('options')
   async options(): Promise<UserOptionDto[]> {
     const users = await this.users.list();
@@ -36,11 +39,13 @@ export class UsersController {
       .map(({ id, firstName, lastName, role }) => ({ id, firstName, lastName, role }));
   }
 
+  @Roles('ADMIN')
   @Get(':id')
   async get(@Param('id', ParseUUIDPipe) id: string): Promise<UserDto> {
     return toUserDto(await this.users.get(id));
   }
 
+  @Roles('ADMIN')
   @Post()
   async create(
     @Body() dto: CreateUserDto,
@@ -50,6 +55,7 @@ export class UsersController {
     return toUserDto(await this.users.create(dto, auth, client));
   }
 
+  @Roles('ADMIN')
   @Patch(':id')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -60,6 +66,7 @@ export class UsersController {
     return toUserDto(await this.users.update(id, dto, auth, client));
   }
 
+  @Roles('ADMIN')
   @HttpCode(HttpStatus.OK)
   @Post(':id/reset-password')
   async resetPassword(

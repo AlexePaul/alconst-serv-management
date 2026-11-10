@@ -1,6 +1,11 @@
 import { loadWorkerConfig } from './worker-config.js';
 
-const base = { NODE_ENV: 'production', REDIS_URL: 'redis://redis:6379' };
+const base = {
+  NODE_ENV: 'production',
+  REDIS_URL: 'redis://redis:6379',
+  DATABASE_URL: 'postgresql://u:p@db:5432/alconst',
+  APP_URL: 'https://app.alconst-serv.ro/',
+};
 
 describe('loadWorkerConfig', () => {
   it('deduce TLS implicit din portul 465 (ex. Resend) și STARTTLS pentru 587', () => {
@@ -38,7 +43,21 @@ describe('loadWorkerConfig', () => {
     expect(loadWorkerConfig({ ...base, NODE_ENV: 'development' }).smtp).toBeNull();
   });
 
-  it('cere REDIS_URL', () => {
-    expect(() => loadWorkerConfig({ NODE_ENV: 'development' })).toThrow(/REDIS_URL/);
+  it('cere REDIS_URL, DATABASE_URL și APP_URL', () => {
+    expect(() => loadWorkerConfig({ ...base, REDIS_URL: '' })).toThrow(/REDIS_URL/);
+    expect(() => loadWorkerConfig({ ...base, DATABASE_URL: '' })).toThrow(/DATABASE_URL/);
+    expect(() => loadWorkerConfig({ ...base, APP_URL: '' })).toThrow(/APP_URL/);
+  });
+
+  it('aplică valorile implicite pentru fus orar și orizont', () => {
+    const config = loadWorkerConfig({ ...base, SMTP_HOST: 'h' });
+    expect(config).toMatchObject({
+      appUrl: 'https://app.alconst-serv.ro',
+      timeZone: 'Europe/Bucharest',
+      taskHorizonDays: 60,
+    });
+    expect(() =>
+      loadWorkerConfig({ ...base, SMTP_HOST: 'h', APP_TIMEZONE: 'Marte/Olimp' }),
+    ).toThrow(/APP_TIMEZONE/);
   });
 });

@@ -15,7 +15,7 @@ propriul pipeline.
 | ---------- | ------------------------------------------------------------------------ | ------------ |
 | `web`      | Caddy: HTTPS automat (Let's Encrypt), fișierele statice, proxy către API | 80, 443      |
 | `api`      | NestJS                                                                   | nu           |
-| `worker`   | Job-uri în fundal (emailuri)                                             | nu           |
+| `worker`   | Emailuri și rularea periodică                                            | nu           |
 | `migrate`  | Aplică migrările bazei de date la fiecare lansare, apoi se oprește       | nu           |
 | `postgres` | Baza de date (volum persistent)                                          | nu           |
 | `redis`    | Cozile BullMQ (cu parolă și persistență)                                 | nu           |

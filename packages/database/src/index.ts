@@ -10,3 +10,5 @@ export * from './generated/prisma/client.js';
 export function createPrismaClient(connectionString: string): PrismaClient {
   return new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 }
+
+export { generateObligationTasks, type GenerateTasksOptions } from './obligation-tasks.js';

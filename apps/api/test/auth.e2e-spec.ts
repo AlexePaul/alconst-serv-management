@@ -214,7 +214,7 @@ describe('Autentificare (e2e)', () => {
   describe('resetarea parolei', () => {
     const tokenFromMail = (t: TestApp): string => {
       const mail = t.mail.sent[0];
-      if (!mail) throw new Error('Nu a fost trimis niciun email');
+      if (mail?.kind !== 'password-reset') throw new Error('Nu a fost trimis emailul de resetare');
       return new URL(mail.resetUrl).searchParams.get('token') ?? '';
     };
 
@@ -230,7 +230,7 @@ describe('Autentificare (e2e)', () => {
         .expect(204);
       await waitFor(() => t.mail.sent.length === 1);
       expect(t.mail.sent[0]).toMatchObject({ kind: 'password-reset', to: 'admin@test.ro' });
-      expect(t.mail.sent[0]?.resetUrl).toMatch(/^http:\/\/localhost:3000\/resetare-parola\?token=/);
+      expect(tokenFromMail(t)).toMatch(/^[\w-]{40,}$/);
 
       const token = tokenFromMail(t);
       await t

@@ -30,7 +30,9 @@ const GROUP_ICONS: Record<string, string> = {
   location: 'i-lucide-map-pin',
   employee: 'i-lucide-users-round',
   contract: 'i-lucide-file-signature',
-  service: 'i-lucide-briefcase'
+  service: 'i-lucide-briefcase',
+  obligation: 'i-lucide-repeat',
+  task: 'i-lucide-list-checks'
 }
 
 function iconFor(action: string): string {

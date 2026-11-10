@@ -435,11 +435,4 @@ describe('Clienți, angajați și contracte (e2e)', () => {
       expect(adminSummary.body).toMatchObject({ activeClients: 2, monthlyEstimate: 1000 });
     });
   });
-
-  it('GET /api/users/options este rezervat administratorilor', async () => {
-    await get('/api/users/options', ana.cookie).expect(403);
-    const response = await get('/api/users/options', admin.cookie).expect(200);
-    expect(response.body).toHaveLength(3);
-    expect(response.body[0]).not.toHaveProperty('email');
-  });
 });

@@ -25,11 +25,14 @@ const notFound = computed(() => {
 // --- File -------------------------------------------------------------------------------------
 
 const tab = ref('details')
+/** Lista de task-uri se reîncarcă atunci când o obligație generează sau șterge task-uri. */
+const tasksList = useTemplateRef('tasksList')
 const tabs = computed<TabsItem[]>(() => [
   { label: 'Detalii', value: 'details', icon: 'i-lucide-info', slot: 'details' },
   { label: 'Puncte de lucru', value: 'locations', icon: 'i-lucide-map-pin', badge: client.value?.locationCount || undefined, slot: 'locations' },
   { label: 'Angajați', value: 'employees', icon: 'i-lucide-users-round', badge: client.value?.employeeCount || undefined, slot: 'employees' },
-  { label: 'Contracte', value: 'contracts', icon: 'i-lucide-file-signature', slot: 'contracts' }
+  { label: 'Contracte', value: 'contracts', icon: 'i-lucide-file-signature', slot: 'contracts' },
+  { label: 'Activități', value: 'activities', icon: 'i-lucide-list-checks', slot: 'activities' }
 ])
 
 // --- Acțiuni ---------------------------------------------------------------------------------
@@ -375,6 +378,23 @@ const moreActions = computed<DropdownMenuItem[][]>(() => {
 
           <template #contracts>
             <ClientsContractsTab :client-id="client.id" @changed="refresh()" />
+          </template>
+
+          <template #activities>
+            <div class="space-y-8">
+              <section>
+                <h3 class="mb-3 text-sm font-semibold text-highlighted">
+                  Obligații recurente
+                </h3>
+                <TasksObligationsList :client-id="client.id" :client-name="client.name" @changed="tasksList?.refresh()" />
+              </section>
+              <section>
+                <h3 class="mb-3 text-sm font-semibold text-highlighted">
+                  Task-uri
+                </h3>
+                <TasksList ref="tasksList" :client-id="client.id" :client-name="client.name" />
+              </section>
+            </div>
           </template>
         </UTabs>
 

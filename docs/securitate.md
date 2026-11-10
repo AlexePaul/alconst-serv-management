@@ -47,6 +47,9 @@ descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
   responsabil, împreună cu punctele de lucru, angajații și contractele lor. Regula este aplicată
   pe server, la fiecare cerere; pentru clienții altora răspunsul este „nu există”. Doar
   administratorii stabilesc responsabilii și pot șterge definitiv un client.
+- **Task-uri și obligații**: un angajat vede ce îi este atribuit, ce a creat el și tot ce ține de
+  clienții lui. Un task atribuit unui coleg îi dă acces la task, nu și la client.
+- **Notificări**: fiecare utilizator își vede doar propriile notificări.
 
 ## Validarea datelor
 
@@ -66,9 +69,22 @@ descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
 
 Se înregistrează: autentificări reușite și eșuate, deconectări, schimbări și resetări de parolă,
 crearea, modificarea, activarea și dezactivarea conturilor, precum și orice adăugare, modificare
-sau ștergere de clienți, responsabili, servicii, puncte de lucru, angajați și contracte. Fiecare intrare conține autorul,
+sau ștergere de clienți, responsabili, servicii, puncte de lucru, angajați, contracte, obligații
+și task-uri (pentru task-uri, cu valorile vechi și noi – acesta este istoricul lor de modificări). Fiecare intrare conține autorul,
 entitatea afectată, momentul și adresa IP. Jurnalul este vizibil doar administratorilor și nu poate
 fi modificat din aplicație.
+
+## Date trimise în afara aplicației
+
+Singurul serviciu extern folosit este cel de email (SMTP). Prin el trec:
+
+- emailul de resetare a parolei (prenumele și linkul de resetare);
+- rezumatul zilnic de notificări, care conține **doar numere** (câte task-uri restante, cu termen
+  azi sau în zilele următoare). Titlurile task-urilor, numele clienților și orice date despre
+  angajați rămân în aplicație.
+
+Sesiunile și linkurile de resetare expirate sunt șterse automat, la fel și notificările citite mai
+vechi de 90 de zile.
 
 ## Secrete și configurare
 
@@ -87,5 +103,4 @@ fi modificat din aplicație.
 | Backup automat al bazei de date și al fișierelor, cu test de restaurare                             | 5           |
 | Politică de retenție a datelor personale (se stabilește împreună cu firma)                          | 5           |
 | CSP fără `'unsafe-inline'` pentru scripturi (hash-uri)                                              | 5           |
-| Curățarea periodică a sesiunilor și token-urilor expirate (job programat)                           | 3           |
 | Autentificare în doi pași (opțional, dacă se dorește)                                               | de discutat |

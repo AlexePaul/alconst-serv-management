@@ -18,7 +18,7 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "test:e2e": "pnpm --filter @alconst/api test:e2e",
+    "test:e2e": "pnpm -r --workspace-concurrency=1 --if-present test:e2e",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "pnpm --filter @alconst/database generate",
