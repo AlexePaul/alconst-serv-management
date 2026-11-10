@@ -2,7 +2,7 @@
   <div class="flex min-h-dvh flex-col items-center justify-center bg-muted px-4 py-10">
     <div class="w-full max-w-sm">
       <div class="mb-6 flex justify-center">
-        <AppLogo />
+        <AppLogo size="lg" />
       </div>
 
       <UCard :ui="{ body: 'p-6 sm:p-8' }">

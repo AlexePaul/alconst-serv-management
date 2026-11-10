@@ -1,9 +1,8 @@
-// Identitatea vizuală a aplicației. Culorile se pot schimba dintr-un singur loc
-// (de exemplu după primirea logo-ului și a culorilor oficiale ale firmei).
+// Identitatea vizuală a aplicației: bleumarinul din logo-ul Alconst Serv (definit în main.css).
 export default defineAppConfig({
   ui: {
     colors: {
-      primary: 'blue',
+      primary: 'brand',
       neutral: 'slate'
     }
   }

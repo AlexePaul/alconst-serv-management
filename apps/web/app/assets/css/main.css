@@ -2,8 +2,29 @@
 @import "@nuxt/ui";
 @import "@fontsource-variable/inter";
 
-@theme {
+@theme static {
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Paleta firmei, construită în jurul bleumarinului din logo (#344881 = brand-600). */
+  --color-brand-50: #f2f4fa;
+  --color-brand-100: #e3e7f3;
+  --color-brand-200: #c9d1e7;
+  --color-brand-300: #a3b0d4;
+  --color-brand-400: #7488bd;
+  --color-brand-500: #4a61a3;
+  --color-brand-600: #344881;
+  --color-brand-700: #2c3d6d;
+  --color-brand-800: #26345a;
+  --color-brand-900: #202b49;
+  --color-brand-950: #141b2f;
+}
+
+/* În tema luminoasă, culoarea principală este exact bleumarinul din logo. */
+:root {
+  --ui-primary: var(--ui-color-primary-600);
+}
+.dark {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 /* Pe iPhone, când aplicația rulează ca PWA, conținutul nu trebuie să intre sub zonele sistemului. */

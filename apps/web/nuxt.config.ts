@@ -27,7 +27,6 @@ export default defineNuxtConfig({
         { name: 'format-detection', content: 'telephone=no' }
       ],
       link: [
-        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
         { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32.png' },
         { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' }
       ]
@@ -82,7 +81,7 @@ export default defineNuxtConfig({
       display: 'standalone',
       orientation: 'any',
       background_color: '#ffffff',
-      theme_color: '#1d4ed8',
+      theme_color: '#344881',
       icons: [
         { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
         { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },

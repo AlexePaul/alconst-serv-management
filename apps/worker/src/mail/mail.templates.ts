@@ -47,7 +47,7 @@ function passwordReset(data: Extract<MailJobData, { kind: 'password-reset' }>): 
     'Resetarea parolei',
     `<p style="margin:0 0 12px;line-height:1.5;">Bună, ${escapeHtml(data.firstName)},</p>
       <p style="margin:0 0 20px;line-height:1.5;">Am primit o cerere de resetare a parolei pentru contul tău din aplicația Alconst Serv.</p>
-      <p style="margin:0 0 20px;"><a href="${url}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;">Alege o parolă nouă</a></p>
+      <p style="margin:0 0 20px;"><a href="${url}" style="display:inline-block;background:#344881;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;">Alege o parolă nouă</a></p>
       <p style="margin:0 0 12px;line-height:1.5;font-size:14px;color:#4b5563;">Linkul este valabil ${data.expiresInMinutes} de minute și poate fi folosit o singură dată.</p>
       <p style="margin:0;line-height:1.5;font-size:14px;color:#4b5563;">Dacă nu ai solicitat tu resetarea, poți ignora acest mesaj – parola ta rămâne neschimbată.</p>`,
   );
