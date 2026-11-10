@@ -1,6 +1,6 @@
 // Schema bazei de date – Alconst Serv Management.
 // Etapa 1 (Foundation): utilizatori, sesiuni, resetare parolă, jurnal de activitate.
-// Etapa 2: clienți, responsabili, servicii, puncte de lucru, angajați, contracte și tarife.
+// Etapa 2: clienți, responsabili, servicii, puncte de lucru, contracte și tarife.
 // Etapa 3: obligații recurente, task-uri, notificări.
 // Entitățile pentru documente se adaugă în etapa următoare.
 
@@ -114,34 +114,38 @@ model ActivityLog {
 // ---------------------------------------------------------------------------------------------
 
 /// Companie pentru care Alconst Serv prestează servicii.
-/// Clienții nu se șterg: se arhivează (`isActive = false`), iar punctele de lucru, angajații,
+/// Clienții nu se șterg: se arhivează (`isActive = false`), iar punctele de lucru,
 /// contractele, obligațiile și task-urile lor rămân în evidență. De aceea relațiile acestora
 /// către client sunt `Restrict` – nicio ștergere directă în baza de date nu poate pierde istoric.
 model Client {
-  id                  String   @id @default(uuid(7)) @db.Uuid
-  name                String
+  id                     String    @id @default(uuid(7)) @db.Uuid
+  name                   String
   /// Stocat fără spații, cu majuscule (ex. „RO12345678” sau „12345678”).
-  cui                 String   @unique
+  cui                    String    @unique
   /// Nr. de ordine în Registrul Comerțului (ex. „J40/1234/2020”).
-  tradeRegisterNumber String?
-  address             String?
-  contactPerson       String?
-  email               String?
-  phone               String?
-  legalRepresentative String?
-  notes               String?
-  isActive            Boolean  @default(true)
+  tradeRegisterNumber    String?
+  address                String?
+  contactPerson          String?
+  email                  String?
+  phone                  String?
+  legalRepresentative    String?
+  notes                  String?
+  /// Câți angajați are clientul. Aplicația ține doar numărul, nu și persoanele: nu se stochează
+  /// date personale despre angajații clienților. Null = încă necunoscut.
+  employeeCount          Int?
+  /// Ultima dată când numărul a fost confirmat sau actualizat (de regulă la o deplasare).
+  employeeCountCheckedAt DateTime?
+  isActive               Boolean   @default(true)
   /// Text normalizat (fără diacritice, cu litere mici) folosit la căutare.
-  searchText          String
-  createdById         String?  @db.Uuid
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  searchText             String
+  createdById            String?   @db.Uuid
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   createdBy        User?                   @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   assignments      ClientAssignment[]
   services         ClientService[]
   locations        Location[]
-  employees        Employee[]
   contracts        Contract[]
   obligations      Obligation[]
   tasks            Task[]
@@ -207,36 +211,11 @@ model Location {
   updatedAt DateTime @updatedAt
 
   client      Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  employees   Employee[]
   obligations Obligation[]
   tasks       Task[]
 
   @@index([clientId])
   @@map("locations")
-}
-
-/// Angajat al unui client (nu utilizator al aplicației). Conține date personale.
-model Employee {
-  id         String    @id @default(uuid(7)) @db.Uuid
-  clientId   String    @db.Uuid
-  locationId String?   @db.Uuid
-  firstName  String
-  lastName   String
-  position   String?
-  hireDate   DateTime? @db.Date
-  notes      String?
-  isActive   Boolean   @default(true)
-  /// Text normalizat folosit la căutare.
-  searchText String
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  client   Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  location Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
-
-  @@index([clientId])
-  @@index([lastName, firstName])
-  @@map("employees")
 }
 
 enum ContractStatus {
@@ -349,6 +328,9 @@ model Obligation {
   startDate          DateTime       @db.Date
   /// După această dată nu se mai generează task-uri. Null = fără sfârșit.
   endDate            DateTime?      @db.Date
+  /// Termen flexibil: task-ul poate fi făcut oricând în luna (frecvențe în luni/ani) sau în
+  /// săptămâna (frecvențe în săptămâni) în care cade și devine restant abia după perioadă.
+  dueWithinPeriod    Boolean        @default(true)
   /// Intervalul orar estimat (`HH:mm`), copiat în task-urile generate. Opțional.
   startTime          String?
   endTime            String?
@@ -379,7 +361,12 @@ model Task {
   kind                TaskKind     @default(GENERAL)
   status              TaskStatus   @default(TODO)
   priority            TaskPriority @default(NORMAL)
+  /// Data planificată. Pentru task-urile fără perioadă este și termenul-limită.
   dueDate             DateTime     @db.Date
+  /// Perioada în care task-ul poate fi făcut la timp (ex. luna calendaristică), pentru termenele
+  /// flexibile. Task-ul este restant abia după ce au trecut și `dueDate`, și `periodEnd`.
+  periodStart         DateTime?    @db.Date
+  periodEnd           DateTime?    @db.Date
   /// Intervalul orar estimat de responsabil (`HH:mm`). Opțional: „de la” fără „până la” este permis.
   startTime           String?
   endTime             String?

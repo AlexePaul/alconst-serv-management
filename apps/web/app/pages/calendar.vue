@@ -101,7 +101,7 @@ const inCurrentMonth = (day: string) => day.slice(0, 7) === cursor.value.slice(0
 
 function chipClass(task: TaskDto): string {
   if (task.status === 'DONE') return 'border-l-success bg-elevated/60 text-muted line-through'
-  if (task.dueDate < today) return 'border-l-error bg-error/10 text-error'
+  if (taskDueInfo(task, today).overdue) return 'border-l-error bg-error/10 text-error'
   if (task.kind === 'VISIT') return 'border-l-primary bg-primary/10 text-highlighted'
   return 'border-l-accented bg-elevated text-highlighted'
 }

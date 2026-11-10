@@ -15,7 +15,7 @@ const { data, status, error, refresh } = useLazyAsyncData(
 
 const stats = computed(() => [
   { label: 'Clienți activi', value: String(data.value?.activeClients ?? 0), icon: 'i-lucide-building-2', to: '/clienti' },
-  { label: 'Angajați activi', value: String(data.value?.activeEmployees ?? 0), icon: 'i-lucide-users-round', to: '/angajati' },
+  { label: 'Angajați la clienți', value: String(data.value?.totalEmployees ?? 0), icon: 'i-lucide-users-round', hint: 'Suma angajaților declarați ai clienților activi' },
   {
     label: 'Venit lunar estimat',
     value: data.value ? formatMoney(data.value.monthlyEstimate) : '—',

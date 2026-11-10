@@ -349,15 +349,15 @@ describe('Obligații, task-uri și notificări (e2e)', () => {
 
       const mine = (await get('/api/tasks/overview', ana.cookie).expect(200)).body;
       expect(mine.today).toBe(today);
-      expect(mine.counts).toEqual({ overdue: 1, dueToday: 1, upcoming: 0 });
+      expect(mine.counts).toEqual({ overdue: 1, inPeriod: 0, dueToday: 1, upcoming: 0 });
       expect(mine.overdue[0].title).toBe('Restant');
 
       const all = (await get('/api/tasks/overview?scope=all', ana.cookie).expect(200)).body;
-      expect(all.counts).toEqual({ overdue: 1, dueToday: 1, upcoming: 1 });
+      expect(all.counts).toEqual({ overdue: 1, inPeriod: 0, dueToday: 1, upcoming: 1 });
 
       // Dan vede doar ce îi este atribuit, chiar și cu `scope=all`.
       const dans = (await get('/api/tasks/overview?scope=all', dan.cookie).expect(200)).body;
-      expect(dans.counts).toEqual({ overdue: 0, dueToday: 0, upcoming: 1 });
+      expect(dans.counts).toEqual({ overdue: 0, inPeriod: 0, dueToday: 0, upcoming: 1 });
     });
   });
 
@@ -493,6 +493,7 @@ describe('Obligații, task-uri și notificări (e2e)', () => {
         address: 'Str. Fabricii 10',
         contactPerson: 'Ion Pop',
         phone: '0721 000 000',
+        employeeCount: 12,
       }).expect(200);
       const visit = await createVisit(ana.cookie);
       expect(visit.isCover).toBe(false);
@@ -509,17 +510,30 @@ describe('Obligații, task-uri și notificări (e2e)', () => {
         address: 'Str. Fabricii 10',
         contactPerson: 'Ion Pop',
         phone: '0721 000 000',
+        employeeCount: 12,
         responsibles: [{ id: ana.id, firstName: 'Ana', lastName: 'Pop' }],
       });
-      await patch(`/api/tasks/${visit.id}`, dan.cookie, {
+      // La finalizare, cel care a fost acolo notează și câți angajați are acum clientul.
+      const finished = await patch(`/api/tasks/${visit.id}`, dan.cookie, {
         status: 'DONE',
         sheetsCompleted: true,
+        clientEmployeeCount: 14,
       }).expect(200);
+      expect(finished.body.client.employeeCount).toBe(14);
+      const client = (await get(`/api/clients/${clientId}`, ana.cookie).expect(200)).body;
+      expect(client.employeeCount).toBe(14);
+      const log = await t.prisma.db.activityLog.findFirst({
+        where: { action: 'client.employee_count_updated' },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(log).toMatchObject({
+        userId: dan.id,
+        metadata: { from: 12, to: 14, taskId: visit.id },
+      });
       // Restul datelor clientului și celelalte task-uri ale lui rămân inaccesibile.
       await get(`/api/clients/${clientId}`, dan.cookie).expect(404);
-      await get(`/api/employees?clientId=${clientId}`, dan.cookie)
-        .expect(200)
-        .expect((r) => expect(r.body.total).toBe(0));
+      await get(`/api/locations?clientId=${clientId}`, dan.cookie).expect(404);
+      await patch(`/api/clients/${clientId}`, dan.cookie, { employeeCount: 1 }).expect(404);
       const other = await createVisit(ana.cookie, { title: 'Altă deplasare' });
       await get(`/api/tasks/${other.id}`, dan.cookie).expect(404);
       expect((await get('/api/notifications', dan.cookie).expect(200)).body.items[0]).toMatchObject(

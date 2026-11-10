@@ -13,6 +13,7 @@ import {
   Min,
 } from 'class-validator';
 import {
+  MAX_EMPLOYEE_COUNT,
   TASK_KINDS,
   TASK_PRIORITIES,
   TASK_STATUSES,
@@ -81,7 +82,17 @@ export class CreateTaskDto {
   assigneeId?: string | null;
 }
 
-export class UpdateTaskDto extends PartialType(CreateTaskDto) {}
+export class UpdateTaskDto extends PartialType(CreateTaskDto) {
+  /**
+   * Numărul de angajați ai clientului, confirmat sau corectat de cel care a fost acolo
+   * (de regulă la finalizarea unei deplasări). Se salvează pe client, nu pe task.
+   */
+  @IsOptional()
+  @IsInt({ message: 'Numărul de angajați trebuie să fie un număr întreg.' })
+  @Min(0, { message: 'Numărul de angajați nu poate fi negativ.' })
+  @Max(MAX_EMPLOYEE_COUNT, { message: 'Numărul de angajați este prea mare.' })
+  clientEmployeeCount?: number;
+}
 
 /** `missing-sheets` = deplasări finalizate fără confirmarea completării fișelor. */
 export const TASK_STATUS_FILTERS = ['open', 'done', 'cancelled', 'missing-sheets', 'all'] as const;

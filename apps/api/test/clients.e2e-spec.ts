@@ -1,6 +1,6 @@
 import { createTestApp, ORIGIN, type TestApp } from './test-app.js';
 
-describe('Clienți, angajați și contracte (e2e)', () => {
+describe('Clienți, puncte de lucru și contracte (e2e)', () => {
   let t: TestApp;
   let admin: { id: string; cookie: string };
   let ana: { id: string; cookie: string };
@@ -82,18 +82,12 @@ describe('Clienți, angajați și contracte (e2e)', () => {
       await post('/api/locations', dan.cookie, { clientId: client.id, name: 'X' }).expect(404);
       await patch(`/api/locations/${location.id}`, dan.cookie, { name: 'X' }).expect(404);
       await patch(`/api/locations/${location.id}`, dan.cookie, { isActive: false }).expect(404);
-      await post('/api/employees', dan.cookie, {
-        clientId: client.id,
-        firstName: 'Ion',
-        lastName: 'Pop',
-      }).expect(404);
       await post('/api/contracts', dan.cookie, {
         clientId: client.id,
         startDate: '2026-01-01',
       }).expect(404);
-
-      const employees = await get(`/api/employees?clientId=${client.id}`, dan.cookie).expect(200);
-      expect(employees.body.total).toBe(0);
+      // Nici numărul de angajați nu poate fi schimbat de altcineva.
+      await patch(`/api/clients/${client.id}`, dan.cookie, { employeeCount: 99 }).expect(404);
     });
 
     it('doar administratorul stabilește responsabilii, iar accesul se aplică imediat', async () => {
@@ -217,83 +211,77 @@ describe('Clienți, angajați și contracte (e2e)', () => {
     });
   });
 
-  describe('puncte de lucru și angajați', () => {
-    it('gestionează angajații unui client, cu punct de lucru opțional', async () => {
-      const client = await createClient(ana.cookie);
-      const location = (
-        await post('/api/locations', ana.cookie, {
-          clientId: client.id,
-          name: 'Depozit Brașov',
-          address: 'Str. Fabricii 10',
-        }).expect(201)
-      ).body as { id: string };
+  describe('numărul de angajați', () => {
+    it('se ține doar ca număr pe client, cu data ultimei confirmări', async () => {
+      const client = await createClient(ana.cookie, { employeeCount: 12 });
+      const created = await get(`/api/clients/${client.id}`, ana.cookie).expect(200);
+      expect(created.body.employeeCount).toBe(12);
+      expect(created.body.employeeCountCheckedAt).toEqual(expect.any(String));
 
-      const employee = (
-        await post('/api/employees', ana.cookie, {
-          clientId: client.id,
-          locationId: location.id,
-          firstName: 'Gheorghe',
-          lastName: 'Țurcanu',
-          position: 'Electrician',
-          hireDate: '2024-03-15',
-        }).expect(201)
-      ).body as { id: string };
-
-      const list = await get('/api/employees?search=turcanu gheorghe', ana.cookie).expect(200);
-      expect(list.body.items[0]).toMatchObject({
-        clientName: 'SC Ștefănescu Construcții SRL',
-        locationName: 'Depozit Brașov',
-        hireDate: '2024-03-15',
-        isActive: true,
-      });
-
-      const updated = await patch(`/api/employees/${employee.id}`, ana.cookie, {
-        position: 'Șef de echipă',
-        isActive: false,
-        hireDate: '',
+      const updated = await patch(`/api/clients/${client.id}`, ana.cookie, {
+        employeeCount: 15,
       }).expect(200);
-      expect(updated.body).toMatchObject({
-        position: 'Șef de echipă',
-        isActive: false,
-        hireDate: null,
-      });
+      expect(updated.body.employeeCount).toBe(15);
+      const list = await get('/api/clients', ana.cookie).expect(200);
+      expect(list.body.items[0].employeeCount).toBe(15);
 
-      const locations = await get(`/api/locations?clientId=${client.id}`, ana.cookie).expect(200);
-      expect(locations.body[0].employeeCount).toBe(1);
+      // Modificarea apare în jurnal cu valoarea veche și cea nouă.
+      const log = await t.prisma.db.activityLog.findFirst({
+        where: { action: 'client.employee_count_updated' },
+      });
+      expect(log?.metadata).toMatchObject({ from: 12, to: 15 });
+      expect(log?.userId).toBe(ana.id);
+
+      // O modificare fără legătură nu atinge numărul și nu adaugă intrări în jurnal.
+      await patch(`/api/clients/${client.id}`, ana.cookie, {
+        name: 'Alt Nume SRL',
+        employeeCount: 15,
+      }).expect(200);
+      expect(
+        await t.prisma.db.activityLog.count({ where: { action: 'client.employee_count_updated' } }),
+      ).toBe(1);
     });
 
-    it('respinge un punct de lucru care aparține altui client', async () => {
-      const first = await createClient(ana.cookie);
-      const second = await createClient(ana.cookie, { name: 'Al Doilea SRL', cui: '555' });
-      const location = (
-        await post('/api/locations', ana.cookie, { clientId: second.id, name: 'Sediu' }).expect(201)
-      ).body as { id: string };
+    it('poate rămâne necunoscut și este validat', async () => {
+      const client = await createClient(ana.cookie);
+      expect((await get(`/api/clients/${client.id}`, ana.cookie)).body).toMatchObject({
+        employeeCount: null,
+        employeeCountCheckedAt: null,
+      });
+      for (const employeeCount of [-1, 2.5, 'mulți', 1_000_000_000]) {
+        const response = await patch(`/api/clients/${client.id}`, ana.cookie, {
+          employeeCount,
+        }).expect(400);
+        expect(response.body.fieldErrors).toHaveProperty('employeeCount');
+      }
+      await patch(`/api/clients/${client.id}`, ana.cookie, { employeeCount: 0 }).expect(200);
+      const cleared = await patch(`/api/clients/${client.id}`, ana.cookie, {
+        employeeCount: '',
+      }).expect(200);
+      expect(cleared.body.employeeCount).toBeNull();
+    });
 
-      const response = await post('/api/employees', ana.cookie, {
-        clientId: first.id,
-        locationId: location.id,
+    it('aplicația nu mai are evidență nominală a angajaților clienților', async () => {
+      const client = await createClient(ana.cookie);
+      await get(`/api/employees?clientId=${client.id}`, admin.cookie).expect(404);
+      await post('/api/employees', admin.cookie, {
+        clientId: client.id,
         firstName: 'Ion',
         lastName: 'Pop',
-      }).expect(400);
-      expect(response.body.fieldErrors).toHaveProperty('locationId');
+      }).expect(404);
+      const tables = await t.prisma.db.$queryRaw<{ table_name: string }[]>`
+        SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`;
+      expect(tables.map((row) => row.table_name)).not.toContain('employees');
     });
   });
 
   describe('arhivare în loc de ștergere', () => {
     const setup = async () => {
-      const client = await createClient(ana.cookie);
+      const client = await createClient(ana.cookie, { employeeCount: 7 });
       const location = (
         await post('/api/locations', ana.cookie, { clientId: client.id, name: 'Depozit' }).expect(
           201,
         )
-      ).body as { id: string };
-      const employee = (
-        await post('/api/employees', ana.cookie, {
-          clientId: client.id,
-          locationId: location.id,
-          firstName: 'Ion',
-          lastName: 'Pop',
-        }).expect(201)
       ).body as { id: string };
       const contract = (
         await post('/api/contracts', ana.cookie, {
@@ -303,19 +291,18 @@ describe('Clienți, angajați și contracte (e2e)', () => {
           fees: [{ description: 'Abonament', amount: 500, frequencyUnit: 'MONTH' }],
         }).expect(201)
       ).body as { id: string };
-      return { client, location, employee, contract };
+      return { client, location, contract };
     };
     const actions = async () =>
       (await t.prisma.db.activityLog.findMany({ orderBy: { createdAt: 'asc' } })).map(
         (entry) => entry.action,
       );
 
-    it('nu există ștergere definitivă pentru clienți, puncte de lucru, angajați și contracte', async () => {
-      const { client, location, employee, contract } = await setup();
+    it('nu există ștergere definitivă pentru clienți, puncte de lucru și contracte', async () => {
+      const { client, location, contract } = await setup();
       for (const url of [
         `/api/clients/${client.id}`,
         `/api/locations/${location.id}`,
-        `/api/employees/${employee.id}`,
         `/api/contracts/${contract.id}`,
       ]) {
         await del(url, admin.cookie).expect(404);
@@ -323,14 +310,13 @@ describe('Clienți, angajați și contracte (e2e)', () => {
       }
       expect(await t.prisma.db.client.count()).toBe(1);
       expect(await t.prisma.db.location.count()).toBe(1);
-      expect(await t.prisma.db.employee.count()).toBe(1);
       expect(await t.prisma.db.contract.count()).toBe(1);
     });
 
     it('nici baza de date nu permite ștergerea unui client care are istoric', async () => {
       const { client } = await setup();
       await expect(t.prisma.db.client.delete({ where: { id: client.id } })).rejects.toThrow();
-      expect(await t.prisma.db.employee.count()).toBe(1);
+      expect(await t.prisma.db.location.count()).toBe(1);
     });
 
     it('un client arhivat rămâne în evidență cu toate datele și poate fi reactivat', async () => {
@@ -350,7 +336,6 @@ describe('Clienți, angajați și contracte (e2e)', () => {
 
       // Datele lui rămân neatinse și pot fi consultate.
       expect((await get(`/api/locations?clientId=${client.id}`, ana.cookie)).body).toHaveLength(1);
-      expect((await get(`/api/employees?clientId=${client.id}`, ana.cookie)).body.total).toBe(1);
       expect((await get(`/api/contracts?clientId=${client.id}`, ana.cookie)).body).toHaveLength(1);
       expect((await get(`/api/clients/${client.id}`, ana.cookie)).body.responsibles).toHaveLength(
         1,
@@ -360,14 +345,14 @@ describe('Clienți, angajați și contracte (e2e)', () => {
       const summary = await get('/api/clients/summary', ana.cookie).expect(200);
       expect(summary.body).toMatchObject({
         activeClients: 0,
-        activeEmployees: 0,
+        totalEmployees: 0,
         monthlyEstimate: 0,
       });
 
       await patch(`/api/clients/${client.id}`, ana.cookie, { isActive: true }).expect(200);
       expect((await get('/api/clients/summary', ana.cookie)).body).toMatchObject({
         activeClients: 1,
-        activeEmployees: 1,
+        totalEmployees: 7,
         monthlyEstimate: 500,
       });
       expect(await actions()).toEqual(
@@ -375,41 +360,18 @@ describe('Clienți, angajați și contracte (e2e)', () => {
       );
     });
 
-    it('punctele de lucru și angajații se arhivează, cu legăturile dintre ei păstrate', async () => {
-      const { client, location, employee } = await setup();
+    it('un punct de lucru arhivat rămâne în evidență și poate fi reactivat', async () => {
+      const { client, location } = await setup();
 
       await patch(`/api/locations/${location.id}`, ana.cookie, { isActive: false }).expect(200);
-      // Angajatul rămâne legat de punctul de lucru arhivat – istoricul nu se pierde.
-      const employees = await get(`/api/employees?clientId=${client.id}`, ana.cookie).expect(200);
-      expect(employees.body.items[0]).toMatchObject({
-        locationId: location.id,
-        locationName: 'Depozit',
-      });
       const locations = await get(`/api/locations?clientId=${client.id}`, ana.cookie).expect(200);
-      expect(locations.body[0]).toMatchObject({ isActive: false, employeeCount: 1 });
+      expect(locations.body[0]).toMatchObject({ id: location.id, isActive: false });
       expect((await get(`/api/clients/${client.id}`, ana.cookie)).body.locationCount).toBe(0);
 
-      await patch(`/api/employees/${employee.id}`, ana.cookie, { isActive: false }).expect(200);
-      const activeOnly = await get(
-        `/api/employees?clientId=${client.id}&status=active`,
-        ana.cookie,
-      ).expect(200);
-      expect(activeOnly.body.total).toBe(0);
-      const archived = await get(
-        `/api/employees?clientId=${client.id}&status=inactive`,
-        ana.cookie,
-      ).expect(200);
-      expect(archived.body.items[0]).toMatchObject({ id: employee.id, isActive: false });
-
-      await patch(`/api/employees/${employee.id}`, ana.cookie, { isActive: true }).expect(200);
       await patch(`/api/locations/${location.id}`, ana.cookie, { isActive: true }).expect(200);
+      expect((await get(`/api/clients/${client.id}`, ana.cookie)).body.locationCount).toBe(1);
       expect(await actions()).toEqual(
-        expect.arrayContaining([
-          'location.deactivated',
-          'employee.deactivated',
-          'employee.activated',
-          'location.activated',
-        ]),
+        expect.arrayContaining(['location.deactivated', 'location.activated']),
       );
     });
 
@@ -552,16 +514,13 @@ describe('Clienți, angajați și contracte (e2e)', () => {
         startDate: '2025-01-01',
         fees: [{ description: 'Abonament', amount: 300, frequencyUnit: 'MONTH' }],
       }).expect(201);
-      await post('/api/employees', ana.cookie, {
-        clientId: anaClient.id,
-        firstName: 'Ion',
-        lastName: 'Pop',
-      }).expect(201);
+      await patch(`/api/clients/${anaClient.id}`, ana.cookie, { employeeCount: 4 }).expect(200);
+      await patch(`/api/clients/${danClient.id}`, dan.cookie, { employeeCount: 9 }).expect(200);
 
       const anaSummary = await get('/api/clients/summary', ana.cookie).expect(200);
       expect(anaSummary.body).toMatchObject({
         activeClients: 1,
-        activeEmployees: 1,
+        totalEmployees: 4,
         monthlyEstimate: 700,
       });
       expect(anaSummary.body.expiringContracts).toEqual([
@@ -573,7 +532,11 @@ describe('Clienți, angajați și contracte (e2e)', () => {
       ]);
 
       const adminSummary = await get('/api/clients/summary', admin.cookie).expect(200);
-      expect(adminSummary.body).toMatchObject({ activeClients: 2, monthlyEstimate: 1000 });
+      expect(adminSummary.body).toMatchObject({
+        activeClients: 2,
+        totalEmployees: 13,
+        monthlyEstimate: 1000,
+      });
     });
   });
 });

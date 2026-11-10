@@ -34,6 +34,7 @@ const schema = z
     customInterval: z.number('Introdu intervalul.').int('Număr întreg.').min(1, 'Cel puțin 1.').max(120, 'Cel mult 120.'),
     startDate: z.string('Alege primul termen.').min(1, 'Alege primul termen.'),
     endDate: z.string().optional(),
+    dueWithinPeriod: z.boolean(),
     startTime: z.string().optional(),
     endTime: z.string().optional(),
     description: z.string().trim().max(5000).optional(),
@@ -109,6 +110,12 @@ const recurrence = computed<{ unit: RecurrenceUnit, interval: number }>(() => {
     : { unit: state.customUnit ?? 'MONTH', interval: Number(state.customInterval) || 1 }
 })
 
+/** Perioada în care un termen flexibil poate fi îndeplinit; frecvențele în zile nu au una. */
+const periodName = computed(() => {
+  const unit = recurrence.value.unit
+  return unit === 'DAY' ? null : unit === 'WEEK' ? 'săptămânii' : 'lunii'
+})
+
 /** Primele termene rezultate din frecvența aleasă, pentru verificare înainte de salvare. */
 const preview = computed(() => {
   if (!state.startDate) return []
@@ -139,6 +146,7 @@ watch(open, (isOpen) => {
     customInterval: isCustom && obligation ? obligation.recurrenceInterval : 2,
     startDate: obligation?.startDate ?? todayLocal(),
     endDate: obligation?.endDate ?? '',
+    dueWithinPeriod: obligation?.dueWithinPeriod ?? true,
     startTime: obligation?.startTime ?? '',
     endTime: obligation?.endTime ?? '',
     description: obligation?.description ?? '',
@@ -253,10 +261,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
         <div class="grid gap-5 sm:grid-cols-2">
           <UFormField
-            label="Primul termen"
+            label="Prima dată"
             name="startDate"
             required
-            help="Următoarele termene se calculează de la această dată."
+            help="Următoarele se calculează de la această dată (aceeași zi din lună sau din săptămână)."
           >
             <UInput v-model="state.startDate" type="date" class="w-full" />
           </UFormField>
@@ -264,6 +272,16 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             <UInput v-model="state.endDate" type="date" class="w-full" />
           </UFormField>
         </div>
+
+        <UFormField
+          v-if="periodName"
+          name="dueWithinPeriod"
+          :help="state.dueWithinPeriod
+            ? `Data este doar ziua planificată. Devine restanță abia dacă nu a fost făcută până la sfârșitul ${periodName}.`
+            : 'Devine restanță din ziua următoare termenului.'"
+        >
+          <USwitch v-model="state.dueWithinPeriod" :label="`Poate fi făcută oricând în ${periodName === 'lunii' ? 'luna' : 'săptămâna'} respectivă`" />
+        </UFormField>
 
         <div class="grid grid-cols-2 gap-5">
           <UFormField label="De la ora" name="startTime" help="Opțional. Fiecare deplasare poate fi mutată apoi separat.">
@@ -276,7 +294,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
         <div v-if="preview.length > 0" class="rounded-lg bg-elevated/60 px-4 py-3 text-sm">
           <p class="text-muted">
-            Următoarele termene
+            Următoarele date planificate
           </p>
           <p class="mt-0.5 font-medium text-highlighted">
             {{ preview.map(formatDate).join(' · ') }}

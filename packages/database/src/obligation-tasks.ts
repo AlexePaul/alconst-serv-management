@@ -1,4 +1,10 @@
-import { addDays, normalizeSearch, occurrencesBetween } from '@alconst/shared';
+import {
+  addDays,
+  generationStart,
+  normalizeSearch,
+  occurrencePeriod,
+  occurrencesBetween,
+} from '@alconst/shared';
 import type { Prisma, PrismaClient } from './generated/prisma/client.js';
 
 function toDateOnly(value: Date): string {
@@ -7,6 +13,10 @@ function toDateOnly(value: Date): string {
 
 function toDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
+}
+
+function periodKey(start: Date | null, end: Date | null): string {
+  return `${start ? toDateOnly(start) : ''}:${end ? toDateOnly(end) : ''}`;
 }
 
 export interface GenerateTasksOptions {
@@ -39,8 +49,27 @@ export async function lockObligations(
 }
 
 /**
+ * Task-urile generate ale unei obligații care pot fi retrase sau înlocuite atunci când obligația
+ * se schimbă: neîncepute și încă „la timp” (data apariției sau sfârșitul perioadei lor este de
+ * azi încolo). Restanțele și task-urile începute, finalizate sau anulate nu intră aici.
+ */
+export function pendingGeneratedTasks(today: string): Prisma.TaskWhereInput {
+  const day = toDate(today);
+  return {
+    obligationId: { not: null },
+    status: 'TODO',
+    OR: [{ occurrenceDate: { gte: day } }, { periodEnd: { gte: day } }],
+  };
+}
+
+/**
  * Creează task-urile care lipsesc pentru obligațiile active, pentru termenele din
  * intervalul [azi, azi + orizont].
+ *
+ * La obligațiile cu termen flexibil, fiecare apariție ține de o perioadă (luna sau săptămâna în
+ * care cade). Generarea pornește atunci de la începutul perioadei curente – apariția lunii în
+ * curs este încă „la timp” – și nu creează un al doilea task pentru o perioadă care are deja
+ * unul (de exemplu după mutarea zilei din lună a obligației).
  *
  * Funcția este idempotentă: constrângerea de unicitate (obligație, apariție) face ca rulările
  * repetate sau simultane – din API la salvarea unei obligații și din worker, periodic – să nu
@@ -64,7 +93,13 @@ export async function generateObligationTasks(
     ...(options.obligationId ? { id: options.obligationId } : {}),
     ...(options.clientId ? { clientId: options.clientId } : {}),
     AND: [
-      { OR: [{ endDate: null }, { endDate: { gte: toDate(options.today) } }] },
+      // Limita este largă (începutul lunii curente): apariția perioadei în curs poate fi înainte de azi.
+      {
+        OR: [
+          { endDate: null },
+          { endDate: { gte: toDate(generationStart('MONTH', true, options.today)) } },
+        ],
+      },
       // Obligațiile clienților arhivați sunt suspendate.
       { OR: [{ clientId: null }, { client: { isActive: true } }] },
     ],
@@ -79,25 +114,47 @@ export async function generateObligationTasks(
       const obligation = await tx.obligation.findFirst({ where: { AND: [where, { id }] } });
       if (!obligation) return 0;
 
-      const dates = occurrencesBetween(
+      const unit = obligation.recurrenceUnit;
+      const flexible = obligation.dueWithinPeriod;
+      const occurrences = occurrencesBetween(
         {
           startDate: toDateOnly(obligation.startDate),
           endDate: obligation.endDate ? toDateOnly(obligation.endDate) : null,
-          unit: obligation.recurrenceUnit,
+          unit,
           interval: obligation.recurrenceInterval,
         },
-        options.today,
+        generationStart(unit, flexible, options.today),
         until,
+      ).map((date) => ({ date, period: flexible ? occurrencePeriod(unit, date) : null }));
+      if (occurrences.length === 0) return 0;
+
+      // Perioadele care au deja un task al acestei obligații (indiferent de starea lui).
+      const taken = new Set(
+        (
+          await tx.task.findMany({
+            where: { obligationId: obligation.id, periodStart: { not: null } },
+            select: { periodStart: true, periodEnd: true },
+          })
+        ).map((task) => periodKey(task.periodStart, task.periodEnd)),
       );
-      if (dates.length === 0) return 0;
+      const missing = occurrences.filter(({ period }) => {
+        if (!period) return true;
+        const key = `${period.start}:${period.end}`;
+        if (taken.has(key)) return false;
+        taken.add(key);
+        return true;
+      });
+      if (missing.length === 0) return 0;
 
       const result = await tx.task.createMany({
-        data: dates.map((date) => ({
+        data: missing.map(({ date, period }) => ({
           title: obligation.title,
           description: obligation.description,
           kind: obligation.kind,
           priority: obligation.priority,
           dueDate: toDate(date),
+          periodStart: period ? toDate(period.start) : null,
+          periodEnd: period ? toDate(period.end) : null,
           startTime: obligation.startTime,
           endTime: obligation.endTime,
           occurrenceDate: toDate(date),

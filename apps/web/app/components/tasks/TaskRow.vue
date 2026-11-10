@@ -16,6 +16,7 @@ defineEmits<{ open: [], toggle: [] }>()
 const open = computed(() => isOpenTask(props.task.status))
 const due = computed(() => taskDueInfo(props.task, props.today))
 const timeRange = computed(() => formatTimeRange(props.task.startTime, props.task.endTime))
+const period = computed(() => taskPeriodLabel(props.task))
 </script>
 
 <template>
@@ -98,8 +99,12 @@ const timeRange = computed(() => formatTimeRange(props.task.startTime, props.tas
         <span class="inline-flex items-center gap-1">
           <UIcon name="i-lucide-user-round" class="size-3.5" />{{ task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : 'Fără responsabil' }}
         </span>
-        <span v-if="task.obligation" class="inline-flex items-center gap-1" title="Generat dintr-o obligație recurentă">
-          <UIcon name="i-lucide-repeat" class="size-3.5" />Recurent
+        <span
+          v-if="task.obligation"
+          class="inline-flex items-center gap-1"
+          :title="period ? 'Poate fi făcut oricând în această perioadă' : 'Generat dintr-o obligație recurentă'"
+        >
+          <UIcon name="i-lucide-repeat" class="size-3.5" />{{ period ?? 'Recurent' }}
         </span>
       </p>
     </button>

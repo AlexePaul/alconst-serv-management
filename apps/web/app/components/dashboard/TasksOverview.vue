@@ -29,6 +29,15 @@ const sections = computed(() => [
     empty: 'Nicio restanță.'
   },
   {
+    key: 'pending',
+    title: 'Încă în termen',
+    icon: 'i-lucide-hourglass',
+    tone: 'text-warning',
+    tasks: data.value?.inPeriod ?? [],
+    count: data.value?.counts.inPeriod ?? 0,
+    empty: 'Nimic rămas din perioada curentă.'
+  },
+  {
     key: 'today',
     title: 'Azi',
     icon: 'i-lucide-calendar-check',
@@ -94,7 +103,7 @@ const { toggle: complete, busyId, dialogOpen, dialogTask, skipped } = useTaskCom
       :actions="[{ label: 'Încearcă din nou', color: 'error', variant: 'outline', onClick: () => { refresh() } }]"
     />
 
-    <div v-else class="grid gap-4 lg:grid-cols-3">
+    <div v-else class="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
       <UCard v-for="section in sections" :key="section.key" :ui="{ body: 'p-0 sm:p-0', header: 'px-4 py-3 sm:px-4' }">
         <template #header>
           <div class="flex items-center gap-2">

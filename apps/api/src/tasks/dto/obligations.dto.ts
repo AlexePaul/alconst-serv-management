@@ -75,6 +75,14 @@ export class CreateObligationDto {
   @IsOptionalDateOnly('Data de sfârșit')
   endDate?: string | null;
 
+  /**
+   * Termen flexibil: poate fi făcută oricând în luna (sau săptămâna) în care cade termenul.
+   * Implicit activ.
+   */
+  @IsOptional()
+  @IsBoolean({ message: 'Opțiunea pentru termen flexibil nu este validă.' })
+  dueWithinPeriod?: boolean;
+
   @IsOptionalTime('Ora de început')
   startTime?: string | null;
 

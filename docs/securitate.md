@@ -1,6 +1,8 @@
 # Securitate
 
-Aplicația gestionează date despre companii și date personale ale angajaților acestora. Documentul
+Aplicația gestionează date despre companiile cliente. Nu ține evidența angajaților acestora –
+doar numărul lor – deci nu stochează date personale despre ei; rămân datele de contact ale
+clienților (persoană de contact, telefon, email) și conturile utilizatorilor interni. Documentul
 descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
 
 ## Autentificare
@@ -43,17 +45,18 @@ descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
 - Un administrator nu își poate dezactiva propriul cont și nu își poate schimba rolul, deci există
   mereu cel puțin un administrator activ.
 - Conturile nu se șterg, ci se dezactivează – istoricul din audit rămâne intact.
-- **Fără ștergere definitivă** pentru clienți, puncte de lucru, angajați și contracte: se
+- **Fără ștergere definitivă** pentru clienți, puncte de lucru și contracte: se
   arhivează (contractele se încheie) și pot fi reactivate. API-ul nu are rute de ștergere pentru
   ele, iar baza de date refuză ștergerea unui client care are date asociate.
 - **Acces la clienți pe responsabili**: un angajat vede și modifică doar clienții la care este
-  responsabil, împreună cu punctele de lucru, angajații și contractele lor. Regula este aplicată
+  responsabil, împreună cu punctele de lucru și contractele lor. Regula este aplicată
   pe server, la fiecare cerere; pentru clienții altora răspunsul este „nu există”. Doar
   administratorii stabilesc responsabilii. Tarifele și venitul estimat urmează aceeași regulă: un
   angajat le vede doar pentru clienții lui, iar totalurile firmei doar administratorii.
 - **Task-uri și obligații**: un angajat vede ce îi este atribuit, ce a creat el și tot ce ține de
   clienții lui. Un task atribuit unui coleg îi dă acces la task și la datele de contact ale
-  clientului (adresă, persoană de contact, telefon), nu și la restul datelor clientului.
+  clientului (adresă, persoană de contact, telefon, număr de angajați), nu și la restul datelor
+  clientului. La finalizarea deplasării poate actualiza numărul de angajați.
 - **Predarea definitivă a unui client** are loc doar prin acțiunea unui administrator sau cu
   acordul ambilor colegi. Nimeni nu își poate aproba singur cererea, iar cererile sunt vizibile
   doar celor doi implicați și administratorilor. Un angajat poate cere preluarea unui client doar
@@ -78,7 +81,7 @@ descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
 
 Se înregistrează: autentificări reușite și eșuate, deconectări, schimbări și resetări de parolă,
 crearea, modificarea, activarea și dezactivarea conturilor, precum și orice adăugare, modificare,
-arhivare sau reactivare de clienți, responsabili, servicii, puncte de lucru, angajați, contracte,
+arhivare sau reactivare de clienți, responsabili, servicii, puncte de lucru, contracte,
 obligații și task-uri (pentru task-uri, cu valorile vechi și noi – acesta este istoricul lor de
 modificări). Fiecare intrare conține autorul,
 entitatea afectată, momentul și adresa IP. Jurnalul este vizibil doar administratorilor și nu poate

@@ -16,6 +16,7 @@ import { AppException } from '../common/app.exception.js';
 import { formatDateOnly, parseDateOnly } from '../common/dates.js';
 import type { AuthContext, ClientInfo } from '../common/request-context.js';
 import { AppConfig } from '../config/app-config.js';
+import { ClientsService } from '../clients/clients.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateTaskDto, ListTasksQuery, UpdateTaskDto } from './dto/tasks.dto.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
@@ -84,6 +85,7 @@ export class TasksService {
     private readonly access: TaskAccessService,
     private readonly activity: ActivityService,
     private readonly notifications: NotificationsService,
+    private readonly clients: ClientsService,
   ) {}
 
   async list(query: ListTasksQuery, auth: AuthContext): Promise<Paginated<TaskDto>> {
@@ -209,6 +211,9 @@ export class TasksService {
     const startTime = dto.startTime !== undefined ? dto.startTime : before.startTime;
     const endTime = dto.endTime !== undefined ? dto.endTime : before.endTime;
     assertTimeRange(startTime, endTime);
+    if (dto.clientEmployeeCount !== undefined && !clientId) {
+      throw AppException.validation('Task-ul nu are un client pentru care să fie notat numărul.');
+    }
 
     // Confirmarea fișelor există doar pentru deplasări și se șterge dacă task-ul își schimbă tipul.
     const kind = dto.kind ?? before.kind;
@@ -265,6 +270,17 @@ export class TasksService {
       after.assigneeId !== auth.user.id
     ) {
       await this.notifications.notifyAssigned(after, after.assigneeId);
+    }
+    // Cel care a fost la client confirmă sau corectează numărul de angajați.
+    if (dto.clientEmployeeCount !== undefined && after.clientId) {
+      await this.clients.recordEmployeeCount(
+        after.clientId,
+        dto.clientEmployeeCount,
+        auth.user.id,
+        client.ip,
+        after.id,
+      );
+      return toTaskDto(await this.find(id, auth));
     }
     return toTaskDto(after);
   }
@@ -358,8 +374,14 @@ export class TasksService {
         scope === 'mine' ? { assigneeId: auth.user.id } : {},
       ],
     };
+    // Un task este restant abia după ce au trecut atât data planificată, cât și perioada lui
+    // (luna sau săptămâna în care poate fi făcut); până atunci este „încă în termen”.
+    const periodOver: Prisma.TaskWhereInput = {
+      OR: [{ periodEnd: null }, { periodEnd: { lt: todayDate } }],
+    };
     const buckets = {
-      overdue: { ...base, dueDate: { lt: todayDate } },
+      overdue: { AND: [base, { dueDate: { lt: todayDate } }, periodOver] },
+      inPeriod: { AND: [base, { dueDate: { lt: todayDate }, periodEnd: { gte: todayDate } }] },
       dueToday: { ...base, dueDate: todayDate },
       upcoming: { ...base, dueDate: { gt: todayDate, lte: weekAhead } },
     } satisfies Record<string, Prisma.TaskWhereInput>;
@@ -380,17 +402,21 @@ export class TasksService {
     };
     const [
       overdue,
+      inPeriod,
       dueToday,
       upcoming,
       overdueCount,
+      inPeriodCount,
       dueTodayCount,
       upcomingCount,
       visitsMissingSheets,
     ] = await Promise.all([
       fetch(buckets.overdue),
+      fetch(buckets.inPeriod),
       fetch(buckets.dueToday),
       fetch(buckets.upcoming),
       this.prisma.db.task.count({ where: buckets.overdue }),
+      this.prisma.db.task.count({ where: buckets.inPeriod }),
       this.prisma.db.task.count({ where: buckets.dueToday }),
       this.prisma.db.task.count({ where: buckets.upcoming }),
       this.prisma.db.task.count({ where: missingSheets }),
@@ -399,9 +425,15 @@ export class TasksService {
     return {
       today,
       overdue: overdue.map(toTaskDto),
+      inPeriod: inPeriod.map(toTaskDto),
       dueToday: dueToday.map(toTaskDto),
       upcoming: upcoming.map(toTaskDto),
-      counts: { overdue: overdueCount, dueToday: dueTodayCount, upcoming: upcomingCount },
+      counts: {
+        overdue: overdueCount,
+        inPeriod: inPeriodCount,
+        dueToday: dueTodayCount,
+        upcoming: upcomingCount,
+      },
       visitsMissingSheets,
     };
   }

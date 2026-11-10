@@ -1,6 +1,6 @@
 import type { Queue } from 'bullmq';
 import { createPrismaClient, type PrismaClient } from '@alconst/database';
-import { addDays, diffDays, type MailJobData, todayIn } from '@alconst/shared';
+import { addDays, diffDays, type MailJobData, startOfWeek, todayIn } from '@alconst/shared';
 import { WorkerConfig } from '../src/config/worker-config.js';
 import { MaintenanceService } from '../src/maintenance/maintenance.service.js';
 import { TEST_DATABASE_URL } from './global-setup.js';
@@ -143,7 +143,8 @@ describe('Robustețea rulării periodice (integrare cu baza de date)', () => {
       const weeklyDates = await datesOf(weekly.id);
       expect(new Set(weeklyDates).size).toBe(weeklyDates.length);
       weeklyDates.forEach((date, index) => expect(date).toBe(addDays(weeklyDates[0]!, index * 7)));
-      expect(weeklyDates[0]! >= lastRunDay).toBe(true);
+      // Termen flexibil: apariția din săptămâna ultimei rulări contează, chiar dacă ziua ei trecuse.
+      expect(weeklyDates[0]! >= startOfWeek(lastRunDay)).toBe(true);
       expect(weeklyDates.at(-1)! > addDays(today, HORIZON - 7)).toBe(true);
 
       // O a treia rulare, imediat după, nu mai are nimic de făcut.
@@ -265,6 +266,54 @@ describe('Robustețea rulării periodice (integrare cu baza de date)', () => {
       expect(mails.filter((mail) => mail.kind === 'task-digest')).toHaveLength(3);
       const settings = await db.notificationSettings.findUnique({ where: { userId: ana } });
       expect(toDateOnly(settings!.lastDigestDate!)).toBe(monday);
+    });
+  });
+
+  describe('obligație lunară cu termen flexibil', () => {
+    const at = (iso: string) => new Date(iso);
+
+    it('luna în curs este „la timp” până la sfârșitul ei, apoi devine restanță', async () => {
+      // Deplasare lunară în jurul datei de 5, introdusă cu o dată de început din ianuarie.
+      const visit = await obligation('Deplasare lunară', 'MONTH', '2026-01-05');
+
+      // 20 martie: lunile trecute nu se generează; martie da, deși data de 5 a trecut.
+      await service.run(at('2026-03-20T09:00:00Z'));
+      expect(await datesOf(visit.id)).toEqual(['2026-03-05', '2026-04-05', '2026-05-05']);
+      const march = await db.task.findFirstOrThrow({
+        where: { obligationId: visit.id, dueDate: toDate('2026-03-05') },
+      });
+      expect([toDateOnly(march.periodStart!), toDateOnly(march.periodEnd!)]).toEqual([
+        '2026-03-01',
+        '2026-03-31',
+      ]);
+      // Nicio restanță anunțată: mai sunt 11 zile din lună.
+      expect(await countByType(ana)).toEqual({});
+
+      // 29 martie: se apropie sfârșitul lunii.
+      await service.run(at('2026-03-29T09:00:00Z'));
+      expect(await countByType(ana)).toEqual({ TASK_DUE_SOON: 1 });
+      // 31 martie: ultima zi.
+      await service.run(at('2026-03-31T09:00:00Z'));
+      expect(await countByType(ana)).toEqual({ TASK_DUE_SOON: 1, TASK_DUE_TODAY: 1 });
+      expect(await db.notification.count({ where: { type: 'TASK_OVERDUE' } })).toBe(0);
+
+      // 1 aprilie: martie a rămas nefăcută → restanță; aprilie este o perioadă nouă.
+      await service.run(at('2026-04-01T09:00:00Z'));
+      const overdue = await db.notification.findMany({ where: { type: 'TASK_OVERDUE' } });
+      expect(overdue.map((item) => item.taskId)).toEqual([march.id]);
+
+      // Făcută în aprilie, împreună cu cea din aprilie: nu se mai generează nimic pentru martie.
+      await db.task.updateMany({
+        where: { obligationId: visit.id, dueDate: { lte: toDate('2026-04-05') } },
+        data: { status: 'DONE' },
+      });
+      await service.run(at('2026-04-10T09:00:00Z'));
+      expect(await datesOf(visit.id)).toEqual([
+        '2026-03-05',
+        '2026-04-05',
+        '2026-05-05',
+        '2026-06-05',
+      ]);
     });
   });
 

@@ -26,7 +26,6 @@ const mainItems = computed<NavigationMenuItem[]>(() => [
   { label: 'Calendar', icon: 'i-lucide-calendar-days', to: '/calendar', onSelect: close },
   { label: 'Obligații', icon: 'i-lucide-repeat', to: '/obligatii', onSelect: close },
   { label: 'Clienți', icon: 'i-lucide-building-2', to: '/clienti', onSelect: close },
-  { label: 'Angajați', icon: 'i-lucide-users-round', to: '/angajati', onSelect: close },
   { label: 'Documente', icon: 'i-lucide-file-text', ...soon },
   { label: 'Notificări', icon: 'i-lucide-bell', to: '/notificari', badge: unreadBadge.value, onSelect: close }
 ])

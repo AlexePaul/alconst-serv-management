@@ -115,12 +115,11 @@ pentru confidențialitate și permite o politică CSP strictă (`connect-src 'se
 | `sessions`                 | Sesiuni active (hash token, expirare, IP, user agent)                    |
 | `password_reset_tokens`    | Token-uri de resetare, de unică folosință                                |
 | `activity_logs`            | Jurnal de activitate (cine, ce, asupra cui, când)                        |
-| `clients`                  | Companiile cliente                                                       |
+| `clients`                  | Companiile cliente, inclusiv numărul lor de angajați                     |
 | `client_assignments`       | Responsabilii unui client (client ↔ utilizator intern)                   |
 | `services`                 | Catalogul serviciilor oferite de firmă                                   |
 | `client_services`          | Serviciile prestate unui client                                          |
 | `locations`                | Punctele de lucru ale clienților                                         |
-| `employees`                | Angajații clienților (date personale)                                    |
 | `contracts`                | Contracte: perioadă, status                                              |
 | `contract_fees`            | Tarifele unui contract: sumă + frecvență, opțional legate de un serviciu |
 | `obligations`              | Activități recurente: frecvență, client, responsabil                     |
@@ -135,7 +134,7 @@ Cheile primare sunt UUID v7 (ordonabile cronologic).
 ### Accesul la clienți
 
 Regula este implementată într-un singur loc (`ClientAccessService`) și se aplică tuturor datelor
-legate de un client – puncte de lucru, angajați, contracte:
+legate de un client – puncte de lucru, contracte:
 
 - administratorii văd și modifică toți clienții și stabilesc responsabilii;
 - un angajat vede și modifică doar clienții la care este responsabil; când adaugă un client,
@@ -146,15 +145,14 @@ legate de un client – puncte de lucru, angajați, contracte:
 
 ### Arhivare în loc de ștergere
 
-Clienții, punctele de lucru, angajații clienților și contractele **nu se șterg**. API-ul nu are
+Clienții, punctele de lucru și contractele **nu se șterg**. API-ul nu are
 rute de ștergere pentru ele, iar în baza de date relațiile către client sunt `ON DELETE RESTRICT`,
 deci nicio intervenție directă nu poate șterge un client care are istoric.
 
 | Entitate       | Cum iese din uz               | Ce se întâmplă                                                                                                                                                           |
 | -------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Client         | Arhivare (`isActive = false`) | Dispare dintre clienții activi și din cifrele de pe pagina principală; rămâne accesibil responsabililor. Obligațiile lui sunt suspendate (vezi „Obligații și task-uri”). |
-| Punct de lucru | Arhivare (`isActive = false`) | Nu mai poate fi ales pentru înregistrări noi; angajații și task-urile rămân legate de el.                                                                                |
-| Angajat        | Arhivare (`isActive = false`) | De exemplu la plecarea din companie; rămâne în evidență, cu filtrul „arhivați”.                                                                                          |
+| Punct de lucru | Arhivare (`isActive = false`) | Nu mai poate fi ales pentru înregistrări noi; obligațiile și task-urile rămân legate de el.                                                                              |
 | Contract       | Încheiere (`status = ENDED`)  | Rămâne cu tarifele lui; nu mai intră în venitul lunar estimat.                                                                                                           |
 | Utilizator     | Dezactivare (din Etapa 1)     | Nu se mai poate autentifica; tot ce a făcut rămâne pe numele lui.                                                                                                        |
 
@@ -171,6 +169,20 @@ Ce se mai poate șterge, și de ce:
 Istoricul responsabilităților se păstrează în jurnalul de activitate (modificarea responsabililor
 și predările de clienți, cu utilizatorii implicați) și pe task-uri (cine a fost responsabil, cine
 a finalizat, cine a confirmat fișele).
+
+### Numărul de angajați ai clienților
+
+Aplicația **nu ține evidența persoanelor** angajate la clienți și nu stochează date personale
+despre ele. Pentru fiecare client se păstrează doar numărul de angajați (`clients.employeeCount`)
+și momentul ultimei confirmări (`employeeCountCheckedAt`).
+
+- Numărul se completează în formularul clientului și se reconfirmă la finalizarea fiecărei
+  deplasări: aplicația îl arată pe cel cunoscut, iar cel care a fost acolo îl schimbă dacă au
+  fost angajări sau plecări.
+- Un coleg care a preluat doar deplasarea poate raporta numărul fără a avea acces la restul
+  datelor clientului.
+- Fiecare schimbare apare în jurnalul de activitate, cu valoarea veche și cea nouă – acesta este
+  istoricul numărului de angajați.
 
 ### Contracte și tarife
 
@@ -201,10 +213,20 @@ este o execuție concretă, cu termen și responsabil. Un task poate exista și 
 - **Frecvența** este unitate (`DAY`, `WEEK`, `MONTH`, `YEAR`) + interval, calculată mereu de la
   primul termen, deci fără derivă: o obligație lunară începută pe 31 cade pe 28/29 februarie și
   revine pe 31 în martie. Logica este pură, în `packages/shared`, și testată separat.
+- **Termen flexibil** (implicit): o activitate recurentă ține de o **perioadă**, nu de o zi. Una
+  lunară, la N luni sau anuală poate fi făcută oricând în luna calendaristică în care cade; una
+  săptămânală sau la N săptămâni, oricând în săptămâna respectivă (luni–duminică). Data task-ului
+  este doar ziua planificată – de regulă aceeași zi din lună – și poate fi mutată liber. Task-ul
+  păstrează perioada (`periodStart`, `periodEnd`) și devine restant abia după ce au trecut atât
+  data planificată, cât și sfârșitul perioadei. Opțiunea se poate dezactiva pe obligație, pentru
+  termene exacte; frecvențele în zile nu au perioadă.
+- O perioadă are cel mult un task al aceleiași obligații: dacă ziua din lună a obligației este
+  mutată, luna deja făcută nu primește o a doua deplasare.
 - **Generarea** creează task-urile cu termene în următoarele 60 de zile (`TASK_HORIZON_DAYS`).
   Rulează imediat la salvarea obligației (din API) și din oră în oră (din worker). Constrângerea
   de unicitate (obligație, apariție) din baza de date face imposibile duplicatele, chiar și la
-  rulări simultane. Termenele trecute nu se generează retroactiv.
+  rulări simultane. Perioadele încheiate nu se generează retroactiv; perioada în curs da, chiar
+  dacă data ei planificată a trecut.
 - **Modificarea unei obligații** se propagă doar asupra task-urilor viitoare neîncepute. La
   schimbarea frecvenței sau a perioadei, task-urile ale căror termene nu mai fac parte din program
   sunt șterse, iar cele noi sunt generate; cele ale căror termene rămân în program sunt păstrate,
@@ -270,8 +292,10 @@ Limite cunoscute, acceptate deocamdată:
 Worker-ul rulează din oră în oră o sarcină idempotentă care:
 
 1. generează task-urile lipsă din obligații;
-2. creează reamintirile: cu N zile înainte de termen (N ales de fiecare utilizator), în ziua
-   termenului și la restanță (în prima zi, apoi o dată la 7 zile);
+2. creează reamintirile: cu N zile înainte de data planificată (N ales de fiecare utilizator),
+   în ziua planificată și la restanță (în prima zi, apoi o dată la 7 zile). La termenele
+   flexibile, depășirea datei planificate nu este restanță: se mai reamintește doar cu N zile
+   înainte de sfârșitul perioadei și în ultima ei zi;
 3. trimite, după ora 7, cel mult un email-rezumat pe zi celor care au reamintiri noi;
 4. șterge sesiunile și linkurile expirate.
 
@@ -293,7 +317,7 @@ API, cât și în worker și în interfață.
 
 ### Căutare
 
-Clienții și angajații au o coloană `searchText` – textul relevant, fără diacritice și cu litere
+Clienții, obligațiile și task-urile au o coloană `searchText` – textul relevant, fără diacritice și cu litere
 mici – actualizată la fiecare salvare. Căutarea normalizează la fel termenul introdus, deci
 „stefan” găsește „Ștefan”. Soluția nu depinde de extensii PostgreSQL și poate primi ulterior un
 index trigram dacă volumul o cere.
@@ -303,24 +327,9 @@ index trigram dacă volumul o cere.
 Niciuna dintre extensiile de mai jos nu este implementată. Analiza arată doar că se pot adăuga
 fără restructurarea a ceea ce există – prin tabele și coloane noi.
 
-### Evidența instruirilor pe angajat
-
-Acum confirmarea fișelor se ține la nivel de deplasare (`tasks.sheetsCompletedAt`,
-`sheetsCompletedById`). Evidența pe angajat se poate adăuga printr-un tabel nou, de exemplu
-`task_employee_records` (task, angajat, tip, moment, cine a confirmat):
-
-- task-ul are deja client și punct de lucru, deci lista angajaților vizați de o deplasare se
-  obține direct;
-- angajații nu se mai șterg, deci evidențele rămân valabile și după plecarea lor;
-- confirmarea la nivel de deplasare rămâne ca rezumat („toate fișele”) sau se calculează din
-  înregistrările individuale; datele existente nu trebuie migrate.
-
-Ar mai fi de adăugat, tot aditiv: data plecării angajatului (acum există doar starea
-activ/arhivat) și, dacă este nevoie, istoricul schimbărilor de funcție sau de punct de lucru.
-
 ### Planificarea automată a programului de lucru
 
-Un modul separat ar propune fiecărui angajat un program (ordinea și orele deplasărilor) și ar
+Un modul separat ar propune fiecărui coleg un program (ordinea și orele deplasărilor) și ar
 scrie în task-uri doar după acceptarea propunerii, prin aceeași operațiune de modificare folosită
 azi – cu istoricul de modificări păstrat.
 

@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { generateObligationTasks, lockObligations, type Prisma } from '@alconst/database';
+import {
+  generateObligationTasks,
+  lockObligations,
+  pendingGeneratedTasks,
+  type Prisma,
+} from '@alconst/database';
 import {
   type ClientDto,
   type ClientListItemDto,
@@ -109,6 +114,7 @@ export class ClientsService {
       const created = await this.prisma.db.client.create({
         data: {
           ...fields,
+          ...(fields.employeeCount != null ? { employeeCountCheckedAt: new Date() } : {}),
           searchText: buildSearchText(fields),
           createdById: auth.user.id,
           assignments: { create: responsibleIds.map((userId) => ({ userId })) },
@@ -143,7 +149,7 @@ export class ClientsService {
     });
     if (!existing) throw AppException.notFound('Clientul nu există.');
 
-    const { responsibleIds, ...fields } = dto;
+    const { responsibleIds, employeeCount, ...fields } = dto;
     if (responsibleIds !== undefined) {
       throw AppException.validation('Responsabilii se modifică din secțiunea dedicată.');
     }
@@ -154,6 +160,10 @@ export class ClientsService {
     // Doar câmpurile trimise efectiv și care diferă de valoarea curentă.
     const changes = definedChanges(fields, existing);
     const changedFields = Object.keys(changes);
+    // Numărul de angajați are propria intrare în jurnal, cu valoarea veche și cea nouă.
+    if (employeeCount !== undefined && employeeCount !== existing.employeeCount) {
+      await this.recordEmployeeCount(id, employeeCount, auth.user.id, client.ip);
+    }
     if (changedFields.length === 0) return this.get(id, auth);
 
     const data = { ...changes, searchText: buildSearchText({ ...existing, ...changes }) };
@@ -198,6 +208,40 @@ export class ClientsService {
       });
     }
     return this.get(id, auth);
+  }
+
+  /**
+   * Notează câți angajați are clientul. Aplicația ține doar numărul, nu și persoanele.
+   * Apelată la modificarea clientului și la finalizarea unei deplasări, când cel care a fost
+   * acolo confirmă sau corectează numărul. Verificarea accesului revine apelantului: un coleg
+   * care a preluat doar deplasarea poate raporta numărul fără a avea acces la restul clientului.
+   */
+  async recordEmployeeCount(
+    clientId: string,
+    count: number | null,
+    userId: string,
+    ip: string | null | undefined,
+    taskId?: string,
+  ): Promise<void> {
+    const existing = await this.prisma.db.client.findUnique({
+      where: { id: clientId },
+      select: { name: true, employeeCount: true },
+    });
+    if (!existing) throw AppException.notFound('Clientul nu există.');
+    await this.prisma.db.client.update({
+      where: { id: clientId },
+      data: { employeeCount: count, employeeCountCheckedAt: count === null ? null : new Date() },
+    });
+    if (existing.employeeCount === count) return;
+    await this.activity.log({
+      action: 'client.employee_count_updated',
+      userId,
+      entityType: 'client',
+      entityId: clientId,
+      entityLabel: existing.name,
+      metadata: { from: existing.employeeCount, to: count, ...(taskId ? { taskId } : {}) },
+      ip: ip ?? undefined,
+    });
   }
 
   async setResponsibles(
@@ -274,9 +318,9 @@ export class ClientsService {
     const horizon = parseDateOnly(this.config.today());
     horizon.setUTCDate(horizon.getUTCDate() + EXPIRING_WINDOW_DAYS);
 
-    const [activeClients, activeEmployees, fees, expiring] = await Promise.all([
+    const [activeClients, headcount, fees, expiring] = await Promise.all([
       this.prisma.db.client.count({ where: visibleActive }),
-      this.prisma.db.employee.count({ where: { isActive: true, client: visibleActive } }),
+      this.prisma.db.client.aggregate({ where: visibleActive, _sum: { employeeCount: true } }),
       this.prisma.db.contractFee.findMany({
         where: { contract: { status: 'ACTIVE', client: visibleActive } },
         select: { amount: true, frequencyUnit: true, frequencyInterval: true },
@@ -291,7 +335,7 @@ export class ClientsService {
 
     return {
       activeClients,
-      activeEmployees,
+      totalEmployees: headcount._sum.employeeCount ?? 0,
       monthlyEstimate: estimateFees(fees),
       expiringContracts: expiring.flatMap((contract) =>
         contract.endDate
@@ -316,18 +360,12 @@ export class ClientsService {
    * apară drept restanțe; la reactivare sunt generate din nou.
    */
   private async archive(id: string, data: Prisma.ClientUncheckedUpdateInput): Promise<void> {
-    const today = parseDateOnly(this.config.today());
     await this.prisma.db.$transaction(async (tx) => {
       // Același blocaj ca la generarea task-urilor, ca o rulare simultană să nu le recreeze.
       await lockObligations(tx, { clientId: id });
       await tx.client.update({ where: { id }, data });
       await tx.task.deleteMany({
-        where: {
-          clientId: id,
-          obligationId: { not: null },
-          status: 'TODO',
-          occurrenceDate: { gte: today },
-        },
+        where: { AND: [pendingGeneratedTasks(this.config.today()), { clientId: id }] },
       });
     });
   }

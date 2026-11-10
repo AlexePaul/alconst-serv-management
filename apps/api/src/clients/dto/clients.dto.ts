@@ -6,13 +6,16 @@ import {
   IsArray,
   IsBoolean,
   IsIn,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
   Matches,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
-import { CUI_PATTERN, normalizeCui } from '@alconst/shared';
+import { CUI_PATTERN, MAX_EMPLOYEE_COUNT, normalizeCui } from '@alconst/shared';
 import { IsOptionalEmail, IsOptionalText, IsTrimmedText } from '../../common/dto-decorators.js';
 import { PaginationQuery, STATUS_FILTERS, type StatusFilter } from '../../common/pagination.js';
 
@@ -48,6 +51,14 @@ export class CreateClientDto {
 
   @IsOptionalText('Observațiile', 5000)
   notes?: string | null;
+
+  /** Câți angajați are clientul. Doar numărul – aplicația nu ține evidența persoanelor. */
+  @Transform(({ value }: { value: unknown }) => (value === '' ? null : value))
+  @IsOptional()
+  @IsInt({ message: 'Numărul de angajați trebuie să fie un număr întreg.' })
+  @Min(0, { message: 'Numărul de angajați nu poate fi negativ.' })
+  @Max(MAX_EMPLOYEE_COUNT, { message: 'Numărul de angajați este prea mare.' })
+  employeeCount?: number | null;
 
   @IsOptional()
   @IsBoolean({ message: 'Statusul nu este valid.' })

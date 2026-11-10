@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TaskDto } from '@alconst/shared'
+import { MAX_EMPLOYEE_COUNT } from '@alconst/shared'
 
 /**
  * Finalizarea unui task atunci când este nevoie de o întrebare:
@@ -7,7 +8,8 @@ import type { TaskDto } from '@alconst/shared'
  *    semnalată până la confirmare);
  *  - dacă au rămas nebifate apariții anterioare ale aceleiași obligații: le marcăm și pe ele ca
  *    făcute? Nu contează dacă au fost făcute atunci și doar nu au fost bifate sau au fost
- *    recuperate acum – important este că sunt făcute.
+ *    recuperate acum – important este că sunt făcute;
+ *  - la o deplasare: câți angajați are acum clientul? Aplicația ține doar numărul, nu persoanele.
  */
 const open = defineModel<boolean>('open', { default: false })
 const props = withDefaults(defineProps<{
@@ -24,11 +26,23 @@ const isVisit = computed(() => props.task?.kind === 'VISIT')
 const includeSkipped = ref(true)
 const loading = ref<'with' | 'without' | 'plain' | null>(null)
 
-watch(open, (value) => {
-  if (value) includeSkipped.value = true
+/** Numărul de angajați ai clientului, reconfirmat de cel care a fost acolo. */
+const asksHeadcount = computed(() => isVisit.value && props.task?.client != null)
+const headcount = ref<number | ''>('')
+const headcountError = computed(() => {
+  const value = headcount.value
+  if (value === '') return null
+  return Number.isInteger(value) && value >= 0 && value <= MAX_EMPLOYEE_COUNT ? null : 'Introdu un număr întreg, zero sau mai mare.'
 })
 
-const skippedDates = computed(() => props.skipped.map(task => formatDate(task.dueDate)).join(', '))
+watch(open, (value) => {
+  if (!value) return
+  includeSkipped.value = true
+  headcount.value = props.task?.client?.employeeCount ?? ''
+})
+
+/** Perioada sărită (ex. „octombrie 2026”) sau, la termenele exacte, data. */
+const skippedDates = computed(() => props.skipped.map(task => taskPeriodLabel(task) ?? formatDate(task.dueDate)).join(', '))
 const skippedIntro = computed(() => {
   const one = props.skipped.length === 1
   if (isVisit.value) return one ? 'A rămas nebifată și deplasarea din' : 'Au rămas nebifate și deplasările din'
@@ -42,7 +56,8 @@ const skippedLabel = computed(() => {
 
 async function finish(sheetsCompleted?: boolean) {
   const current = props.task
-  if (!current) return
+  if (!current || headcountError.value) return
+  const reported = asksHeadcount.value && typeof headcount.value === 'number' ? headcount.value : undefined
   loading.value = sheetsCompleted === undefined ? 'plain' : sheetsCompleted ? 'with' : 'without'
   // Întâi cele rămase din urmă, apoi task-ul curent; fiecare apare separat în istoricul lui.
   const targets = includeSkipped.value ? [...props.skipped, current] : [current]
@@ -53,7 +68,9 @@ async function finish(sheetsCompleted?: boolean) {
         method: 'PATCH',
         body: {
           status: 'DONE',
-          ...(target.kind === 'VISIT' && sheetsCompleted !== undefined ? { sheetsCompleted } : {})
+          ...(target.kind === 'VISIT' && sheetsCompleted !== undefined ? { sheetsCompleted } : {}),
+          // Numărul de angajați se trimite o singură dată, cu deplasarea curentă.
+          ...(target.id === current.id && reported !== undefined ? { clientEmployeeCount: reported } : {})
         }
       })
       finished++
@@ -85,7 +102,7 @@ async function finish(sheetsCompleted?: boolean) {
   <UModal
     v-model:open="open"
     :title="isVisit ? 'Finalizezi deplasarea?' : 'Finalizezi task-ul?'"
-    :description="task ? [task.title, task.client?.name, formatDate(task.dueDate)].filter(Boolean).join(' · ') : undefined"
+    :description="task ? [task.title, task.client?.name, taskPeriodLabel(task) ?? formatDate(task.dueDate)].filter(Boolean).join(' · ') : undefined"
     :dismissible="loading === null"
   >
     <template #body>
@@ -100,6 +117,25 @@ async function finish(sheetsCompleted?: boolean) {
           :disabled="loading !== null"
         />
       </div>
+
+      <UFormField
+        v-if="asksHeadcount"
+        class="mb-5"
+        label="Câți angajați are acum clientul?"
+        :help="task?.client?.employeeCount == null ? 'Numărul nu a fost notat încă. Poți lăsa câmpul gol dacă nu îl știi.' : 'Schimbă numărul dacă au fost angajări sau plecări; altfel lasă-l așa.'"
+        :error="headcountError ?? undefined"
+      >
+        <UInput
+          v-model.number="headcount"
+          type="number"
+          min="0"
+          step="1"
+          inputmode="numeric"
+          class="w-32"
+          :disabled="loading !== null"
+          aria-label="Numărul de angajați ai clientului"
+        />
+      </UFormField>
 
       <template v-if="isVisit">
         <p class="text-sm text-default">

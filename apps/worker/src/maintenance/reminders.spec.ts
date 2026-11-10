@@ -106,4 +106,52 @@ describe('planReminders', () => {
       expect(planFor({ assigneeId: 'ana', clientResponsibleIds: [] }, [])).toEqual([]);
     });
   });
+
+  describe('termene flexibile (de făcut oricând în perioadă)', () => {
+    // Planificat pe 5 noiembrie, de făcut oricând până la 30 noiembrie.
+    const visit = task({ dueDate: '2026-11-05', periodEnd: '2026-11-30' });
+    const on = (day: string, remindDays = 3) =>
+      plan([visit], [['ana', remindDays]], day).map((notification) => [
+        notification.type,
+        notification.title,
+        notification.dedupeKey,
+      ]);
+
+    it('anunță data planificată, dar depășirea ei nu este restanță', () => {
+      expect(on('2026-11-03')[0]?.slice(0, 2)).toEqual(['TASK_DUE_SOON', 'Termen apropiat']);
+      expect(on('2026-11-05')[0]?.slice(0, 2)).toEqual(['TASK_DUE_TODAY', 'Planificat astăzi']);
+      // Între data planificată și apropierea sfârșitului de lună nu se mai trimite nimic.
+      for (const day of ['2026-11-06', '2026-11-15', '2026-11-26']) expect(on(day)).toEqual([]);
+    });
+
+    it('reamintește o dată înainte de sfârșitul perioadei și o dată în ultima zi', () => {
+      expect(on('2026-11-27')).toEqual([
+        ['TASK_DUE_SOON', 'Perioada se încheie curând', 'period-end:t1:ana:2026-11-30'],
+      ]);
+      // Aceeași cheie în zilele următoare: baza de date o păstrează o singură dată.
+      expect(on('2026-11-29')[0]?.[2]).toBe('period-end:t1:ana:2026-11-30');
+      expect(on('2026-11-30')).toEqual([
+        ['TASK_DUE_TODAY', 'Ultima zi din perioadă', 'period-last:t1:ana:2026-11-30'],
+      ]);
+      // Cu reamintirile în avans oprite rămâne doar cea din ultima zi.
+      expect(on('2026-11-28', 0)).toEqual([]);
+      expect(on('2026-11-30', 0)).toHaveLength(1);
+    });
+
+    it('restanța începe după perioadă și se numără de la sfârșitul ei', () => {
+      expect(on('2026-12-01')).toEqual([
+        ['TASK_OVERDUE', 'Task restant', 'overdue:t1:ana:2026-11-30:0'],
+      ]);
+      expect(on('2026-12-07')[0]?.[2]).toBe('overdue:t1:ana:2026-11-30:0');
+      expect(on('2026-12-08')[0]?.[2]).toBe('overdue:t1:ana:2026-11-30:1');
+      expect(plan([visit], [], '2026-12-01')[0]?.body).toContain('termen 30.11.2026');
+    });
+
+    it('o dată mutată dincolo de perioadă devine ea termenul', () => {
+      const moved = task({ dueDate: '2026-12-03', periodEnd: '2026-11-30' });
+      expect(plan([moved], [], '2026-12-01')[0]?.type).toBe('TASK_DUE_SOON');
+      expect(plan([moved], [], '2026-12-03')[0]?.title).toBe('Termen astăzi');
+      expect(plan([moved], [], '2026-12-04')[0]?.dedupeKey).toBe('overdue:t1:ana:2026-12-03:0');
+    });
+  });
 });

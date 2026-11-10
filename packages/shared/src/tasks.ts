@@ -1,5 +1,5 @@
 import type { UserRefDto } from './clients.js';
-import { addDays, addMonths, diffDays } from './dates.js';
+import { addDays, addMonths, diffDays, endOfMonth, startOfMonth, startOfWeek } from './dates.js';
 
 // --- Enumerări ---------------------------------------------------------------------------------
 
@@ -126,6 +126,101 @@ export function nextOccurrence(recurrence: Recurrence, onOrAfter: string): strin
   return occurrencesBetween(recurrence, from, '9999-12-31', 1)[0] ?? null;
 }
 
+// --- Perioada unui termen ----------------------------------------------------------------------
+
+/** Perioada în care un termen recurent poate fi îndeplinit la timp (capete incluse). */
+export interface TaskPeriod {
+  start: string;
+  end: string;
+}
+
+/**
+ * Perioada din care face parte o apariție, pentru obligațiile cu termen flexibil: o activitate
+ * lunară (sau la N luni, anuală) poate fi făcută oricând în luna în care cade, iar una săptămânală
+ * (sau la N săptămâni) oricând în săptămâna respectivă, de luni până duminică.
+ * Frecvențele exprimate în zile nu au perioadă: termenul este ziua însăși.
+ */
+export function occurrencePeriod(unit: RecurrenceUnit, date: string): TaskPeriod | null {
+  switch (unit) {
+    case 'DAY':
+      return null;
+    case 'WEEK': {
+      const start = startOfWeek(date);
+      return { start, end: addDays(start, 6) };
+    }
+    case 'MONTH':
+    case 'YEAR':
+      return { start: startOfMonth(date), end: endOfMonth(date) };
+  }
+}
+
+/**
+ * Prima zi din care se generează task-uri. Pentru termenele flexibile este începutul perioadei
+ * curente: apariția lunii în curs este încă „la timp”, chiar dacă data ei planificată a trecut.
+ */
+export function generationStart(
+  unit: RecurrenceUnit,
+  dueWithinPeriod: boolean,
+  today: string,
+): string {
+  return (dueWithinPeriod ? occurrencePeriod(unit, today)?.start : undefined) ?? today;
+}
+
+/**
+ * Ultima zi în care un task este considerat „la timp”. Data planificată poate fi mutată liber;
+ * task-ul devine restant abia după ce au trecut atât data planificată, cât și sfârșitul perioadei.
+ */
+export function taskDeadline(task: { dueDate: string; periodEnd?: string | null }): string {
+  return task.periodEnd && task.periodEnd > task.dueDate ? task.periodEnd : task.dueDate;
+}
+
+const MONTH_NAMES = [
+  'ianuarie',
+  'februarie',
+  'martie',
+  'aprilie',
+  'mai',
+  'iunie',
+  'iulie',
+  'august',
+  'septembrie',
+  'octombrie',
+  'noiembrie',
+  'decembrie',
+];
+const MONTH_SHORT = [
+  'ian.',
+  'feb.',
+  'mar.',
+  'apr.',
+  'mai',
+  'iun.',
+  'iul.',
+  'aug.',
+  'sept.',
+  'oct.',
+  'nov.',
+  'dec.',
+];
+
+/** Ex.: „noiembrie 2026” pentru o lună întreagă, „9–15 nov. 2026” pentru o săptămână. */
+export function formatPeriod(start: string, end: string): string {
+  const [startYear, startMonth, startDay] = start.split('-').map(Number) as [
+    number,
+    number,
+    number,
+  ];
+  const [endYear, endMonth, endDay] = end.split('-').map(Number) as [number, number, number];
+  if (start === startOfMonth(start) && end === endOfMonth(start)) {
+    return `${MONTH_NAMES[startMonth - 1]} ${startYear}`;
+  }
+  if (startYear === endYear && startMonth === endMonth) {
+    return `${startDay}–${endDay} ${MONTH_SHORT[endMonth - 1]} ${endYear}`;
+  }
+  const from = `${startDay} ${MONTH_SHORT[startMonth - 1]}${startYear === endYear ? '' : ` ${startYear}`}`;
+  return `${from} – ${endDay} ${MONTH_SHORT[endMonth - 1]} ${endYear}`;
+}
+
 // --- Interval orar -----------------------------------------------------------------------------
 
 /** Ora în format `HH:mm` (24 de ore). */
@@ -155,6 +250,8 @@ export interface TaskClientDto extends ClientRefDto {
   address: string | null;
   contactPerson: string | null;
   phone: string | null;
+  /** Numărul de angajați cunoscut al clientului; se reconfirmă la finalizarea unei deplasări. */
+  employeeCount: number | null;
   /** Responsabilii clientului – colegii de la care a fost preluat task-ul, dacă este o înlocuire. */
   responsibles: UserRefDto[];
 }
@@ -167,8 +264,16 @@ export interface TaskDto {
   kind: TaskKind;
   status: TaskStatus;
   priority: TaskPriority;
-  /** Termenul, `YYYY-MM-DD`. */
+  /**
+   * Data planificată, `YYYY-MM-DD`. Pentru task-urile fără perioadă este și termenul-limită.
+   */
   dueDate: string;
+  /**
+   * Perioada în care task-ul poate fi făcut la timp (ex. luna), pentru termenele flexibile.
+   * Task-ul devine restant abia după `periodEnd`. Null = termenul este exact `dueDate`.
+   */
+  periodStart: string | null;
+  periodEnd: string | null;
   /** Intervalul orar estimat (`HH:mm`), dacă a fost stabilit. */
   startTime: string | null;
   endTime: string | null;
@@ -200,10 +305,14 @@ export interface TasksOverviewDto {
   /** Data de azi folosită la calcul, în fusul orar al firmei. */
   today: string;
   overdue: TaskDto[];
+  /**
+   * Data planificată a trecut, dar perioada (luna, săptămâna) nu s-a încheiat: încă la timp.
+   */
+  inPeriod: TaskDto[];
   dueToday: TaskDto[];
   /** Următoarele 7 zile, fără azi. */
   upcoming: TaskDto[];
-  counts: { overdue: number; dueToday: number; upcoming: number };
+  counts: { overdue: number; inPeriod: number; dueToday: number; upcoming: number };
   /** Deplasări finalizate pentru care nu s-a confirmat completarea fișelor. */
   visitsMissingSheets: number;
 }
@@ -221,6 +330,11 @@ export interface ObligationDto {
   recurrenceInterval: number;
   startDate: string;
   endDate: string | null;
+  /**
+   * Termen flexibil: activitatea poate fi făcută oricând în luna (sau săptămâna) în care cade
+   * și devine restanță abia după încheierea perioadei. Fără efect la frecvențele în zile.
+   */
+  dueWithinPeriod: boolean;
   startTime: string | null;
   endTime: string | null;
   isActive: boolean;

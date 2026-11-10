@@ -198,7 +198,7 @@ const columns = computed<TableColumn<ClientListItemDto>[]>(() => [
           </template>
 
           <template #employees-cell="{ row }">
-            {{ row.original.employeeCount }}
+            {{ row.original.employeeCount ?? '—' }}
           </template>
 
           <template #status-cell="{ row }">
@@ -224,7 +224,7 @@ const columns = computed<TableColumn<ClientListItemDto>[]>(() => [
                 </p>
                 <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
                   <StatusBadge :active="client.isActive" inactive-label="Arhivat" />
-                  <span>{{ countLabel(client.employeeCount, 'angajat', 'angajați') }}</span>
+                  <span v-if="client.employeeCount !== null">{{ countLabel(client.employeeCount, 'angajat', 'angajați') }}</span>
                 </div>
               </div>
               <UIcon name="i-lucide-chevron-right" class="size-5 shrink-0 text-dimmed" />

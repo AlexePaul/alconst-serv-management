@@ -28,7 +28,6 @@ const ICONS: Partial<Record<string, string>> = {
 const GROUP_ICONS: Record<string, string> = {
   client: 'i-lucide-building-2',
   location: 'i-lucide-map-pin',
-  employee: 'i-lucide-users-round',
   contract: 'i-lucide-file-signature',
   service: 'i-lucide-briefcase',
   obligation: 'i-lucide-repeat',

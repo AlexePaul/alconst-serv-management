@@ -1,10 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { generateObligationTasks, lockObligations, type Prisma } from '@alconst/database';
+import {
+  generateObligationTasks,
+  lockObligations,
+  pendingGeneratedTasks,
+  type Prisma,
+} from '@alconst/database';
 import {
   addDays,
+  generationStart,
   nextOccurrence,
   normalizeSearch,
   type ObligationDto,
+  occurrencePeriod,
   occurrencesBetween,
   OPEN_TASK_STATUSES,
   type Paginated,
@@ -102,6 +109,7 @@ export class ObligationsService {
         recurrenceInterval: dto.recurrenceInterval ?? 1,
         startDate: parseDateOnly(dto.startDate),
         endDate: dto.endDate ? parseDateOnly(dto.endDate) : null,
+        dueWithinPeriod: dto.dueWithinPeriod ?? true,
         startTime: dto.startTime ?? null,
         endTime: dto.endTime ?? null,
         isActive: dto.isActive ?? true,
@@ -177,6 +185,7 @@ export class ObligationsService {
       recurrenceInterval: dto.recurrenceInterval ?? before.recurrenceInterval,
       startDate: parseDateOnly(startDate),
       endDate: endDate ? parseDateOnly(endDate) : null,
+      dueWithinPeriod: dto.dueWithinPeriod ?? before.dueWithinPeriod,
       startTime,
       endTime,
       isActive: dto.isActive ?? before.isActive,
@@ -187,11 +196,13 @@ export class ObligationsService {
       next.recurrenceInterval !== before.recurrenceInterval ||
       startDate !== formatDateOnly(before.startDate) ||
       endDate !== (before.endDate ? formatDateOnly(before.endDate) : null) ||
+      next.dueWithinPeriod !== before.dueWithinPeriod ||
       next.isActive !== before.isActive;
 
     const today = this.config.today();
-    // Termenele care rămân în program după modificare (niciunul, dacă obligația devine inactivă).
-    const keptDates =
+    // Termenele care rămân în program după modificare (niciunul, dacă obligația devine inactivă),
+    // fiecare cu perioada lui – calculate exact ca la generare.
+    const kept =
       scheduleChanged && next.isActive
         ? occurrencesBetween(
             {
@@ -200,9 +211,12 @@ export class ObligationsService {
               unit: next.recurrenceUnit,
               interval: next.recurrenceInterval,
             },
-            today,
+            generationStart(next.recurrenceUnit, next.dueWithinPeriod, today),
             addDays(today, this.config.taskHorizonDays),
-          ).map(parseDateOnly)
+          ).map((date) => ({
+            date: parseDateOnly(date),
+            period: next.dueWithinPeriod ? occurrencePeriod(next.recurrenceUnit, date) : null,
+          }))
         : [];
 
     const title = next.title !== before.title;
@@ -226,17 +240,35 @@ export class ObligationsService {
         where: { id },
         data: { ...next, searchText: normalizeSearch(next.title) },
       });
+      if (before.dueWithinPeriod && !next.dueWithinPeriod) {
+        // Termenul devine exact: apariția perioadei curente, dacă data ei a trecut și nu a fost
+        // făcută, rămâne în evidență ca restanță – nu este retrasă împreună cu cele viitoare.
+        await tx.task.updateMany({
+          where: { obligationId: id, status: 'TODO', occurrenceDate: { lt: parseDateOnly(today) } },
+          data: { periodStart: null, periodEnd: null },
+        });
+      }
       if (scheduleChanged) {
         await tx.task.deleteMany({
-          where: { ...pending, occurrenceDate: { gte: parseDateOnly(today), notIn: keptDates } },
+          where: { AND: [pending, { occurrenceDate: { notIn: kept.map((entry) => entry.date) } }] },
         });
+        // Task-urile păstrate își aliniază perioada la noile reguli (ex. termenul a devenit flexibil).
+        for (const { date, period } of kept) {
+          await tx.task.updateMany({
+            where: { AND: [pending, { occurrenceDate: date }] },
+            data: {
+              periodStart: period ? parseDateOnly(period.start) : null,
+              periodEnd: period ? parseDateOnly(period.end) : null,
+            },
+          });
+        }
       }
       if (Object.keys(content).length > 0) {
         await tx.task.updateMany({ where: pending, data: content });
       }
       if (assigneeId !== before.assigneeId) {
         await tx.task.updateMany({
-          where: { ...pending, assigneeId: before.assigneeId },
+          where: { AND: [pending, { assigneeId: before.assigneeId }] },
           data: { assigneeId },
         });
       }
@@ -272,13 +304,9 @@ export class ObligationsService {
     });
   }
 
-  /** Task-urile generate care încă nu au fost începute și au termenul de azi încolo. */
+  /** Task-urile generate, neîncepute și încă „la timp” ale obligației (vezi `pendingGeneratedTasks`). */
   private pendingGeneratedTasks(obligationId: string): Prisma.TaskWhereInput {
-    return {
-      obligationId,
-      status: 'TODO',
-      occurrenceDate: { gte: parseDateOnly(this.config.today()) },
-    };
+    return { AND: [pendingGeneratedTasks(this.config.today()), { obligationId }] };
   }
 
   private generate(obligationId: string): Promise<number> {
@@ -329,6 +357,7 @@ export class ObligationsService {
       recurrenceInterval: row.recurrenceInterval,
       startDate,
       endDate,
+      dueWithinPeriod: row.dueWithinPeriod,
       startTime: row.startTime,
       endTime: row.endTime,
       isActive: row.isActive,

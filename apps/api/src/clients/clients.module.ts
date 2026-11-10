@@ -6,18 +6,15 @@ import { ClientsController } from './clients.controller.js';
 import { ClientsService } from './clients.service.js';
 import { ContractsController } from './contracts.controller.js';
 import { ContractsService } from './contracts.service.js';
-import { EmployeesController } from './employees.controller.js';
-import { EmployeesService } from './employees.service.js';
 import { LocationsController } from './locations.controller.js';
 import { LocationsService } from './locations.service.js';
 
-/** Clienții și tot ce ține de ei: responsabili, puncte de lucru, angajați, contracte. */
+/** Clienții și tot ce ține de ei: responsabili, puncte de lucru, contracte. */
 @Module({
   controllers: [
     ClientsController,
     ClientTransfersController,
     LocationsController,
-    EmployeesController,
     ContractsController,
   ],
   providers: [
@@ -25,9 +22,8 @@ import { LocationsService } from './locations.service.js';
     ClientsService,
     ClientTransfersService,
     LocationsService,
-    EmployeesService,
     ContractsService,
   ],
-  exports: [ClientAccessService],
+  exports: [ClientAccessService, ClientsService],
 })
 export class ClientsModule {}

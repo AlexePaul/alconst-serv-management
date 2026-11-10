@@ -13,6 +13,7 @@ export function createPrismaClient(connectionString: string): PrismaClient {
 
 export {
   generateObligationTasks,
-  lockObligations,
   type GenerateTasksOptions,
+  lockObligations,
+  pendingGeneratedTasks,
 } from './obligation-tasks.js';

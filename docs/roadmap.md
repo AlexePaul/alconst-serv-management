@@ -18,13 +18,14 @@ Aplicația se construiește incremental. Fiecare etapă livrează funcționalit�
 - [x] Teste (unitare + e2e), lint, typecheck, CI pe GitHub Actions
 - [x] Evaluarea bibliotecilor de editare DOCX, cu test practic
 
-## Etapa 2 – Clienți și angajați ✅
+## Etapa 2 – Clienți ✅
 
 - [x] Companii cliente: date de identificare, contact, reprezentant legal, status
 - [x] Responsabili: angajații văd și modifică doar clienții lor; administratorii văd tot
 - [x] Catalog de servicii configurabil și asocierea lui cu clienții
 - [x] Puncte de lucru
-- [x] Angajații clienților (funcție, punct de lucru, data angajării, status)
+- [x] Numărul de angajați al fiecărui client (inițial evidență nominală; înlocuită ulterior,
+      vezi „Decizii luate împreună cu firma”)
 - [x] Contracte cu oricâte tarife, fiecare cu propria frecvență; venit lunar estimat
 - [x] Avertizare pentru contractele care expiră, pe pagina principală și în pagina clientului
 - [x] Căutare fără diacritice, filtrare, paginare pe server
@@ -55,9 +56,14 @@ Importul din Excel a fost scos din plan: nu există fișiere Excel de migrat.
       inițiată de oricare dintre cei doi colegi, cu acordul celuilalt
 - [x] Emailuri imediate pentru evenimente (task atribuit, cereri de predare și răspunsul la ele)
 
-Completări după discuția din noiembrie 2026:
+Completări după discuțiile din noiembrie 2026:
 
-- [x] Arhivare în loc de ștergere pentru clienți, puncte de lucru, angajați și contracte; baza de
+- [x] Termene flexibile: activitățile recurente pot fi făcute oricând în luna sau săptămâna lor;
+      restanța apare abia după încheierea perioadei
+- [x] Numărul de angajați pe client în locul evidenței nominale; întrebat la finalizarea fiecărei
+      deplasări
+
+- [x] Arhivare în loc de ștergere pentru clienți, puncte de lucru și contracte; baza de
       date refuză ștergerea unui client cu istoric
 - [x] Arhivarea unui client suspendă obligațiile lui; reactivarea le reia
 - [x] Reamintirile unui coleg cu contul dezactivat ajung la responsabilii clientului sau la
@@ -81,7 +87,8 @@ aplicație și emailul acoperă nevoia de bază; Web Push se adaugă în etapa d
 - Numerotare fără duplicate (contor per tip/an, incrementat tranzacțional)
 - Generare individuală în cerere scurtă; generare în masă și conversie PDF în worker
 - Editor DOCX în aplicație (`@docx-editor.dev/vue`), cu versiuni separate de original
-- Arhivă cu căutare și filtrare după companie, tip, dată, angajat, număr
+- Arhivă cu căutare și filtrare după companie, tip, dată, număr
+- Secțiune de documente pe client, în care se pot încărca fișiere (de detaliat împreună cu firma)
 
 ## Etapa 5 – Stabilizare
 
@@ -99,8 +106,6 @@ Sunt notate ca să nu se piardă; nu fac parte din etapele 1–5 și nu se imple
 permite deja modelul de date pentru ele este descris în [arhitectura.md](arhitectura.md),
 „Extensii viitoare”.
 
-- **Evidența instruirilor pe angajat.** Acum se confirmă fișele o dată pe deplasare. Extinderea
-  la nivel de angajat se poate face printr-un tabel nou, fără restructurare.
 - **Integrare SmartBill.** Emiterea facturilor și verificarea încasărilor; se analizează separat.
 - **Planificarea automată a programului de lucru.** Propunerea unui program optim pentru fiecare
   angajat, ținând cont de: programul de lucru și disponibilitate, durata estimată a deplasărilor,
@@ -149,11 +154,16 @@ permite deja modelul de date pentru ele este descris în [arhitectura.md](arhite
 - **Vizibilitatea sumelor**: un angajat vede tarifele și venitul estimat doar pentru clienții lui;
   administratorii văd situația întregii firme. Angajații nu văd totalurile firmei și nici
   contractele colegilor.
-- **Arhivare, nu ștergere**: clienții, punctele de lucru, angajații și contractele se arhivează
+- **Arhivare, nu ștergere**: clienții, punctele de lucru și contractele se arhivează
   sau se dezactivează. Istoricul activităților, al documentelor și al responsabilităților se
   păstrează, inclusiv după plecarea unui angajat sau încetarea unui contract.
-- **Evidența instruirilor**: deocamdată confirmarea fișelor rămâne la nivel de deplasare; modelul
-  permite extinderea ulterioară la nivel de angajat.
+- **Fără date despre angajații clienților**: aplicația ține doar numărul de angajați al fiecărui
+  client, reconfirmat la fiecare deplasare. Evidența nominală a fost scoasă – adăuga muncă fără
+  folos și date personale de care firma nu are nevoie. Confirmarea fișelor rămâne la nivel de
+  deplasare.
+- **Termene pe perioadă**: o deplasare recurentă trebuie făcută în luna (sau săptămâna) ei, nu
+  într-o zi anume. Se păstrează de regulă aceeași parte a lunii, cu mici mutări, ca facturile
+  clientului să nu vină una după alta.
 - **Emailuri**: rezumatul zilnic conține doar numere. Numele clienților și detaliile activităților
   nu se trimit prin email.
 - **SmartBill**: nu se implementează acum; emiterea facturilor și verificarea încasărilor se
@@ -175,5 +185,8 @@ permite deja modelul de date pentru ele este descris în [arhitectura.md](arhite
    ca și acestea să fie doar dezactivate, este o schimbare mică.
 3. **Obligațiile unui punct de lucru arhivat** – rămân active până sunt dezactivate manual. Dacă
    arhivarea punctului de lucru ar trebui să le suspende automat, ca la clienți, se poate.
-4. **Data plecării unui angajat** – acum se ține doar starea (activ/arhivat). Dacă data exactă
-   contează, de exemplu pentru evidența instruirilor, se adaugă un câmp.
+4. **Secțiunea de documente** – ce fel de documente ar trebui încărcate pe client (contracte
+   semnate, fișe scanate, altele) și cine le poate vedea. Se stabilește la începutul Etapei 4.
+5. **Trimestrial = luna în care cade** – pentru o activitate la 3 luni, perioada este luna
+   calendaristică a termenului (ex. ianuarie, aprilie, iulie, octombrie), nu întregul trimestru.
+   Dacă ar trebui să fie tot trimestrul, se schimbă ușor.

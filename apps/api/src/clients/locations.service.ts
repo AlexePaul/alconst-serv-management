@@ -9,8 +9,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { ClientAccessService } from './client-access.service.js';
 import type { CreateLocationDto, UpdateLocationDto } from './dto/locations.dto.js';
 
-const include = { _count: { select: { employees: true } } } satisfies Prisma.LocationInclude;
-type Row = Prisma.LocationGetPayload<{ include: typeof include }>;
+type Row = Prisma.LocationGetPayload<object>;
 
 function toDto(row: Row): LocationDto {
   return {
@@ -20,7 +19,6 @@ function toDto(row: Row): LocationDto {
     address: row.address,
     notes: row.notes,
     isActive: row.isActive,
-    employeeCount: row._count.employees,
   };
 }
 
@@ -36,7 +34,6 @@ export class LocationsService {
     await this.access.assertAccess(clientId, auth.user);
     const rows = await this.prisma.db.location.findMany({
       where: { clientId },
-      include,
       orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
     });
     return rows.map(toDto);
@@ -48,7 +45,7 @@ export class LocationsService {
     client: ClientInfo,
   ): Promise<LocationDto> {
     await this.access.assertAccess(dto.clientId, auth.user);
-    const row = await this.prisma.db.location.create({ data: dto, include });
+    const row = await this.prisma.db.location.create({ data: dto });
     await this.log('location.created', row, auth, client);
     return toDto(row);
   }
@@ -62,7 +59,7 @@ export class LocationsService {
     const existing = await this.find(id, auth);
     const changes = definedChanges(dto, existing);
     if (Object.keys(changes).length === 0) return toDto(existing);
-    const row = await this.prisma.db.location.update({ where: { id }, data: changes, include });
+    const row = await this.prisma.db.location.update({ where: { id }, data: changes });
     await this.logChanges(Object.keys(changes), row, auth, client);
     return toDto(row);
   }
@@ -70,7 +67,6 @@ export class LocationsService {
   private async find(id: string, auth: AuthContext): Promise<Row> {
     const row = await this.prisma.db.location.findFirst({
       where: { id, client: this.access.scope(auth.user) },
-      include,
     });
     if (!row) throw AppException.notFound('Punctul de lucru nu există.');
     return row;

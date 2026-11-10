@@ -1,13 +1,13 @@
 # Alconst Serv – Management SSM/PSI
 
 Aplicația internă a firmei Alconst Serv pentru gestionarea activității de securitate și sănătate în
-muncă (SSM) și prevenire și stingere a incendiilor (PSI): clienți, angajați, obligații, task-uri,
+muncă (SSM) și prevenire și stingere a incendiilor (PSI): clienți, obligații, task-uri,
 calendar și documente.
 
 Aplicația este **strict internă** (fără înregistrare publică, fără portal pentru clienți) și va rula
 la `https://app.alconst-serv.ro`, complet separat de website-ul public `alconst-serv.ro`.
 
-> **Stadiu:** Etapele 1 (Foundation), 2 (Clienți și angajați) și 3 (Task-uri, obligații și
+> **Stadiu:** Etapele 1 (Foundation), 2 (Clienți) și 3 (Task-uri, obligații și
 > calendar) sunt implementate. Urmează documentele. Vezi [docs/roadmap.md](docs/roadmap.md).
 
 ## Tehnologii
@@ -104,7 +104,7 @@ Testele e2e folosesc o bază de date separată (`alconst_test`), creată automat
 - **PWA**: instalabilă pe iPhone (Add to Home Screen), fără mod offline.
 - **Worker**: coadă BullMQ pentru emailuri – baza pentru generarea documentelor și notificări.
 
-**Etapa 2 – Clienți și angajați**
+**Etapa 2 – Clienți**
 
 - **Clienți**: date de identificare și contact, status, căutare fără diacritice, filtrare,
   paginare pe server.
@@ -112,13 +112,15 @@ Testele e2e folosesc o bază de date separată (`alconst_test`), creată automat
   automat responsabil pentru clienții pe care îi adaugă; administratorii văd tot și stabilesc
   responsabilii.
 - **Servicii**: catalog configurabil de administratori, asociat fiecărui client.
-- **Puncte de lucru** și **angajații clienților** (funcție, punct de lucru, data angajării, status),
-  cu o pagină generală de angajați peste toți clienții vizibili.
+- **Puncte de lucru** ale clienților.
+- **Numărul de angajați** al fiecărui client – doar numărul, reconfirmat la fiecare deplasare.
+  Aplicația nu ține evidența persoanelor și nu stochează date personale despre angajații clienților.
 - **Contracte și tarife**: perioadă, status și oricâte tarife pe contract, fiecare cu propria
   frecvență (săptămânal, lunar, la N luni, anual, la fiecare deplasare, o singură dată); venit
   lunar estimat; avertizare pentru contractele care expiră.
-- **Pagina principală**: clienți și angajați activi, venit lunar estimat, contracte care expiră.
-- **Arhivare în loc de ștergere**: clienții, punctele de lucru, angajații și contractele nu se
+- **Pagina principală**: clienți activi, total angajați la clienți, venit lunar estimat, contracte
+  care expiră.
+- **Arhivare în loc de ștergere**: clienții, punctele de lucru și contractele nu se
   șterg; se arhivează (contractele se încheie), rămân în evidență cu tot istoricul și pot fi
   reactivate.
 
@@ -126,9 +128,13 @@ Testele e2e folosesc o bază de date separată (`alconst_test`), creată automat
 
 - **Obligații recurente**: activități care se repetă (deplasări, instruiri), cu frecvență
   configurabilă, client, punct de lucru și responsabil.
+- **Termene flexibile**: o deplasare lunară poate fi făcută oricând în luna respectivă (una
+  săptămânală, oricând în săptămână). Data este doar ziua planificată și se poate muta; restanța
+  apare abia după încheierea perioadei.
 - **Task-uri** generate automat din obligații sau create manual: tip, responsabil, prioritate,
   termen, status, observații și istoric de modificări.
-- **Listă** grupată după urgență (restante, azi, următoarele 7 zile, mai târziu) și **calendar**
+- **Listă** grupată după urgență (restante, încă în termen, azi, următoarele 7 zile, mai târziu)
+  și **calendar**
   pe lună, săptămână și zi.
 - **Notificări** în aplicație și rezumat zilnic pe email, fără duplicate, cu preferințe per
   utilizator.

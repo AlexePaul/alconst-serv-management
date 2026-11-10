@@ -40,7 +40,11 @@ export interface ClientListItemDto {
   email: string | null;
   isActive: boolean;
   responsibles: UserRefDto[];
-  employeeCount: number;
+  /**
+   * Câți angajați are clientul; null dacă nu se știe încă. Aplicația ține doar numărul –
+   * nu se stochează date despre persoane.
+   */
+  employeeCount: number | null;
   locationCount: number;
 }
 
@@ -49,12 +53,17 @@ export interface ClientDto extends ClientListItemDto {
   address: string | null;
   legalRepresentative: string | null;
   notes: string | null;
+  /** Când a fost confirmat ultima dată numărul de angajați (de regulă la o deplasare). */
+  employeeCountCheckedAt: string | null;
   services: ServiceRefDto[];
   /** Venitul lunar estimat din tarifele recurente ale contractelor active (lei). */
   monthlyEstimate: number;
   createdAt: string;
   updatedAt: string;
 }
+
+/** Limita superioară acceptată pentru numărul de angajați ai unui client. */
+export const MAX_EMPLOYEE_COUNT = 100_000;
 
 /** Format acceptat pentru CUI: opțional prefixul „RO”, urmat de 2–10 cifre. */
 export const CUI_PATTERN = /^(RO)?\d{2,10}$/;
@@ -71,24 +80,6 @@ export interface LocationDto {
   clientId: string;
   name: string;
   address: string | null;
-  notes: string | null;
-  isActive: boolean;
-  employeeCount: number;
-}
-
-// --- Angajații clienților ----------------------------------------------------------------------
-
-export interface ClientEmployeeDto {
-  id: string;
-  clientId: string;
-  clientName: string;
-  locationId: string | null;
-  locationName: string | null;
-  firstName: string;
-  lastName: string;
-  position: string | null;
-  /** Data angajării, în format `YYYY-MM-DD`. */
-  hireDate: string | null;
   notes: string | null;
   isActive: boolean;
 }
@@ -206,7 +197,8 @@ export interface ExpiringContractDto {
 
 export interface ClientsSummaryDto {
   activeClients: number;
-  activeEmployees: number;
+  /** Suma angajaților declarați ai clienților activi vizibili utilizatorului. */
+  totalEmployees: number;
   /** Venitul lunar estimat din contractele active ale clienților vizibili utilizatorului. */
   monthlyEstimate: number;
   /** Contracte active care expiră în următoarele 30 de zile sau au expirat deja. */

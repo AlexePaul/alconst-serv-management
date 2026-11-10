@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeHistoryChange, groupTasks, recurrencePresetFor, taskDueInfo } from './tasks'
+import { describeHistoryChange, groupTasks, recurrencePresetFor, taskDueInfo, taskPeriodLabel } from './tasks'
 
 const today = '2026-11-10'
 
@@ -15,6 +15,44 @@ describe('taskDueInfo', () => {
 
   it('task-urile finalizate nu sunt niciodată „restante”', () => {
     expect(taskDueInfo({ dueDate: '2026-11-01', status: 'DONE' }, today)).toMatchObject({ overdue: false, color: 'neutral' })
+  })
+})
+
+describe('termene flexibile', () => {
+  // Planificat pe 5 noiembrie, de făcut oricând în noiembrie.
+  const visit = { dueDate: '2026-11-05', periodStart: '2026-11-01', periodEnd: '2026-11-30', status: 'TODO' as const }
+
+  it('data planificată depășită nu este restanță cât timp perioada nu s-a încheiat', () => {
+    expect(taskDueInfo(visit, today)).toEqual({ label: 'până la 30 nov.', color: 'warning', overdue: false })
+    expect(taskDueInfo(visit, '2026-11-30')).toMatchObject({ label: 'Ultima zi', overdue: false })
+    expect(taskDueInfo(visit, '2026-12-03')).toEqual({ label: 'Restant de 3 zile', color: 'error', overdue: true })
+    expect(taskDueInfo(visit, '2026-11-05').label).toBe('Azi')
+  })
+
+  it('o dată mutată dincolo de perioadă devine ea termenul', () => {
+    const moved = { ...visit, dueDate: '2026-12-02' }
+    expect(taskDueInfo(moved, '2026-12-01').label).toBe('Mâine')
+    expect(taskDueInfo(moved, '2026-12-03')).toMatchObject({ label: 'Restant de 1 zi', overdue: true })
+  })
+
+  it('apar într-o grupă separată, între restanțe și azi', () => {
+    const tasks = [
+      { dueDate: '2026-10-05', periodEnd: '2026-10-31' },
+      { dueDate: '2026-11-05', periodEnd: '2026-11-30' },
+      { dueDate: '2026-11-07', periodEnd: null },
+      { dueDate: today, periodEnd: '2026-11-30' }
+    ]
+    expect(groupTasks(tasks, today).map(entry => [entry.group, entry.tasks.length])).toEqual([
+      ['overdue', 2],
+      ['pending', 1],
+      ['today', 1]
+    ])
+  })
+
+  it('perioada se afișează ca lună sau ca interval', () => {
+    expect(taskPeriodLabel(visit)).toBe('noiembrie 2026')
+    expect(taskPeriodLabel({ periodStart: '2026-11-09', periodEnd: '2026-11-15' })).toBe('9–15 nov. 2026')
+    expect(taskPeriodLabel({ periodStart: null, periodEnd: null })).toBeNull()
   })
 })
 

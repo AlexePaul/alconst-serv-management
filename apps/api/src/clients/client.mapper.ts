@@ -16,13 +16,8 @@ export const clientListInclude = {
     include: { user: userRef },
     orderBy: { createdAt: 'asc' },
   },
-  // Numărăm doar ce este în vigoare; angajații și punctele de lucru arhivate rămân în evidență.
-  _count: {
-    select: {
-      employees: { where: { isActive: true } },
-      locations: { where: { isActive: true } },
-    },
-  },
+  // Numărăm doar punctele de lucru în vigoare; cele arhivate rămân în evidență.
+  _count: { select: { locations: { where: { isActive: true } } } },
 } satisfies Prisma.ClientInclude;
 
 export const contractInclude = {
@@ -60,7 +55,7 @@ export function toClientListItem(row: ClientListRow): ClientListItemDto {
     email: row.email,
     isActive: row.isActive,
     responsibles: row.assignments.map((assignment) => assignment.user),
-    employeeCount: row._count.employees,
+    employeeCount: row.employeeCount,
     locationCount: row._count.locations,
   };
 }
@@ -83,6 +78,7 @@ export function toClientDto(row: ClientDetailRow): ClientDto {
     address: row.address,
     legalRepresentative: row.legalRepresentative,
     notes: row.notes,
+    employeeCountCheckedAt: row.employeeCountCheckedAt?.toISOString() ?? null,
     services: row.services.map((entry) => entry.service),
     monthlyEstimate: estimateFees(row.contracts.flatMap((contract) => contract.fees)),
     createdAt: row.createdAt.toISOString(),

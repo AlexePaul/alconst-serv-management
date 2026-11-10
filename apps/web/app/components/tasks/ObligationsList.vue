@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { ObligationDto, Paginated } from '@alconst/shared'
+import { occurrencePeriod } from '@alconst/shared'
 
 /**
  * Obligațiile recurente, cu frecvența și următorul termen.
@@ -18,6 +19,14 @@ const toast = useToast()
 
 const PAGE_SIZE = 25
 const today = todayLocal()
+
+/** Următoarea dată este restantă abia după ce s-a încheiat și perioada ei (la termenele flexibile). */
+function isLate(obligation: ObligationDto): boolean {
+  const next = obligation.nextDueDate
+  if (!next || next >= today) return false
+  const period = obligation.dueWithinPeriod ? occurrencePeriod(obligation.recurrenceUnit, next) : null
+  return !period || period.end < today
+}
 
 const search = ref('')
 const debouncedSearch = useDebounced(search)
@@ -202,7 +211,7 @@ defineExpose({ openCreate })
             <p class="text-muted">
               Următorul termen
             </p>
-            <p class="font-medium" :class="obligation.nextDueDate && obligation.nextDueDate < today ? 'text-error' : 'text-highlighted'">
+            <p class="font-medium" :class="isLate(obligation) ? 'text-error' : 'text-highlighted'">
               {{ obligation.nextDueDate ? formatDate(obligation.nextDueDate) : '—' }}
             </p>
           </div>

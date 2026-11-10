@@ -30,7 +30,6 @@ const tasksList = useTemplateRef('tasksList')
 const tabs = computed<TabsItem[]>(() => [
   { label: 'Detalii', value: 'details', icon: 'i-lucide-info', slot: 'details' },
   { label: 'Puncte de lucru', value: 'locations', icon: 'i-lucide-map-pin', badge: client.value?.locationCount || undefined, slot: 'locations' },
-  { label: 'Angajați', value: 'employees', icon: 'i-lucide-users-round', badge: client.value?.employeeCount || undefined, slot: 'employees' },
   { label: 'Contracte', value: 'contracts', icon: 'i-lucide-file-signature', slot: 'contracts' },
   { label: 'Activități', value: 'activities', icon: 'i-lucide-list-checks', slot: 'activities' }
 ])
@@ -183,10 +182,10 @@ const moreActions = computed<DropdownMenuItem[][]>(() => {
           <dl class="flex flex-wrap gap-x-8 gap-y-2 text-sm sm:ml-auto">
             <div>
               <dt class="text-muted">
-                Angajați activi
+                Angajați
               </dt>
-              <dd class="font-semibold text-highlighted">
-                {{ client.employeeCount }}
+              <dd class="font-semibold text-highlighted" :title="client.employeeCountCheckedAt ? `Confirmat la ${formatDateTime(client.employeeCountCheckedAt)}` : undefined">
+                {{ client.employeeCount ?? '—' }}
               </dd>
             </div>
             <div>
@@ -386,10 +385,6 @@ const moreActions = computed<DropdownMenuItem[][]>(() => {
             <ClientsLocationsTab :client-id="client.id" @changed="refresh()" />
           </template>
 
-          <template #employees>
-            <ClientsEmployeesTable :client-id="client.id" @changed="refresh()" />
-          </template>
-
           <template #contracts>
             <ClientsContractsTab :client-id="client.id" @changed="refresh()" />
           </template>
@@ -430,7 +425,7 @@ const moreActions = computed<DropdownMenuItem[][]>(() => {
           v-model:open="statusOpen"
           :title="client.isActive ? 'Arhivezi clientul?' : 'Reactivezi clientul?'"
           :description="client.isActive
-            ? `${client.name} nu va mai apărea printre clienții activi, iar obligațiile lui recurente vor fi suspendate: task-urile viitoare neîncepute, create automat, sunt retrase. Punctele de lucru, angajații, contractele și tot istoricul rămân în evidență. Clientul poate fi reactivat oricând.`
+            ? `${client.name} nu va mai apărea printre clienții activi, iar obligațiile lui recurente vor fi suspendate: task-urile viitoare neîncepute, create automat, sunt retrase. Punctele de lucru, contractele și tot istoricul rămân în evidență. Clientul poate fi reactivat oricând.`
             : `${client.name} va apărea din nou printre clienții activi, iar obligațiile lui recurente își vor relua programul de azi încolo.`"
           :confirm-label="client.isActive ? 'Arhivează' : 'Reactivează'"
           :color="client.isActive ? 'warning' : 'primary'"

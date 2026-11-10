@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { ClientDto } from '@alconst/shared'
-import { CUI_PATTERN, normalizeCui } from '@alconst/shared'
+import { CUI_PATTERN, MAX_EMPLOYEE_COUNT, normalizeCui } from '@alconst/shared'
 import { z } from 'zod'
 
 /** Fereastră pentru adăugarea unui client sau modificarea datelor lui. */
@@ -34,6 +34,11 @@ const schema = z.object({
   contactPerson: optionalText(200),
   phone: optionalText(50),
   email: z.union([z.literal(''), emailSchema]).optional(),
+  // Doar numărul: aplicația nu ține evidența persoanelor angajate la client.
+  employeeCount: z.union([
+    z.literal(''),
+    z.number('Introdu un număr.').int('Introdu un număr întreg.').min(0, 'Numărul nu poate fi negativ.').max(MAX_EMPLOYEE_COUNT, 'Numărul este prea mare.')
+  ]).optional(),
   notes: optionalText(5000),
   responsibleIds: z.array(z.string()).optional()
 })
@@ -63,13 +68,15 @@ watch(open, (isOpen) => {
     contactPerson: client?.contactPerson ?? '',
     phone: client?.phone ?? '',
     email: client?.email ?? '',
+    employeeCount: client?.employeeCount ?? '',
     notes: client?.notes ?? '',
     responsibleIds: []
   })
 })
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  const { responsibleIds, ...fields } = event.data
+  const { responsibleIds, employeeCount, ...rest } = event.data
+  const fields = { ...rest, employeeCount: typeof employeeCount === 'number' ? employeeCount : null }
   await submit(async () => {
     const saved = props.client
       ? await api<ClientDto>(`/clients/${props.client.id}`, { method: 'PATCH', body: fields })
@@ -166,6 +173,21 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             multiple
             placeholder="Alege responsabilii"
             class="w-full"
+          />
+        </UFormField>
+
+        <UFormField
+          label="Număr de angajați"
+          name="employeeCount"
+          help="Doar numărul total. Se reconfirmă la fiecare deplasare."
+        >
+          <UInput
+            v-model.number="state.employeeCount"
+            type="number"
+            min="0"
+            step="1"
+            inputmode="numeric"
+            class="w-full sm:w-40"
           />
         </UFormField>
 

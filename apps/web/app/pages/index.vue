@@ -22,8 +22,8 @@ const modules = [{
   icon: 'i-lucide-shield-check',
   available: true
 }, {
-  name: 'Clienți și angajați',
-  description: 'Companii, contracte și tarife, servicii, puncte de lucru și angajații acestora.',
+  name: 'Clienți',
+  description: 'Companii, contracte și tarife, servicii, puncte de lucru și numărul de angajați.',
   icon: 'i-lucide-building-2',
   available: true
 }, {
@@ -75,13 +75,6 @@ const modules = [{
               variant="outline"
               icon="i-lucide-building-2"
               label="Adaugă client"
-            />
-            <UButton
-              to="/angajati?nou=1"
-              color="neutral"
-              variant="outline"
-              icon="i-lucide-user-round-plus"
-              label="Adaugă angajat"
             />
             <UButton
               v-if="isAdmin"

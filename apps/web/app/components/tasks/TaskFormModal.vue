@@ -188,6 +188,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   })
 }
 
+/** Perioada unui task recurent cu termen flexibil, ex. „noiembrie 2026”. */
+const periodLabel = computed(() => props.task ? taskPeriodLabel(props.task) : null)
+
 // --- Ștergere (doar pentru task-urile create manual și încă neîncepute) -----------------------
 
 const deleteOpen = ref(false)
@@ -236,7 +239,12 @@ async function confirmDelete() {
           <UFormField label="Tip" name="kind" help="O deplasare înseamnă mers la client și completarea fișelor.">
             <USelect v-model="state.kind" :items="kindItems" class="w-full" />
           </UFormField>
-          <UFormField label="Termen" name="dueDate" required>
+          <UFormField
+            :label="periodLabel ? 'Data planificată' : 'Termen'"
+            name="dueDate"
+            required
+            :help="periodLabel ? `Poate fi făcut oricând în ${periodLabel}; data se poate muta liber.` : undefined"
+          >
             <UInput v-model="state.dueDate" type="date" class="w-full" />
           </UFormField>
         </div>

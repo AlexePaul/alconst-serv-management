@@ -1,5 +1,12 @@
 import { generateObligationTasks, lockObligations } from '@alconst/database';
-import { addDays, todayIn } from '@alconst/shared';
+import {
+  addDays,
+  addMonths,
+  endOfMonth,
+  startOfMonth,
+  startOfWeek,
+  todayIn,
+} from '@alconst/shared';
 import { createTestApp, ORIGIN, type TestApp } from './test-app.js';
 
 /**
@@ -433,6 +440,156 @@ describe('Robustețea obligațiilor recurente (e2e)', () => {
       // …iar dacă preia doar deplasarea de azi, nu vede aparițiile vechi ale colegei.
       await patch(`/api/tasks/${current!.id}`, ana.cookie, { assigneeId: dan.id }).expect(200);
       expect((await get(`/api/tasks/${current!.id}/skipped`, dan.cookie)).body).toEqual([]);
+    });
+  });
+
+  describe('termene flexibile (oricând în cursul perioadei)', () => {
+    const get = (url: string, cookie: string) => t.http().get(url).set('Cookie', cookie);
+    const monthStart = startOfMonth(today);
+    const monthEnd = endOfMonth(today);
+    const date = (value: string) => new Date(`${value}T00:00:00Z`);
+    const counts = async () =>
+      (await get('/api/tasks/overview?scope=all', admin.cookie).expect(200)).body.counts as {
+        overdue: number;
+        inPeriod: number;
+        dueToday: number;
+        upcoming: number;
+      };
+    type PeriodTask = Task & { periodStart: string | null; periodEnd: string | null };
+    const monthly = (overrides: object = {}) =>
+      createObligation({ recurrenceUnit: 'MONTH', recurrenceInterval: 1, ...overrides });
+
+    it('o obligație lunară ține de luna calendaristică, nu de o zi anume', async () => {
+      // Pe 1 ale lunii, începută acum două luni: lunile trecute nu se generează, luna curentă da.
+      const obligation = await monthly({ startDate: addMonths(monthStart, -2) });
+      const tasks = (await tasksOf(obligation.id)) as PeriodTask[];
+
+      expect(tasks[0]).toMatchObject({
+        dueDate: monthStart,
+        periodStart: monthStart,
+        periodEnd: monthEnd,
+      });
+      expect(tasks[1]).toMatchObject({
+        dueDate: addMonths(monthStart, 1),
+        periodStart: addMonths(monthStart, 1),
+        periodEnd: endOfMonth(addMonths(monthStart, 1)),
+      });
+      expect(tasks.every((task) => task.dueDate >= monthStart)).toBe(true);
+
+      // Deplasarea lunii în curs nu este restanță, oricât de târziu în lună am fi.
+      const now = await counts();
+      expect(now.overdue).toBe(0);
+      expect(now.inPeriod + now.dueToday).toBe(1);
+    });
+
+    it('devine restanță abia după ce se încheie perioada', async () => {
+      const obligation = await monthly();
+      const [current] = (await tasksOf(obligation.id)) as PeriodTask[];
+      const set = (dueDate: string, periodEnd: string) =>
+        t.prisma.db.task.update({
+          where: { id: current!.id },
+          data: { dueDate: date(dueDate), periodEnd: date(periodEnd) },
+        });
+
+      // Data planificată a trecut, perioada încă nu: la timp.
+      await set(addDays(today, -6), addDays(today, 3));
+      expect(await counts()).toMatchObject({ overdue: 0, inPeriod: 1 });
+      // Ultima zi a perioadei: tot la timp.
+      await set(addDays(today, -6), today);
+      expect(await counts()).toMatchObject({ overdue: 0, inPeriod: 1 });
+      // A doua zi după perioadă: restanță.
+      await set(addDays(today, -6), addDays(today, -1));
+      expect(await counts()).toMatchObject({ overdue: 1, inPeriod: 0 });
+      // Mutată de utilizator dincolo de sfârșitul perioadei: contează data aleasă.
+      await set(addDays(today, 2), addDays(today, -1));
+      expect(await counts()).toMatchObject({ overdue: 0, inPeriod: 0, upcoming: 1 });
+    });
+
+    it('data planificată se poate muta liber în cadrul perioadei, fără alte efecte', async () => {
+      const obligation = await monthly({ startDate: monthStart });
+      const [current] = (await tasksOf(obligation.id)) as PeriodTask[];
+      const moved = await patch(`/api/tasks/${current!.id}`, ana.cookie, {
+        dueDate: monthEnd,
+      }).expect(200);
+      expect(moved.body).toMatchObject({
+        dueDate: monthEnd,
+        periodStart: monthStart,
+        periodEnd: monthEnd,
+      });
+      await workerRun();
+      // Luna are în continuare un singur task.
+      const inMonth = (await tasksOf(obligation.id)).filter((task) => task.dueDate <= monthEnd);
+      expect(inMonth.map((task) => task.id)).toEqual([current!.id]);
+    });
+
+    it('mutarea zilei din lună nu creează a doua deplasare în luna deja făcută', async () => {
+      const obligation = await monthly({ startDate: monthStart });
+      const [current] = await tasksOf(obligation.id);
+      await patch(`/api/tasks/${current!.id}`, ana.cookie, { status: 'DONE' }).expect(200);
+
+      // De acum, deplasările se fac în jurul datei de 15.
+      await patch(`/api/obligations/${obligation.id}`, ana.cookie, {
+        startDate: addDays(monthStart, 14),
+      }).expect(200);
+      await workerRun();
+
+      const tasks = (await tasksOf(obligation.id)) as PeriodTask[];
+      const thisMonth = tasks.filter((task) => task.periodStart === monthStart);
+      expect(thisMonth.map((task) => [task.id, task.status])).toEqual([[current!.id, 'DONE']]);
+      expect(tasks[1]).toMatchObject({
+        dueDate: addDays(addMonths(monthStart, 1), 14),
+        status: 'TODO',
+      });
+      await expectNoDuplicates();
+    });
+
+    it('dacă luna curentă nu a fost făcută, mutarea zilei mută și deplasarea ei', async () => {
+      const obligation = await monthly({ startDate: monthStart });
+      await patch(`/api/obligations/${obligation.id}`, ana.cookie, {
+        startDate: addDays(monthStart, 14),
+      }).expect(200);
+      const tasks = (await tasksOf(obligation.id)) as PeriodTask[];
+      const thisMonth = tasks.filter((task) => task.periodStart === monthStart);
+      expect(thisMonth.map((task) => [task.dueDate, task.status])).toEqual([
+        [addDays(monthStart, 14), 'TODO'],
+      ]);
+    });
+
+    it('termenul exact rămâne disponibil și se poate schimba în ambele sensuri', async () => {
+      const exact = await monthly({ dueWithinPeriod: false });
+      let tasks = (await tasksOf(exact.id)) as PeriodTask[];
+      expect(tasks.every((task) => task.periodStart === null && task.periodEnd === null)).toBe(
+        true,
+      );
+      const ids = tasks.map((task) => task.id);
+
+      await patch(`/api/obligations/${exact.id}`, ana.cookie, { dueWithinPeriod: true }).expect(
+        200,
+      );
+      tasks = (await tasksOf(exact.id)) as PeriodTask[];
+      // Aceleași task-uri, acum cu perioada lor.
+      expect(tasks.map((task) => task.id)).toEqual(ids);
+      expect(tasks[0]).toMatchObject({ periodStart: monthStart, periodEnd: monthEnd });
+
+      await patch(`/api/obligations/${exact.id}`, ana.cookie, { dueWithinPeriod: false }).expect(
+        200,
+      );
+      tasks = (await tasksOf(exact.id)) as PeriodTask[];
+      expect(tasks.map((task) => task.id)).toEqual(ids);
+      expect(tasks.every((task) => task.periodEnd === null)).toBe(true);
+    });
+
+    it('frecvențele în săptămâni țin de săptămână, iar cele în zile de zi', async () => {
+      const weekly = await createObligation({ recurrenceUnit: 'WEEK', recurrenceInterval: 1 });
+      const [first] = (await tasksOf(weekly.id)) as PeriodTask[];
+      expect(first).toMatchObject({
+        periodStart: startOfWeek(today),
+        periodEnd: addDays(startOfWeek(today), 6),
+      });
+
+      const daily = await createObligation({ recurrenceUnit: 'DAY', recurrenceInterval: 1 });
+      const days = (await tasksOf(daily.id)) as PeriodTask[];
+      expect(days.every((task) => task.periodEnd === null)).toBe(true);
     });
   });
 

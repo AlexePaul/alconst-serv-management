@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { addDays, addMonths, diffDays, endOfMonth, hourIn, startOfWeek, todayIn } from './dates.js';
-import { formatRecurrence, nextOccurrence, occurrencesBetween } from './tasks.js';
+import {
+  formatPeriod,
+  formatRecurrence,
+  generationStart,
+  nextOccurrence,
+  occurrencePeriod,
+  occurrencesBetween,
+  taskDeadline,
+} from './tasks.js';
 
 describe('date calendaristice', () => {
   it('adaugă zile peste granițele lunii și ale anului', () => {
@@ -147,5 +155,50 @@ describe('formatTimeRange', () => {
     expect(TIME_PATTERN.test('09:05')).toBe(true);
     expect(TIME_PATTERN.test('24:00')).toBe(false);
     expect(TIME_PATTERN.test('9:5')).toBe(false);
+  });
+});
+
+describe('perioada unui termen flexibil', () => {
+  it('frecvențele în luni și ani țin de luna calendaristică', () => {
+    expect(occurrencePeriod('MONTH', '2026-11-10')).toEqual({
+      start: '2026-11-01',
+      end: '2026-11-30',
+    });
+    expect(occurrencePeriod('YEAR', '2028-02-29')).toEqual({
+      start: '2028-02-01',
+      end: '2028-02-29',
+    });
+  });
+
+  it('frecvențele în săptămâni țin de săptămâna de luni până duminică, iar cele în zile de zi', () => {
+    // 10 noiembrie 2026 este marți.
+    expect(occurrencePeriod('WEEK', '2026-11-10')).toEqual({
+      start: '2026-11-09',
+      end: '2026-11-15',
+    });
+    expect(occurrencePeriod('WEEK', '2026-11-15')?.start).toBe('2026-11-09');
+    expect(occurrencePeriod('DAY', '2026-11-10')).toBeNull();
+  });
+
+  it('generarea pornește de la începutul perioadei curente doar pentru termenele flexibile', () => {
+    expect(generationStart('MONTH', true, '2026-11-20')).toBe('2026-11-01');
+    expect(generationStart('WEEK', true, '2026-11-12')).toBe('2026-11-09');
+    expect(generationStart('MONTH', false, '2026-11-20')).toBe('2026-11-20');
+    expect(generationStart('DAY', true, '2026-11-20')).toBe('2026-11-20');
+  });
+
+  it('termenul-limită este sfârșitul perioadei sau data planificată, cea mai târzie', () => {
+    expect(taskDeadline({ dueDate: '2026-11-05', periodEnd: '2026-11-30' })).toBe('2026-11-30');
+    expect(taskDeadline({ dueDate: '2026-12-02', periodEnd: '2026-11-30' })).toBe('2026-12-02');
+    expect(taskDeadline({ dueDate: '2026-11-05', periodEnd: null })).toBe('2026-11-05');
+    expect(taskDeadline({ dueDate: '2026-11-05' })).toBe('2026-11-05');
+  });
+
+  it('descrie perioada în română', () => {
+    expect(formatPeriod('2026-11-01', '2026-11-30')).toBe('noiembrie 2026');
+    expect(formatPeriod('2026-02-01', '2026-02-28')).toBe('februarie 2026');
+    expect(formatPeriod('2026-11-09', '2026-11-15')).toBe('9–15 nov. 2026');
+    expect(formatPeriod('2026-11-30', '2026-12-06')).toBe('30 nov. – 6 dec. 2026');
+    expect(formatPeriod('2026-12-28', '2027-01-03')).toBe('28 dec. 2026 – 3 ian. 2027');
   });
 });

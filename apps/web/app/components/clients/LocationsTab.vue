@@ -100,7 +100,7 @@ function actions(location: LocationDto): DropdownMenuItem[][] {
       v-else-if="locations.length === 0"
       icon="i-lucide-map-pin"
       title="Niciun punct de lucru"
-      description="Adaugă punctele de lucru pentru a putea asocia angajații cu locația în care lucrează."
+      description="Adaugă punctele de lucru pentru a putea lega obligațiile și deplasările de locația potrivită."
       :actions="[{ label: 'Adaugă punct de lucru', icon: 'i-lucide-plus', onClick: openCreate }]"
       variant="naked"
     />
@@ -133,9 +133,6 @@ function actions(location: LocationDto): DropdownMenuItem[][] {
             </p>
             <p class="text-sm text-muted">
               {{ orDash(location.address) }}
-            </p>
-            <p class="mt-1 text-xs text-muted">
-              {{ countLabel(location.employeeCount, 'angajat', 'angajați') }}
             </p>
             <p v-if="location.notes" class="mt-2 text-sm whitespace-pre-line text-default">
               {{ location.notes }}
@@ -172,7 +169,7 @@ function actions(location: LocationDto): DropdownMenuItem[][] {
     <ConfirmDialog
       v-model:open="archiveOpen"
       title="Arhivezi punctul de lucru?"
-      :description="`„${selected?.name}” nu va mai putea fi ales pentru angajați, obligații și task-uri noi. Angajații și istoricul lui rămân în evidență, iar punctul de lucru poate fi reactivat oricând. Obligațiile recurente legate de el rămân active până le dezactivezi.`"
+      :description="`„${selected?.name}” nu va mai putea fi ales pentru obligații și task-uri noi. Istoricul lui rămâne în evidență, iar punctul de lucru poate fi reactivat oricând. Obligațiile recurente legate de el rămân active până le dezactivezi.`"
       confirm-label="Arhivează"
       color="warning"
       :loading="saving"

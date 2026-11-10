@@ -10,6 +10,7 @@ export const taskInclude = {
       address: true,
       contactPerson: true,
       phone: true,
+      employeeCount: true,
       assignments: {
         select: { userId: true, user: { select: { id: true, firstName: true, lastName: true } } },
         orderBy: { createdAt: 'asc' },
@@ -34,6 +35,8 @@ export function toTaskDto(row: TaskRow): TaskDto {
     status: row.status,
     priority: row.priority,
     dueDate: formatDateOnly(row.dueDate),
+    periodStart: row.periodStart ? formatDateOnly(row.periodStart) : null,
+    periodEnd: row.periodEnd ? formatDateOnly(row.periodEnd) : null,
     startTime: row.startTime,
     endTime: row.endTime,
     client: row.client
@@ -43,6 +46,7 @@ export function toTaskDto(row: TaskRow): TaskDto {
           address: row.client.address,
           contactPerson: row.client.contactPerson,
           phone: row.client.phone,
+          employeeCount: row.client.employeeCount,
           responsibles: row.client.assignments.map((assignment) => assignment.user),
         }
       : null,
