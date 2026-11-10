@@ -203,6 +203,61 @@ const MONTH_SHORT = [
   'dec.',
 ];
 
+/**
+ * Câte luni are ciclul unei recurențe care cade în aceleași luni în fiecare an
+ * (la 2, 3, 4 sau 6 luni, ori anual); 0 pentru celelalte frecvențe.
+ */
+function monthCycleLength(unit: RecurrenceUnit, interval: number): number {
+  const months = unit === 'YEAR' && interval === 1 ? 12 : unit === 'MONTH' ? interval : 0;
+  return months >= 2 && 12 % months === 0 ? months : 0;
+}
+
+/**
+ * Variantele de luni dintre care se poate alege pentru o frecvență. Pentru „la 3 luni”:
+ * ianuarie–aprilie–iulie–octombrie, februarie–mai–august–noiembrie sau
+ * martie–iunie–septembrie–decembrie. Lista este goală dacă frecvența nu are luni fixe.
+ */
+export function monthCycleOptions(unit: RecurrenceUnit, interval: number): number[][] {
+  const length = monthCycleLength(unit, interval);
+  return Array.from({ length }, (_, first) =>
+    Array.from({ length: 12 / length }, (_, index) => first + index * length + 1),
+  );
+}
+
+/** Lunile anului (1–12) în care cade o recurență; null dacă nu sunt aceleași în fiecare an. */
+export function recurrenceMonths(
+  unit: RecurrenceUnit,
+  interval: number,
+  startDate: string,
+): number[] | null {
+  const options = monthCycleOptions(unit, interval);
+  if (options.length === 0) return null;
+  return options[(Number(startDate.slice(5, 7)) - 1) % options.length] ?? null;
+}
+
+/**
+ * Mută prima dată a unei recurențe în lunile alese, păstrând ziua din lună: rezultatul cade în
+ * prima lună din `months` începând cu luna lui `from` (de regulă luna curentă). Astfel, o
+ * schimbare făcută în noiembrie către un ciclu care conține noiembrie are efect chiar din
+ * luna în curs.
+ */
+export function alignToMonthCycle(startDate: string, months: number[], from: string): string {
+  const base = startOfMonth(from);
+  const day = Number(startDate.slice(8, 10));
+  for (let offset = 0; offset < 12; offset++) {
+    const month = addMonths(base, offset);
+    if (!months.includes(Number(month.slice(5, 7)))) continue;
+    const lastDay = Number(endOfMonth(month).slice(8, 10));
+    return addDays(month, Math.min(day, lastDay) - 1);
+  }
+  return startDate;
+}
+
+/** Ex.: „ian., apr., iul., oct.”. */
+export function formatMonthList(months: number[]): string {
+  return months.map((month) => MONTH_SHORT[month - 1]).join(', ');
+}
+
 /** Ex.: „noiembrie 2026” pentru o lună întreagă, „9–15 nov. 2026” pentru o săptămână. */
 export function formatPeriod(start: string, end: string): string {
   const [startYear, startMonth, startDay] = start.split('-').map(Number) as [

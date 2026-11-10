@@ -62,6 +62,7 @@ Completări după discuțiile din noiembrie 2026:
       restanța apare abia după încheierea perioadei
 - [x] Numărul de angajați pe client în locul evidenței nominale; întrebat la finalizarea fiecărei
       deplasări
+- [x] Alegerea lunilor pentru frecvențele la 2, 3, 4 sau 6 luni și anuale, pe fiecare client
 
 - [x] Arhivare în loc de ștergere pentru clienți, puncte de lucru și contracte; baza de
       date refuză ștergerea unui client cu istoric
@@ -168,6 +169,9 @@ permite deja modelul de date pentru ele este descris în [arhitectura.md](arhite
   nu se trimit prin email.
 - **SmartBill**: nu se implementează acum; emiterea facturilor și verificarea încasărilor se
   analizează separat.
+- **Lunile deplasărilor la 3 luni**: diferă de la client la client (ianuarie–aprilie–…,
+  februarie–mai–… sau martie–iunie–…) și se aleg pe obligația clientului. Perioada unei astfel
+  de deplasări este luna în care cade, nu întregul trimestru.
 - **Fără planificare automată deocamdată**: aplicația știe doar ce trebuie făcut și cât de des
   (lunar, la 3 luni etc.); fiecare angajat bifează ce a făcut. Nu propune zile, ore sau trasee.
 - **Clienți săriți**: un client ratat într-o lună este de regulă vizitat luna următoare, pentru
@@ -187,6 +191,3 @@ permite deja modelul de date pentru ele este descris în [arhitectura.md](arhite
    arhivarea punctului de lucru ar trebui să le suspende automat, ca la clienți, se poate.
 4. **Secțiunea de documente** – ce fel de documente ar trebui încărcate pe client (contracte
    semnate, fișe scanate, altele) și cine le poate vedea. Se stabilește la începutul Etapei 4.
-5. **Trimestrial = luna în care cade** – pentru o activitate la 3 luni, perioada este luna
-   calendaristică a termenului (ex. ianuarie, aprilie, iulie, octombrie), nu întregul trimestru.
-   Dacă ar trebui să fie tot trimestrul, se schimbă ușor.

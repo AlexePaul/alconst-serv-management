@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { LocationDto, ObligationDto, RecurrenceUnit } from '@alconst/shared'
-import { occurrencesBetween } from '@alconst/shared'
+import { alignToMonthCycle, formatMonthList, monthCycleOptions, occurrencesBetween, recurrenceMonths } from '@alconst/shared'
 import { z } from 'zod'
 
 /** Fereastră pentru adăugarea sau modificarea unei obligații recurente. */
@@ -109,6 +109,28 @@ const recurrence = computed<{ unit: RecurrenceUnit, interval: number }>(() => {
     ? { unit: preset.unit, interval: preset.interval }
     : { unit: state.customUnit ?? 'MONTH', interval: Number(state.customInterval) || 1 }
 })
+
+/**
+ * Lunile în care cade obligația (ex. la 3 luni: ianuarie–aprilie–iulie–octombrie sau una dintre
+ * celelalte două variante). Sunt date de prima dată; alegerea altei variante o mută în luna
+ * potrivită, păstrând ziua.
+ */
+const monthOptions = computed(() =>
+  monthCycleOptions(recurrence.value.unit, recurrence.value.interval).map(months => ({
+    label: formatMonthList(months),
+    value: String(months[0]),
+    months
+  }))
+)
+const selectedMonths = computed(() => {
+  const months = state.startDate ? recurrenceMonths(recurrence.value.unit, recurrence.value.interval, state.startDate) : null
+  return months ? String(months[0]) : undefined
+})
+
+function chooseMonths(value: string) {
+  const option = monthOptions.value.find(item => item.value === value)
+  if (option) state.startDate = alignToMonthCycle(state.startDate || todayLocal(), option.months, todayLocal())
+}
 
 /** Perioada în care un termen flexibil poate fi îndeplinit; frecvențele în zile nu au una. */
 const periodName = computed(() => {
@@ -258,6 +280,21 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             </div>
           </UFormField>
         </div>
+
+        <UFormField
+          v-if="monthOptions.length > 0"
+          :label="monthOptions.length === 12 ? 'În ce lună' : 'În ce luni'"
+          help="Alege lunile potrivite pentru acest client. Prima dată de mai jos se mută singură în prima dintre ele, începând cu luna curentă."
+        >
+          <URadioGroup
+            :model-value="selectedMonths"
+            :items="monthOptions"
+            :orientation="monthOptions.length > 4 ? 'horizontal' : 'vertical'"
+            :ui="{ fieldset: monthOptions.length > 4 ? 'flex-wrap gap-x-4 gap-y-2' : '' }"
+            aria-label="Lunile în care se face"
+            @update:model-value="chooseMonths(String($event))"
+          />
+        </UFormField>
 
         <div class="grid gap-5 sm:grid-cols-2">
           <UFormField

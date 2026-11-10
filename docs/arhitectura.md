@@ -220,6 +220,11 @@ este o execuție concretă, cu termen și responsabil. Un task poate exista și 
   păstrează perioada (`periodStart`, `periodEnd`) și devine restant abia după ce au trecut atât
   data planificată, cât și sfârșitul perioadei. Opțiunea se poate dezactiva pe obligație, pentru
   termene exacte; frecvențele în zile nu au perioadă.
+- **Lunile unei frecvențe** (la 2, 3, 4 sau 6 luni, anual) se aleg pe obligația fiecărui client:
+  pentru „la 3 luni” – ianuarie/aprilie/iulie/octombrie, februarie/mai/august/noiembrie sau
+  martie/iunie/septembrie/decembrie. Alegerea nu este un câmp separat: lunile sunt date de prima
+  dată a obligației, iar formularul o mută în luna potrivită, începând cu luna curentă.
+  Schimbarea lunilor mută deplasările viitoare; cele deja făcute rămân.
 - O perioadă are cel mult un task al aceleiași obligații: dacă ziua din lună a obligației este
   mutată, luna deja făcută nu primește o a doua deplasare.
 - **Generarea** creează task-urile cu termene în următoarele 60 de zile (`TASK_HORIZON_DAYS`).

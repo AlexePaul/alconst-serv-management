@@ -2,7 +2,9 @@ import { generateObligationTasks, lockObligations } from '@alconst/database';
 import {
   addDays,
   addMonths,
+  alignToMonthCycle,
   endOfMonth,
+  monthCycleOptions,
   startOfMonth,
   startOfWeek,
   todayIn,
@@ -553,6 +555,36 @@ describe('Robustețea obligațiilor recurente (e2e)', () => {
       expect(thisMonth.map((task) => [task.dueDate, task.status])).toEqual([
         [addDays(monthStart, 14), 'TODO'],
       ]);
+    });
+
+    it('la 3 luni: schimbarea lunilor mută deplasările viitoare în lunile alese', async () => {
+      const options = monthCycleOptions('MONTH', 3);
+      const thisMonth = Number(today.slice(5, 7));
+      const current = options.find((months) => months.includes(thisMonth))!;
+      const other = options.find((months) => months.includes((thisMonth % 12) + 1))!;
+      const monthsOf = (tasks: Task[]) => tasks.map((task) => Number(task.dueDate.slice(5, 7)));
+
+      // Clientul este pe ciclul care include luna curentă; deplasarea ei este deja făcută.
+      const obligation = await monthly({
+        recurrenceInterval: 3,
+        startDate: alignToMonthCycle(monthStart, current, today),
+      });
+      const [done] = await tasksOf(obligation.id);
+      expect(monthsOf([done!])).toEqual([thisMonth]);
+      await patch(`/api/tasks/${done!.id}`, ana.cookie, { status: 'DONE' }).expect(200);
+
+      // Trece pe ciclul care începe luna viitoare.
+      await patch(`/api/obligations/${obligation.id}`, ana.cookie, {
+        startDate: alignToMonthCycle(monthStart, other, today),
+      }).expect(200);
+      await workerRun();
+
+      const tasks = await tasksOf(obligation.id);
+      expect(tasks[0]).toMatchObject({ id: done!.id, status: 'DONE' });
+      const upcoming = tasks.filter((task) => task.status === 'TODO');
+      expect(upcoming.length).toBeGreaterThan(0);
+      expect(monthsOf(upcoming).every((month) => other.includes(month))).toBe(true);
+      await expectNoDuplicates();
     });
 
     it('termenul exact rămâne disponibil și se poate schimba în ambele sensuri', async () => {

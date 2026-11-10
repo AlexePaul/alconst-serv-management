@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { addDays, addMonths, diffDays, endOfMonth, hourIn, startOfWeek, todayIn } from './dates.js';
 import {
+  alignToMonthCycle,
+  formatMonthList,
   formatPeriod,
   formatRecurrence,
   generationStart,
+  monthCycleOptions,
   nextOccurrence,
   occurrencePeriod,
   occurrencesBetween,
+  recurrenceMonths,
   taskDeadline,
 } from './tasks.js';
 
@@ -200,5 +204,55 @@ describe('perioada unui termen flexibil', () => {
     expect(formatPeriod('2026-11-09', '2026-11-15')).toBe('9–15 nov. 2026');
     expect(formatPeriod('2026-11-30', '2026-12-06')).toBe('30 nov. – 6 dec. 2026');
     expect(formatPeriod('2026-12-28', '2027-01-03')).toBe('28 dec. 2026 – 3 ian. 2027');
+  });
+});
+
+describe('lunile unei recurențe', () => {
+  it('oferă variantele de luni pentru frecvențele cu luni fixe', () => {
+    expect(monthCycleOptions('MONTH', 3)).toEqual([
+      [1, 4, 7, 10],
+      [2, 5, 8, 11],
+      [3, 6, 9, 12],
+    ]);
+    expect(monthCycleOptions('MONTH', 6)).toHaveLength(6);
+    expect(monthCycleOptions('MONTH', 6)[1]).toEqual([2, 8]);
+    expect(monthCycleOptions('YEAR', 1)).toHaveLength(12);
+    // Lunar, la 5 luni sau în săptămâni: nu există luni de ales.
+    expect(monthCycleOptions('MONTH', 1)).toEqual([]);
+    expect(monthCycleOptions('MONTH', 5)).toEqual([]);
+    expect(monthCycleOptions('WEEK', 2)).toEqual([]);
+    expect(monthCycleOptions('YEAR', 2)).toEqual([]);
+  });
+
+  it('deduce lunile din prima dată', () => {
+    expect(recurrenceMonths('MONTH', 3, '2026-01-10')).toEqual([1, 4, 7, 10]);
+    expect(recurrenceMonths('MONTH', 3, '2026-11-10')).toEqual([2, 5, 8, 11]);
+    expect(recurrenceMonths('MONTH', 3, '2025-06-30')).toEqual([3, 6, 9, 12]);
+    expect(recurrenceMonths('YEAR', 1, '2026-09-01')).toEqual([9]);
+    expect(recurrenceMonths('MONTH', 1, '2026-01-10')).toBeNull();
+    expect(formatMonthList([2, 5, 8, 11])).toBe('feb., mai, aug., nov.');
+  });
+
+  it('mută prima dată în lunile alese, începând cu luna curentă și păstrând ziua', () => {
+    const today = '2026-11-10';
+    // Obligație veche pe ian–apr–iul–oct, mutată pe feb–mai–aug–nov: noiembrie este luna curentă.
+    expect(alignToMonthCycle('2026-01-05', [2, 5, 8, 11], today)).toBe('2026-11-05');
+    expect(alignToMonthCycle('2026-01-05', [3, 6, 9, 12], today)).toBe('2026-12-05');
+    expect(alignToMonthCycle('2026-01-05', [1, 4, 7, 10], today)).toBe('2027-01-05');
+    // Contează luna curentă, nu vechea primă dată – chiar dacă aceea era în viitor.
+    expect(alignToMonthCycle('2026-12-20', [2, 5, 8, 11], today)).toBe('2026-11-20');
+    expect(alignToMonthCycle('2027-03-20', [1, 4, 7, 10], today)).toBe('2027-01-20');
+    // Ziua 31 se adaptează lunilor mai scurte.
+    expect(alignToMonthCycle('2026-10-31', [2, 5, 8, 11], today)).toBe('2026-11-30');
+    // Rezultatul cade într-adevăr în lunile alese, mereu.
+    for (const months of monthCycleOptions('MONTH', 3)) {
+      const start = alignToMonthCycle('2026-01-15', months, today);
+      expect(recurrenceMonths('MONTH', 3, start)).toEqual(months);
+      expect(
+        occurrencesBetween({ startDate: start, unit: 'MONTH', interval: 3 }, start, '2028-01-01')
+          .map((date) => Number(date.slice(5, 7)))
+          .every((month) => months.includes(month)),
+      ).toBe(true);
+    }
   });
 });

@@ -128,6 +128,8 @@ Testele e2e folosesc o bază de date separată (`alconst_test`), creată automat
 
 - **Obligații recurente**: activități care se repetă (deplasări, instruiri), cu frecvență
   configurabilă, client, punct de lucru și responsabil.
+- **Lunile alese pe client**: pentru o deplasare la 3 luni se aleg lunile potrivite clientului
+  (ian.–apr.–iul.–oct., feb.–mai–aug.–nov. sau mar.–iun.–sept.–dec.).
 - **Termene flexibile**: o deplasare lunară poate fi făcută oricând în luna respectivă (una
   săptămânală, oricând în săptămână). Data este doar ziua planificată și se poate muta; restanța
   apare abia după încheierea perioadei.

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { ObligationDto, Paginated } from '@alconst/shared'
-import { occurrencePeriod } from '@alconst/shared'
+import { formatMonthList, occurrencePeriod, recurrenceMonths } from '@alconst/shared'
 
 /**
  * Obligațiile recurente, cu frecvența și următorul termen.
@@ -19,6 +19,14 @@ const toast = useToast()
 
 const PAGE_SIZE = 25
 const today = todayLocal()
+
+/** Frecvența, cu lunile în care cade atunci când sunt fixe: „la 3 luni · ian., apr., iul., oct.”. */
+function frequencyLabel(obligation: ObligationDto): string {
+  const months = recurrenceMonths(obligation.recurrenceUnit, obligation.recurrenceInterval, obligation.startDate)
+  return [formatRecurrence(obligation.recurrenceUnit, obligation.recurrenceInterval), months ? formatMonthList(months) : null]
+    .filter(Boolean)
+    .join(' · ')
+}
 
 /** Următoarea dată este restantă abia după ce s-a încheiat și perioada ei (la termenele flexibile). */
 function isLate(obligation: ObligationDto): boolean {
@@ -181,7 +189,7 @@ defineExpose({ openCreate })
             <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span class="font-medium text-highlighted">{{ obligation.title }}</span>
               <UBadge
-                :label="formatRecurrence(obligation.recurrenceUnit, obligation.recurrenceInterval)"
+                :label="frequencyLabel(obligation)"
                 icon="i-lucide-repeat"
                 color="neutral"
                 variant="subtle"
