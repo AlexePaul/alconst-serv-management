@@ -16,7 +16,13 @@ export const clientListInclude = {
     include: { user: userRef },
     orderBy: { createdAt: 'asc' },
   },
-  _count: { select: { employees: { where: { isActive: true } }, locations: true } },
+  // Numărăm doar ce este în vigoare; angajații și punctele de lucru arhivate rămân în evidență.
+  _count: {
+    select: {
+      employees: { where: { isActive: true } },
+      locations: { where: { isActive: true } },
+    },
+  },
 } satisfies Prisma.ClientInclude;
 
 export const contractInclude = {

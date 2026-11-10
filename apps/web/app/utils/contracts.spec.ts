@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contractExpiryWarning, CUSTOM_FREQUENCY, frequencyPresetFor } from './contracts'
+import { contractExpiryWarning, CUSTOM_FREQUENCY, endDateWhenEnding, frequencyPresetFor } from './contracts'
 
 describe('frequencyPresetFor', () => {
   it('recunoaște frecvențele uzuale', () => {
@@ -27,5 +27,23 @@ describe('contractExpiryWarning', () => {
     expect(contractExpiryWarning({ status: 'ACTIVE', endDate: '2027-06-01' }, now)).toBeNull()
     expect(contractExpiryWarning({ status: 'ACTIVE', endDate: null }, now)).toBeNull()
     expect(contractExpiryWarning({ status: 'ENDED', endDate: '2026-11-01' }, now)).toBeNull()
+  })
+})
+
+describe('endDateWhenEnding', () => {
+  const today = '2026-11-10'
+
+  it('încheie azi un contract în derulare, chiar dacă avea o dată de sfârșit viitoare', () => {
+    expect(endDateWhenEnding({ startDate: '2026-01-01', endDate: null }, today)).toBe(today)
+    expect(endDateWhenEnding({ startDate: '2026-01-01', endDate: '2027-01-01' }, today)).toBe(today)
+  })
+
+  it('păstrează data unui contract deja expirat', () => {
+    expect(endDateWhenEnding({ startDate: '2025-01-01', endDate: '2026-06-30' }, today)).toBe('2026-06-30')
+  })
+
+  it('nu pune o dată de sfârșit înaintea începerii pentru un contract care nu a început', () => {
+    expect(endDateWhenEnding({ startDate: '2027-01-01', endDate: null }, today)).toBeNull()
+    expect(endDateWhenEnding({ startDate: '2027-01-01', endDate: '2027-12-31' }, today)).toBe('2027-12-31')
   })
 })

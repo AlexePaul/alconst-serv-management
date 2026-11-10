@@ -95,14 +95,10 @@ export class ContractsService {
         include: contractInclude,
       });
     });
-    await this.log('contract.updated', row, auth, client);
+    // Încetarea unui contract apare distinct în jurnal; contractul rămâne în evidență.
+    const ended = row.status === 'ENDED' && existing.status !== 'ENDED';
+    await this.log(ended ? 'contract.ended' : 'contract.updated', row, auth, client);
     return toContractDto(row);
-  }
-
-  async remove(id: string, auth: AuthContext, client: ClientInfo): Promise<void> {
-    const existing = await this.find(id, auth);
-    await this.prisma.db.contract.delete({ where: { id } });
-    await this.log('contract.deleted', existing, auth, client);
   }
 
   private async find(id: string, auth: AuthContext): Promise<Row> {
@@ -157,7 +153,7 @@ export class ContractsService {
   }
 
   private log(
-    action: 'contract.created' | 'contract.updated' | 'contract.deleted',
+    action: 'contract.created' | 'contract.updated' | 'contract.ended',
     row: Row,
     auth: AuthContext,
     client: ClientInfo,

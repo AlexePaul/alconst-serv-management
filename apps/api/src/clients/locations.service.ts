@@ -63,15 +63,8 @@ export class LocationsService {
     const changes = definedChanges(dto, existing);
     if (Object.keys(changes).length === 0) return toDto(existing);
     const row = await this.prisma.db.location.update({ where: { id }, data: changes, include });
-    await this.log('location.updated', row, auth, client);
+    await this.logChanges(Object.keys(changes), row, auth, client);
     return toDto(row);
-  }
-
-  /** Angajații punctului de lucru rămân la client, fără punct de lucru asociat. */
-  async remove(id: string, auth: AuthContext, client: ClientInfo): Promise<void> {
-    const existing = await this.find(id, auth);
-    await this.prisma.db.location.delete({ where: { id } });
-    await this.log('location.deleted', existing, auth, client);
   }
 
   private async find(id: string, auth: AuthContext): Promise<Row> {
@@ -83,8 +76,28 @@ export class LocationsService {
     return row;
   }
 
+  /** Arhivarea și reactivarea apar distinct în jurnal, separat de celelalte modificări. */
+  private async logChanges(
+    fields: string[],
+    row: Row,
+    auth: AuthContext,
+    client: ClientInfo,
+  ): Promise<void> {
+    if (fields.includes('isActive')) {
+      await this.log(
+        row.isActive ? 'location.activated' : 'location.deactivated',
+        row,
+        auth,
+        client,
+      );
+    }
+    if (fields.some((field) => field !== 'isActive')) {
+      await this.log('location.updated', row, auth, client);
+    }
+  }
+
   private log(
-    action: 'location.created' | 'location.updated' | 'location.deleted',
+    action: 'location.created' | 'location.updated' | 'location.activated' | 'location.deactivated',
     row: Row,
     auth: AuthContext,
     client: ClientInfo,

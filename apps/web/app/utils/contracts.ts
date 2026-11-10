@@ -1,3 +1,4 @@
+import { todayIn } from '@alconst/shared'
 import type { ContractDto, ContractStatus, FeeFrequencyUnit } from '@alconst/shared'
 import { daysUntil } from './format'
 
@@ -40,4 +41,18 @@ export function contractExpiryWarning(
   if (days === 0) return { label: 'Expiră azi', color: 'warning' }
   if (days <= EXPIRING_SOON_DAYS) return { label: days === 1 ? 'Expiră mâine' : `Expiră în ${days} zile`, color: 'warning' }
   return null
+}
+
+/**
+ * Data de sfârșit a unui contract care este încheiat astăzi (contractele nu se șterg, se încheie):
+ *  - dacă a expirat deja, data existentă rămâne;
+ *  - dacă este în derulare, se încheie azi, chiar dacă avea o dată de sfârșit viitoare;
+ *  - dacă încă nu a început, data rămâne neschimbată (nu poate fi înaintea începerii).
+ */
+export function endDateWhenEnding(
+  contract: Pick<ContractDto, 'startDate' | 'endDate'>,
+  today: string = todayIn()
+): string | null {
+  if (contract.endDate && contract.endDate <= today) return contract.endDate
+  return contract.startDate <= today ? today : contract.endDate
 }

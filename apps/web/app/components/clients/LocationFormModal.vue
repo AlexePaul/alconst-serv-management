@@ -86,7 +86,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           />
         </UFormField>
 
-        <UFormField v-if="isEdit" name="isActive">
+        <UFormField v-if="isEdit" name="isActive" help="Punctele de lucru arhivate rămân în evidență, dar nu mai pot fi alese pentru înregistrări noi.">
           <USwitch v-model="state.isActive" label="Punct de lucru activ" />
         </UFormField>
 

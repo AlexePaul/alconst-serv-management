@@ -25,7 +25,7 @@ const page = ref(1)
 
 const statusItems = [
   { label: 'Angajați activi', value: 'active' },
-  { label: 'Angajați inactivi', value: 'inactive' },
+  { label: 'Angajați arhivați', value: 'inactive' },
   { label: 'Toți angajații', value: 'all' }
 ]
 
@@ -62,9 +62,9 @@ function clearFilters() {
 // --- Acțiuni ---------------------------------------------------------------------------------
 
 const formOpen = ref(false)
-const deleteOpen = ref(false)
+const archiveOpen = ref(false)
 const selected = ref<ClientEmployeeDto | null>(null)
-const deleting = ref(false)
+const saving = ref(false)
 
 function openCreate() {
   selected.value = null
@@ -76,9 +76,9 @@ function openEdit(employee: ClientEmployeeDto) {
   formOpen.value = true
 }
 
-function openDelete(employee: ClientEmployeeDto) {
+function openArchive(employee: ClientEmployeeDto) {
   selected.value = employee
-  deleteOpen.value = true
+  archiveOpen.value = true
 }
 
 async function onSaved() {
@@ -86,26 +86,32 @@ async function onSaved() {
   emit('changed')
 }
 
-async function confirmDelete() {
-  const employee = selected.value
-  if (!employee) return
-  deleting.value = true
+// Angajații nu se șterg: cei plecați din companie se arhivează și rămân în evidență.
+async function setActive(employee: ClientEmployeeDto, isActive: boolean) {
+  saving.value = true
   try {
-    await api(`/employees/${employee.id}`, { method: 'DELETE' })
-    toast.add({ title: 'Angajatul a fost șters', description: `${employee.firstName} ${employee.lastName}`, color: 'success', icon: 'i-lucide-check' })
-    deleteOpen.value = false
+    await api(`/employees/${employee.id}`, { method: 'PATCH', body: { isActive } })
+    toast.add({
+      title: isActive ? 'Angajatul a fost reactivat' : 'Angajatul a fost arhivat',
+      description: `${employee.firstName} ${employee.lastName}`,
+      color: 'success',
+      icon: 'i-lucide-check'
+    })
+    archiveOpen.value = false
     await onSaved()
   } catch (error) {
-    toast.add({ title: 'Ștergerea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
+    toast.add({ title: 'Modificarea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
   } finally {
-    deleting.value = false
+    saving.value = false
   }
 }
 
 function rowActions(employee: ClientEmployeeDto): DropdownMenuItem[][] {
   return [
     [{ label: 'Modifică', icon: 'i-lucide-pencil', onSelect: () => openEdit(employee) }],
-    [{ label: 'Șterge', icon: 'i-lucide-trash-2', color: 'error', onSelect: () => openDelete(employee) }]
+    [employee.isActive
+      ? { label: 'Arhivează', icon: 'i-lucide-archive', onSelect: () => openArchive(employee) }
+      : { label: 'Reactivează', icon: 'i-lucide-archive-restore', onSelect: () => { setActive(employee, true) } }]
   ]
 }
 
@@ -216,7 +222,7 @@ defineExpose({ openCreate })
         </template>
 
         <template #status-cell="{ row }">
-          <StatusBadge :active="row.original.isActive" />
+          <StatusBadge :active="row.original.isActive" inactive-label="Arhivat" />
         </template>
 
         <template #actions-cell="{ row }">
@@ -251,7 +257,7 @@ defineExpose({ openCreate })
               </ULink>
             </p>
             <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-              <StatusBadge :active="employee.isActive" />
+              <StatusBadge :active="employee.isActive" inactive-label="Arhivat" />
               <span v-if="employee.locationName">{{ employee.locationName }}</span>
             </div>
           </div>
@@ -287,13 +293,13 @@ defineExpose({ openCreate })
       @saved="onSaved"
     />
     <ConfirmDialog
-      v-model:open="deleteOpen"
-      title="Ștergi angajatul?"
-      :description="`${selected?.firstName} ${selected?.lastName} va fi șters definitiv din evidență. Dacă persoana doar a plecat din companie, marcheaz-o ca inactivă în loc să o ștergi.`"
-      confirm-label="Șterge angajatul"
-      color="error"
-      :loading="deleting"
-      @confirm="confirmDelete"
+      v-model:open="archiveOpen"
+      title="Arhivezi angajatul?"
+      :description="`${selected?.firstName} ${selected?.lastName} nu va mai apărea printre angajații activi ai clientului (de exemplu, pentru că a plecat din companie). Datele și istoricul lui rămân în evidență și poate fi reactivat oricând.`"
+      confirm-label="Arhivează"
+      color="warning"
+      :loading="saving"
+      @confirm="selected && setActive(selected, false)"
     />
   </div>
 </template>

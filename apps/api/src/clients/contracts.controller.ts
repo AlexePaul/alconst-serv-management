@@ -1,16 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  ParseUUIDPipe,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import type { ContractDto } from '@alconst/shared';
 import { Client, CurrentAuth } from '../common/decorators.js';
 import type { AuthContext, ClientInfo } from '../common/request-context.js';
@@ -46,15 +34,5 @@ export class ContractsController {
     @Client() client: ClientInfo,
   ): Promise<ContractDto> {
     return this.contracts.update(id, dto, auth, client);
-  }
-
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @Delete(':id')
-  remove(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentAuth() auth: AuthContext,
-    @Client() client: ClientInfo,
-  ): Promise<void> {
-    return this.contracts.remove(id, auth, client);
   }
 }

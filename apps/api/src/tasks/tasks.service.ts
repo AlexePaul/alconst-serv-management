@@ -270,14 +270,21 @@ export class TasksService {
   }
 
   /**
-   * Doar task-urile create manual pot fi șterse. Cele generate dintr-o obligație se anulează:
-   * dacă ar fi șterse, următoarea generare le-ar crea din nou.
+   * Ștergerea există doar pentru corectarea greșelilor: un task creat manual și încă neînceput.
+   *  - task-urile generate dintr-o obligație se anulează – dacă ar fi șterse, următoarea generare
+   *    le-ar crea din nou;
+   *  - task-urile începute, finalizate sau anulate rămân în evidență, ca istoric al activității.
    */
   async remove(id: string, auth: AuthContext, client: ClientInfo): Promise<void> {
     const existing = await this.find(id, auth);
     if (existing.obligationId) {
       throw AppException.validation(
         'Task-urile generate dintr-o obligație nu pot fi șterse. Marchează task-ul ca anulat.',
+      );
+    }
+    if (existing.status !== 'TODO') {
+      throw AppException.validation(
+        'Doar task-urile neîncepute pot fi șterse. Celelalte rămân în evidență; dacă nu mai este necesar, marchează task-ul ca anulat.',
       );
     }
     await this.prisma.db.task.delete({ where: { id } });

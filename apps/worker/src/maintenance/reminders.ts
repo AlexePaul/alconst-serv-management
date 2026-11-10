@@ -9,7 +9,7 @@ export interface ReminderTask {
   timeRange?: string | null;
   clientName: string | null;
   assigneeId: string | null;
-  /** Responsabilii clientului – destinatarii reamintirilor când task-ul nu are responsabil. */
+  /** Responsabilii clientului – destinatarii reamintirilor când task-ul nu are responsabil activ. */
   clientResponsibleIds: string[];
 }
 
@@ -24,6 +24,20 @@ export interface PlannedNotification {
 
 const formatDate = (date: string) => date.split('-').reverse().join('.');
 
+/** Primul grup care are cel puțin un utilizator activ: responsabilul, responsabilii clientului, administratorii. */
+function pickRecipients(
+  task: ReminderTask,
+  activeUserIds: ReadonlySet<string>,
+  adminIds: readonly string[],
+): string[] {
+  const groups = [task.assigneeId ? [task.assigneeId] : [], task.clientResponsibleIds, adminIds];
+  for (const group of groups) {
+    const active = [...new Set(group)].filter((userId) => activeUserIds.has(userId));
+    if (active.length > 0) return active;
+  }
+  return [];
+}
+
 /**
  * Stabilește ce reamintiri trebuie să existe astăzi pentru task-urile deschise.
  *
@@ -34,22 +48,27 @@ const formatDate = (date: string) => date.split('-').reverse().join('.');
  *  - în ziua termenului: o singură dată;
  *  - restanțe: în prima zi de întârziere, apoi o dată la 7 zile.
  * Cheia include termenul, deci un task reprogramat primește reamintiri noi.
+ *
+ * Destinatarul este responsabilul task-ului. Dacă task-ul nu are responsabil sau contul acestuia
+ * a fost dezactivat (de exemplu după plecarea din firmă), reamintirea ajunge la responsabilii
+ * activi ai clientului, iar în lipsa lor la administratori – niciun termen nu rămâne fără
+ * cineva care să fie anunțat.
  */
 export function planReminders(
   tasks: ReminderTask[],
   today: string,
   activeUserIds: ReadonlySet<string>,
   remindDaysByUser: ReadonlyMap<string, number>,
+  adminIds: readonly string[] = [],
 ): PlannedNotification[] {
   const planned: PlannedNotification[] = [];
 
   for (const task of tasks) {
-    const recipients = task.assigneeId ? [task.assigneeId] : task.clientResponsibleIds;
+    const recipients = pickRecipients(task, activeUserIds, adminIds);
     const days = diffDays(today, task.dueDate);
     const label = [task.title, task.clientName, task.timeRange].filter(Boolean).join(' · ');
 
-    for (const userId of new Set(recipients)) {
-      if (!activeUserIds.has(userId)) continue;
+    for (const userId of recipients) {
       const remindDays =
         remindDaysByUser.get(userId) ?? DEFAULT_NOTIFICATION_SETTINGS.remindDaysBefore;
       const base = { userId, taskId: task.id };

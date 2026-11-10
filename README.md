@@ -118,6 +118,9 @@ Testele e2e folosesc o bază de date separată (`alconst_test`), creată automat
   frecvență (săptămânal, lunar, la N luni, anual, la fiecare deplasare, o singură dată); venit
   lunar estimat; avertizare pentru contractele care expiră.
 - **Pagina principală**: clienți și angajați activi, venit lunar estimat, contracte care expiră.
+- **Arhivare în loc de ștergere**: clienții, punctele de lucru, angajații și contractele nu se
+  șterg; se arhivează (contractele se încheie), rămân în evidență cu tot istoricul și pot fi
+  reactivate.
 
 **Etapa 3 – Task-uri, obligații și calendar**
 

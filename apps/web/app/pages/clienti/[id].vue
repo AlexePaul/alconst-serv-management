@@ -41,7 +41,6 @@ const editOpen = ref(false)
 const servicesOpen = ref(false)
 const responsiblesOpen = ref(false)
 const statusOpen = ref(false)
-const deleteOpen = ref(false)
 const busy = ref(false)
 
 function onSaved(saved: ClientDto) {
@@ -57,8 +56,10 @@ async function toggleStatus() {
       body: { isActive: !client.value.isActive }
     })
     client.value = saved
-    toast.add({ title: saved.isActive ? 'Clientul a fost activat' : 'Clientul a fost dezactivat', color: 'success', icon: 'i-lucide-check' })
+    toast.add({ title: saved.isActive ? 'Clientul a fost reactivat' : 'Clientul a fost arhivat', color: 'success', icon: 'i-lucide-check' })
     statusOpen.value = false
+    // Arhivarea retrage task-urile viitoare ale obligațiilor, iar reactivarea le generează din nou.
+    await tasksList.value?.refresh()
   } catch (error) {
     toast.add({ title: 'Operațiunea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
   } finally {
@@ -66,26 +67,8 @@ async function toggleStatus() {
   }
 }
 
-async function removeClient() {
-  if (!client.value) return
-  busy.value = true
-  try {
-    await api(`/clients/${client.value.id}`, { method: 'DELETE' })
-    toast.add({ title: 'Clientul a fost șters', description: client.value.name, color: 'success', icon: 'i-lucide-check' })
-    await navigateTo('/clienti')
-  } catch (error) {
-    toast.add({ title: 'Ștergerea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
-  } finally {
-    busy.value = false
-  }
-}
-
 function askStatusChange() {
   statusOpen.value = true
-}
-
-function askDelete() {
-  deleteOpen.value = true
 }
 
 // --- Predare către alt responsabil ------------------------------------------------------------
@@ -110,15 +93,13 @@ async function onTransferred() {
 }
 
 const moreActions = computed<DropdownMenuItem[][]>(() => {
+  // Clienții nu se șterg: cei cu care colaborarea a încetat se arhivează și rămân în evidență.
   const items: DropdownMenuItem[][] = [[
     ...(canTransfer.value ? [{ label: 'Predă clientul altui coleg', icon: 'i-lucide-arrow-left-right', onSelect: askTransfer }] : []),
     client.value?.isActive
-      ? { label: 'Dezactivează clientul', icon: 'i-lucide-archive', onSelect: askStatusChange }
-      : { label: 'Activează clientul', icon: 'i-lucide-archive-restore', onSelect: askStatusChange }
+      ? { label: 'Arhivează clientul', icon: 'i-lucide-archive', onSelect: askStatusChange }
+      : { label: 'Reactivează clientul', icon: 'i-lucide-archive-restore', onSelect: askStatusChange }
   ]]
-  if (isAdmin.value) {
-    items.push([{ label: 'Șterge clientul', icon: 'i-lucide-trash-2', color: 'error', onSelect: askDelete }])
-  }
   return items
 })
 </script>
@@ -193,7 +174,7 @@ const moreActions = computed<DropdownMenuItem[][]>(() => {
               <h2 class="text-lg font-semibold text-highlighted">
                 {{ client.name }}
               </h2>
-              <StatusBadge :active="client.isActive" />
+              <StatusBadge :active="client.isActive" inactive-label="Arhivat" />
             </div>
             <p class="text-sm text-muted">
               CUI {{ client.cui }}
@@ -447,22 +428,14 @@ const moreActions = computed<DropdownMenuItem[][]>(() => {
         />
         <ConfirmDialog
           v-model:open="statusOpen"
-          :title="client.isActive ? 'Dezactivezi clientul?' : 'Activezi clientul?'"
+          :title="client.isActive ? 'Arhivezi clientul?' : 'Reactivezi clientul?'"
           :description="client.isActive
-            ? `${client.name} va fi marcat ca inactiv și nu va mai apărea în lista de clienți activi. Datele lui se păstrează și poate fi reactivat oricând.`
-            : `${client.name} va apărea din nou în lista de clienți activi.`"
-          :confirm-label="client.isActive ? 'Dezactivează' : 'Activează'"
+            ? `${client.name} nu va mai apărea printre clienții activi, iar obligațiile lui recurente vor fi suspendate: task-urile viitoare neîncepute, create automat, sunt retrase. Punctele de lucru, angajații, contractele și tot istoricul rămân în evidență. Clientul poate fi reactivat oricând.`
+            : `${client.name} va apărea din nou printre clienții activi, iar obligațiile lui recurente își vor relua programul de azi încolo.`"
+          :confirm-label="client.isActive ? 'Arhivează' : 'Reactivează'"
+          :color="client.isActive ? 'warning' : 'primary'"
           :loading="busy"
           @confirm="toggleStatus"
-        />
-        <ConfirmDialog
-          v-model:open="deleteOpen"
-          title="Ștergi definitiv clientul?"
-          :description="`${client.name} va fi șters împreună cu punctele de lucru, angajații și contractele lui. Operațiunea nu poate fi anulată. Dacă doar nu mai colaborați, dezactivează-l.`"
-          confirm-label="Șterge definitiv"
-          color="error"
-          :loading="busy"
-          @confirm="removeClient"
         />
       </div>
     </template>

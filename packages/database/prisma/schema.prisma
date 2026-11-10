@@ -114,6 +114,9 @@ model ActivityLog {
 // ---------------------------------------------------------------------------------------------
 
 /// Companie pentru care Alconst Serv prestează servicii.
+/// Clienții nu se șterg: se arhivează (`isActive = false`), iar punctele de lucru, angajații,
+/// contractele, obligațiile și task-urile lor rămân în evidență. De aceea relațiile acestora
+/// către client sunt `Restrict` – nicio ștergere directă în baza de date nu poate pierde istoric.
 model Client {
   id                  String   @id @default(uuid(7)) @db.Uuid
   name                String
@@ -203,7 +206,7 @@ model Location {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client      Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
   employees   Employee[]
   obligations Obligation[]
   tasks       Task[]
@@ -228,7 +231,7 @@ model Employee {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
   location Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
   @@index([clientId])
@@ -256,7 +259,7 @@ model Contract {
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
-  client Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
   fees   ContractFee[]
 
   @@index([clientId])
@@ -355,7 +358,7 @@ model Obligation {
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
-  client    Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client    Client?   @relation(fields: [clientId], references: [id], onDelete: Restrict)
   location  Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
   assignee  User?     @relation("ObligationAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   createdBy User?     @relation("ObligationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -398,7 +401,7 @@ model Task {
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 
-  client            Client?        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client            Client?        @relation(fields: [clientId], references: [id], onDelete: Restrict)
   location          Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
   obligation        Obligation?    @relation(fields: [obligationId], references: [id], onDelete: SetNull)
   assignee          User?          @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
@@ -483,7 +486,7 @@ model ClientTransferRequest {
   resolvedAt    DateTime?
   resolvedById  String?               @db.Uuid
 
-  client      Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client      Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
   from        User   @relation("TransferFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
   to          User   @relation("TransferTo", fields: [toUserId], references: [id], onDelete: Cascade)
   initiatedBy User   @relation("TransferInitiatedBy", fields: [initiatedById], references: [id], onDelete: Cascade)

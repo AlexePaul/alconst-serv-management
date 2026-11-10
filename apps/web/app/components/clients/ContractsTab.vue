@@ -16,9 +16,14 @@ const { data: contracts, status, error, refresh } = useLazyAsyncData(
 )
 
 const formOpen = ref(false)
-const deleteOpen = ref(false)
+const endOpen = ref(false)
 const selected = ref<ContractDto | null>(null)
-const deleting = ref(false)
+const saving = ref(false)
+
+// Contractele nu se șterg: cele încetate rămân în evidență cu statusul „Încheiat”.
+const showEnded = ref(false)
+const endedCount = computed(() => contracts.value.filter(contract => contract.status === 'ENDED').length)
+const visible = computed(() => showEnded.value ? contracts.value : contracts.value.filter(contract => contract.status !== 'ENDED'))
 
 function openCreate() {
   selected.value = null
@@ -30,9 +35,9 @@ function openEdit(contract: ContractDto) {
   formOpen.value = true
 }
 
-function openDelete(contract: ContractDto) {
+function openEnd(contract: ContractDto) {
   selected.value = contract
-  deleteOpen.value = true
+  endOpen.value = true
 }
 
 async function onSaved() {
@@ -40,26 +45,28 @@ async function onSaved() {
   emit('changed')
 }
 
-async function confirmDelete() {
+async function confirmEnd() {
   const contract = selected.value
   if (!contract) return
-  deleting.value = true
+  saving.value = true
   try {
-    await api(`/contracts/${contract.id}`, { method: 'DELETE' })
-    toast.add({ title: 'Contractul a fost șters', color: 'success', icon: 'i-lucide-check' })
-    deleteOpen.value = false
+    await api(`/contracts/${contract.id}`, { method: 'PATCH', body: { status: 'ENDED', endDate: endDateWhenEnding(contract) } })
+    toast.add({ title: 'Contractul a fost încheiat', description: 'Rămâne în evidență, la contractele încheiate.', color: 'success', icon: 'i-lucide-check' })
+    endOpen.value = false
     await onSaved()
   } catch (error) {
-    toast.add({ title: 'Ștergerea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
+    toast.add({ title: 'Modificarea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
   } finally {
-    deleting.value = false
+    saving.value = false
   }
 }
 
 function actions(contract: ContractDto): DropdownMenuItem[][] {
   return [
     [{ label: 'Modifică', icon: 'i-lucide-pencil', onSelect: () => openEdit(contract) }],
-    [{ label: 'Șterge', icon: 'i-lucide-trash-2', color: 'error', onSelect: () => openDelete(contract) }]
+    ...(contract.status === 'ENDED'
+      ? []
+      : [[{ label: 'Încheie contractul', icon: 'i-lucide-archive', onSelect: () => openEnd(contract) }]])
   ]
 }
 
@@ -105,8 +112,17 @@ function period(contract: ContractDto): string {
       variant="naked"
     />
 
+    <p v-else-if="visible.length === 0" class="py-6 text-center text-sm text-muted">
+      Niciun contract în vigoare sau în pregătire.
+    </p>
+
     <ul v-else class="space-y-4">
-      <li v-for="contract in contracts" :key="contract.id" class="rounded-lg border border-default bg-default">
+      <li
+        v-for="contract in visible"
+        :key="contract.id"
+        class="rounded-lg border border-default bg-default"
+        :class="{ 'opacity-70': contract.status === 'ENDED' }"
+      >
         <div class="flex items-start gap-3 p-4">
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
@@ -168,6 +184,17 @@ function period(contract: ContractDto): string {
       </li>
     </ul>
 
+    <UButton
+      v-if="endedCount > 0 && !error"
+      class="mt-3"
+      color="neutral"
+      variant="link"
+      size="sm"
+      :icon="showEnded ? 'i-lucide-eye-off' : 'i-lucide-archive'"
+      :label="showEnded ? 'Ascunde contractele încheiate' : `Arată și contractele încheiate (${endedCount})`"
+      @click="showEnded = !showEnded"
+    />
+
     <ClientsContractFormModal
       v-model:open="formOpen"
       :client-id="clientId"
@@ -175,13 +202,13 @@ function period(contract: ContractDto): string {
       @saved="onSaved"
     />
     <ConfirmDialog
-      v-model:open="deleteOpen"
-      title="Ștergi contractul?"
-      :description="`${selected ? title(selected) : 'Contractul'} și tarifele lui vor fi șterse definitiv. Dacă doar s-a încheiat, schimbă-i statusul în „Încheiat”.`"
-      confirm-label="Șterge contractul"
-      color="error"
-      :loading="deleting"
-      @confirm="confirmDelete"
+      v-model:open="endOpen"
+      title="Închei contractul?"
+      :description="`${selected ? title(selected) : 'Contractul'} va fi marcat ca încheiat și nu va mai intra în venitul lunar estimat. Contractul și tarifele lui rămân în evidență.`"
+      confirm-label="Încheie contractul"
+      color="warning"
+      :loading="saving"
+      @confirm="confirmEnd"
     />
   </div>
 </template>

@@ -50,7 +50,10 @@ function buildSearchText(employee: {
   );
 }
 
-/** Angajații companiilor cliente. Accesul urmează accesul la clientul de care aparțin. */
+/**
+ * Angajații companiilor cliente. Accesul urmează accesul la clientul de care aparțin.
+ * Angajații nu se șterg: cei plecați devin inactivi și rămân în evidență.
+ */
 @Injectable()
 export class EmployeesService {
   constructor(
@@ -131,14 +134,18 @@ export class EmployeesService {
       data: { ...changes, searchText: buildSearchText({ ...existing, ...changes }) },
       include,
     });
-    await this.log('employee.updated', row, auth, client);
+    if ('isActive' in changes) {
+      await this.log(
+        row.isActive ? 'employee.activated' : 'employee.deactivated',
+        row,
+        auth,
+        client,
+      );
+    }
+    if (Object.keys(changes).some((field) => field !== 'isActive')) {
+      await this.log('employee.updated', row, auth, client);
+    }
     return toDto(row);
-  }
-
-  async remove(id: string, auth: AuthContext, client: ClientInfo): Promise<void> {
-    const existing = await this.find(id, auth);
-    await this.prisma.db.employee.delete({ where: { id } });
-    await this.log('employee.deleted', existing, auth, client);
   }
 
   private async find(id: string, auth: AuthContext): Promise<Row> {
@@ -167,7 +174,7 @@ export class EmployeesService {
   }
 
   private log(
-    action: 'employee.created' | 'employee.updated' | 'employee.deleted',
+    action: 'employee.created' | 'employee.updated' | 'employee.activated' | 'employee.deactivated',
     row: Row,
     auth: AuthContext,
     client: ClientInfo,

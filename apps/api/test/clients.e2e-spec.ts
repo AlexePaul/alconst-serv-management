@@ -81,7 +81,7 @@ describe('Clienți, angajați și contracte (e2e)', () => {
       await get(`/api/contracts?clientId=${client.id}`, dan.cookie).expect(404);
       await post('/api/locations', dan.cookie, { clientId: client.id, name: 'X' }).expect(404);
       await patch(`/api/locations/${location.id}`, dan.cookie, { name: 'X' }).expect(404);
-      await del(`/api/locations/${location.id}`, dan.cookie).expect(404);
+      await patch(`/api/locations/${location.id}`, dan.cookie, { isActive: false }).expect(404);
       await post('/api/employees', dan.cookie, {
         clientId: client.id,
         firstName: 'Ion',
@@ -109,22 +109,6 @@ describe('Clienți, angajați și contracte (e2e)', () => {
 
       await get(`/api/clients/${client.id}`, dan.cookie).expect(200);
       await get(`/api/clients/${client.id}`, ana.cookie).expect(404);
-    });
-
-    it('doar administratorul poate șterge un client, cu tot cu datele lui', async () => {
-      const client = await createClient(ana.cookie);
-      await post('/api/employees', ana.cookie, {
-        clientId: client.id,
-        firstName: 'Ion',
-        lastName: 'Pop',
-      }).expect(201);
-
-      await del(`/api/clients/${client.id}`, ana.cookie).expect(403);
-      await del(`/api/clients/${client.id}`, admin.cookie).expect(204);
-      expect(await t.prisma.db.client.count()).toBe(0);
-      expect(await t.prisma.db.employee.count()).toBe(0);
-      const log = await t.prisma.db.activityLog.findFirst({ where: { action: 'client.deleted' } });
-      expect(log?.entityLabel).toBe('SC Ștefănescu Construcții SRL');
     });
   });
 
@@ -276,13 +260,6 @@ describe('Clienți, angajați și contracte (e2e)', () => {
 
       const locations = await get(`/api/locations?clientId=${client.id}`, ana.cookie).expect(200);
       expect(locations.body[0].employeeCount).toBe(1);
-
-      // Ștergerea punctului de lucru nu șterge angajatul.
-      await del(`/api/locations/${location.id}`, ana.cookie).expect(204);
-      const after = await get(`/api/employees?clientId=${client.id}`, ana.cookie).expect(200);
-      expect(after.body.items[0].locationId).toBeNull();
-
-      await del(`/api/employees/${employee.id}`, ana.cookie).expect(204);
     });
 
     it('respinge un punct de lucru care aparține altui client', async () => {
@@ -299,6 +276,170 @@ describe('Clienți, angajați și contracte (e2e)', () => {
         lastName: 'Pop',
       }).expect(400);
       expect(response.body.fieldErrors).toHaveProperty('locationId');
+    });
+  });
+
+  describe('arhivare în loc de ștergere', () => {
+    const setup = async () => {
+      const client = await createClient(ana.cookie);
+      const location = (
+        await post('/api/locations', ana.cookie, { clientId: client.id, name: 'Depozit' }).expect(
+          201,
+        )
+      ).body as { id: string };
+      const employee = (
+        await post('/api/employees', ana.cookie, {
+          clientId: client.id,
+          locationId: location.id,
+          firstName: 'Ion',
+          lastName: 'Pop',
+        }).expect(201)
+      ).body as { id: string };
+      const contract = (
+        await post('/api/contracts', ana.cookie, {
+          clientId: client.id,
+          number: '7',
+          startDate: '2026-01-01',
+          fees: [{ description: 'Abonament', amount: 500, frequencyUnit: 'MONTH' }],
+        }).expect(201)
+      ).body as { id: string };
+      return { client, location, employee, contract };
+    };
+    const actions = async () =>
+      (await t.prisma.db.activityLog.findMany({ orderBy: { createdAt: 'asc' } })).map(
+        (entry) => entry.action,
+      );
+
+    it('nu există ștergere definitivă pentru clienți, puncte de lucru, angajați și contracte', async () => {
+      const { client, location, employee, contract } = await setup();
+      for (const url of [
+        `/api/clients/${client.id}`,
+        `/api/locations/${location.id}`,
+        `/api/employees/${employee.id}`,
+        `/api/contracts/${contract.id}`,
+      ]) {
+        await del(url, admin.cookie).expect(404);
+        await del(url, ana.cookie).expect(404);
+      }
+      expect(await t.prisma.db.client.count()).toBe(1);
+      expect(await t.prisma.db.location.count()).toBe(1);
+      expect(await t.prisma.db.employee.count()).toBe(1);
+      expect(await t.prisma.db.contract.count()).toBe(1);
+    });
+
+    it('nici baza de date nu permite ștergerea unui client care are istoric', async () => {
+      const { client } = await setup();
+      await expect(t.prisma.db.client.delete({ where: { id: client.id } })).rejects.toThrow();
+      expect(await t.prisma.db.employee.count()).toBe(1);
+    });
+
+    it('un client arhivat rămâne în evidență cu toate datele și poate fi reactivat', async () => {
+      const { client } = await setup();
+      const archived = await patch(`/api/clients/${client.id}`, ana.cookie, {
+        isActive: false,
+      }).expect(200);
+      expect(archived.body.isActive).toBe(false);
+
+      // Nu mai apare printre clienții activi, dar rămâne accesibil responsabilului său.
+      const active = await get('/api/clients?status=active', ana.cookie).expect(200);
+      expect(active.body.total).toBe(0);
+      const inactive = await get('/api/clients?status=inactive', ana.cookie).expect(200);
+      expect(inactive.body.items[0].id).toBe(client.id);
+      await get(`/api/clients/${client.id}`, ana.cookie).expect(200);
+      await get(`/api/clients/${client.id}`, dan.cookie).expect(404);
+
+      // Datele lui rămân neatinse și pot fi consultate.
+      expect((await get(`/api/locations?clientId=${client.id}`, ana.cookie)).body).toHaveLength(1);
+      expect((await get(`/api/employees?clientId=${client.id}`, ana.cookie)).body.total).toBe(1);
+      expect((await get(`/api/contracts?clientId=${client.id}`, ana.cookie)).body).toHaveLength(1);
+      expect((await get(`/api/clients/${client.id}`, ana.cookie)).body.responsibles).toHaveLength(
+        1,
+      );
+
+      // Cifrele de pe pagina principală numără doar clienții activi.
+      const summary = await get('/api/clients/summary', ana.cookie).expect(200);
+      expect(summary.body).toMatchObject({
+        activeClients: 0,
+        activeEmployees: 0,
+        monthlyEstimate: 0,
+      });
+
+      await patch(`/api/clients/${client.id}`, ana.cookie, { isActive: true }).expect(200);
+      expect((await get('/api/clients/summary', ana.cookie)).body).toMatchObject({
+        activeClients: 1,
+        activeEmployees: 1,
+        monthlyEstimate: 500,
+      });
+      expect(await actions()).toEqual(
+        expect.arrayContaining(['client.deactivated', 'client.activated']),
+      );
+    });
+
+    it('punctele de lucru și angajații se arhivează, cu legăturile dintre ei păstrate', async () => {
+      const { client, location, employee } = await setup();
+
+      await patch(`/api/locations/${location.id}`, ana.cookie, { isActive: false }).expect(200);
+      // Angajatul rămâne legat de punctul de lucru arhivat – istoricul nu se pierde.
+      const employees = await get(`/api/employees?clientId=${client.id}`, ana.cookie).expect(200);
+      expect(employees.body.items[0]).toMatchObject({
+        locationId: location.id,
+        locationName: 'Depozit',
+      });
+      const locations = await get(`/api/locations?clientId=${client.id}`, ana.cookie).expect(200);
+      expect(locations.body[0]).toMatchObject({ isActive: false, employeeCount: 1 });
+      expect((await get(`/api/clients/${client.id}`, ana.cookie)).body.locationCount).toBe(0);
+
+      await patch(`/api/employees/${employee.id}`, ana.cookie, { isActive: false }).expect(200);
+      const activeOnly = await get(
+        `/api/employees?clientId=${client.id}&status=active`,
+        ana.cookie,
+      ).expect(200);
+      expect(activeOnly.body.total).toBe(0);
+      const archived = await get(
+        `/api/employees?clientId=${client.id}&status=inactive`,
+        ana.cookie,
+      ).expect(200);
+      expect(archived.body.items[0]).toMatchObject({ id: employee.id, isActive: false });
+
+      await patch(`/api/employees/${employee.id}`, ana.cookie, { isActive: true }).expect(200);
+      await patch(`/api/locations/${location.id}`, ana.cookie, { isActive: true }).expect(200);
+      expect(await actions()).toEqual(
+        expect.arrayContaining([
+          'location.deactivated',
+          'employee.deactivated',
+          'employee.activated',
+          'location.activated',
+        ]),
+      );
+    });
+
+    it('un contract încheiat rămâne în evidență, cu tarifele lui, dar iese din estimare', async () => {
+      const { client, contract } = await setup();
+      expect((await get(`/api/clients/${client.id}`, ana.cookie)).body.monthlyEstimate).toBe(500);
+
+      await patch(`/api/contracts/${contract.id}`, ana.cookie, {
+        status: 'ENDED',
+        endDate: '2026-06-30',
+      }).expect(200);
+
+      const contracts = await get(`/api/contracts?clientId=${client.id}`, ana.cookie).expect(200);
+      expect(contracts.body).toHaveLength(1);
+      expect(contracts.body[0]).toMatchObject({ status: 'ENDED', endDate: '2026-06-30' });
+      expect(contracts.body[0].fees).toHaveLength(1);
+      expect((await get(`/api/clients/${client.id}`, ana.cookie)).body.monthlyEstimate).toBe(0);
+      expect(await actions()).toContain('contract.ended');
+    });
+
+    it('istoricul rămâne și după dezactivarea contului unui coleg', async () => {
+      const { client } = await setup();
+      await patch(`/api/users/${ana.id}`, admin.cookie, { isActive: false }).expect(200);
+
+      // Clientul, responsabilitatea și jurnalul rămân; contul doar nu se mai poate autentifica.
+      const view = await get(`/api/clients/${client.id}`, admin.cookie).expect(200);
+      expect(view.body.responsibles.map((user: { id: string }) => user.id)).toEqual([ana.id]);
+      const log = await t.prisma.db.activityLog.findFirst({ where: { action: 'client.created' } });
+      expect(log?.userId).toBe(ana.id);
+      await get(`/api/clients/${client.id}`, ana.cookie).expect(401);
     });
   });
 

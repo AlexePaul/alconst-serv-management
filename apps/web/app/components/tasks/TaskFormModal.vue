@@ -188,7 +188,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   })
 }
 
-// --- Ștergere (doar pentru task-urile create manual) -----------------------------------------
+// --- Ștergere (doar pentru task-urile create manual și încă neîncepute) -----------------------
 
 const deleteOpen = ref(false)
 const deleting = ref(false)
@@ -379,7 +379,7 @@ async function confirmDelete() {
 
         <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
           <UButton
-            v-if="task && !task.obligation"
+            v-if="task && !task.obligation && task.status === 'TODO'"
             color="error"
             variant="ghost"
             icon="i-lucide-trash-2"
@@ -404,7 +404,7 @@ async function confirmDelete() {
       <ConfirmDialog
         v-model:open="deleteOpen"
         title="Ștergi task-ul?"
-        :description="`„${task?.title}” va fi șters definitiv. Dacă doar nu mai trebuie făcut, îl poți marca drept anulat.`"
+        :description="`„${task?.title}” va fi șters definitiv. Folosește ștergerea doar pentru un task creat din greșeală; dacă doar nu mai trebuie făcut, marchează-l drept anulat.`"
         confirm-label="Șterge task-ul"
         color="error"
         :loading="deleting"

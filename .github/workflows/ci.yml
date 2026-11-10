@@ -75,8 +75,15 @@ jobs:
       - name: Teste unitare
         run: pnpm test
 
-      - name: Teste e2e (API)
+      - name: Teste e2e (API și worker)
         run: pnpm test:e2e
+
+      # Termenele sunt date calendaristice: rezultatele nu au voie să depindă de fusul orar al
+      # serverului. Suita rulează a doua oară cu fusul orar al firmei.
+      - name: Teste în fusul orar al României
+        run: pnpm test && pnpm test:e2e
+        env:
+          TZ: Europe/Bucharest
 
       - name: Build
         run: pnpm build

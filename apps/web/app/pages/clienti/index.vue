@@ -22,7 +22,7 @@ const page = ref(1)
 
 const statusItems = [
   { label: 'Clienți activi', value: 'active' },
-  { label: 'Clienți inactivi', value: 'inactive' },
+  { label: 'Clienți arhivați', value: 'inactive' },
   { label: 'Toți clienții', value: 'all' }
 ]
 
@@ -202,7 +202,7 @@ const columns = computed<TableColumn<ClientListItemDto>[]>(() => [
           </template>
 
           <template #status-cell="{ row }">
-            <StatusBadge :active="row.original.isActive" />
+            <StatusBadge :active="row.original.isActive" inactive-label="Arhivat" />
           </template>
         </UTable>
 
@@ -223,7 +223,7 @@ const columns = computed<TableColumn<ClientListItemDto>[]>(() => [
                   </template>
                 </p>
                 <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-                  <StatusBadge :active="client.isActive" />
+                  <StatusBadge :active="client.isActive" inactive-label="Arhivat" />
                   <span>{{ countLabel(client.employeeCount, 'angajat', 'angajați') }}</span>
                 </div>
               </div>

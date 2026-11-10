@@ -1,10 +1,7 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
-  HttpCode,
-  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -69,17 +66,6 @@ export class ClientsController {
   }
 
   /** Ștergerea definitivă este rezervată administratorilor; angajații pot doar dezactiva. */
-  @Roles('ADMIN')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @Delete(':id')
-  remove(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentAuth() auth: AuthContext,
-    @Client() client: ClientInfo,
-  ): Promise<void> {
-    return this.clients.remove(id, auth, client);
-  }
-
   @Roles('ADMIN')
   @Put(':id/responsibles')
   setResponsibles(

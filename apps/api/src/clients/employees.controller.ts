@@ -1,16 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  ParseUUIDPipe,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import type { ClientEmployeeDto, Paginated } from '@alconst/shared';
 import { Client, CurrentAuth } from '../common/decorators.js';
 import type { AuthContext, ClientInfo } from '../common/request-context.js';
@@ -46,15 +34,5 @@ export class EmployeesController {
     @Client() client: ClientInfo,
   ): Promise<ClientEmployeeDto> {
     return this.employees.update(id, dto, auth, client);
-  }
-
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @Delete(':id')
-  remove(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentAuth() auth: AuthContext,
-    @Client() client: ClientInfo,
-  ): Promise<void> {
-    return this.employees.remove(id, auth, client);
   }
 }

@@ -80,4 +80,30 @@ describe('planReminders', () => {
     expect(plan([task({ assigneeId: 'plecat' })])).toEqual([]);
     expect(plan([task({ assigneeId: null })])).toEqual([]);
   });
+
+  describe('destinatari atunci când responsabilul lipsește sau nu mai este activ', () => {
+    const active = new Set(['dan', 'admin']);
+    const planFor = (overrides: Partial<ReminderTask>, admins = ['admin']) =>
+      planReminders([task(overrides)], today, active, new Map(), admins).map(
+        (notification) => notification.userId,
+      );
+
+    it('responsabilul activ primește reamintirea, nimeni altcineva', () => {
+      expect(planFor({ assigneeId: 'dan', clientResponsibleIds: ['admin'] })).toEqual(['dan']);
+    });
+
+    it('dacă responsabilul a fost dezactivat, reamintirea ajunge la responsabilii clientului', () => {
+      // „ana” nu mai are cont activ (a plecat din firmă), dar task-ul a rămas pe numele ei.
+      expect(planFor({ assigneeId: 'ana', clientResponsibleIds: ['ana', 'dan'] })).toEqual(['dan']);
+    });
+
+    it('dacă nici clientul nu are responsabili activi, sunt anunțați administratorii', () => {
+      expect(planFor({ assigneeId: 'ana', clientResponsibleIds: ['ana'] })).toEqual(['admin']);
+      expect(planFor({ assigneeId: null, clientResponsibleIds: [] })).toEqual(['admin']);
+    });
+
+    it('fără niciun utilizator activ potrivit nu se creează nimic', () => {
+      expect(planFor({ assigneeId: 'ana', clientResponsibleIds: [] }, [])).toEqual([]);
+    });
+  });
 });

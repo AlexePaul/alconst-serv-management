@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@alconst/database';
+import { generateObligationTasks, lockObligations, type Prisma } from '@alconst/database';
 import {
   type ClientDto,
   type ClientListItemDto,
@@ -9,11 +9,12 @@ import {
 } from '@alconst/shared';
 import { ActivityService } from '../activity/activity.service.js';
 import { AppException } from '../common/app.exception.js';
-import { formatDateOnly, todayDateOnly } from '../common/dates.js';
+import { formatDateOnly, parseDateOnly } from '../common/dates.js';
 import { definedChanges } from '../common/changes.js';
 import { statusWhere } from '../common/pagination.js';
 import { isUniqueViolation } from '../common/prisma-errors.js';
 import type { AuthContext, ClientInfo } from '../common/request-context.js';
+import { AppConfig } from '../config/app-config.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ClientAccessService } from './client-access.service.js';
 import {
@@ -54,6 +55,7 @@ function buildSearchText(client: SearchableFields): string {
 export class ClientsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly config: AppConfig,
     private readonly access: ClientAccessService,
     private readonly activity: ActivityService,
   ) {}
@@ -154,14 +156,24 @@ export class ClientsService {
     const changedFields = Object.keys(changes);
     if (changedFields.length === 0) return this.get(id, auth);
 
+    const data = { ...changes, searchText: buildSearchText({ ...existing, ...changes }) };
     try {
-      await this.prisma.db.client.update({
-        where: { id },
-        data: { ...changes, searchText: buildSearchText({ ...existing, ...changes }) },
-      });
+      if (changes.isActive === false) {
+        await this.archive(id, data);
+      } else {
+        await this.prisma.db.client.update({ where: { id }, data });
+      }
     } catch (error) {
       if (isUniqueViolation(error)) throw AppException.conflict(CUI_TAKEN, { cui: [CUI_TAKEN] });
       throw error;
+    }
+    // La reactivare, obligațiile clientului își reiau programul de azi încolo.
+    if (changes.isActive === true) {
+      await generateObligationTasks(this.prisma.db, {
+        today: this.config.today(),
+        horizonDays: this.config.taskHorizonDays,
+        clientId: id,
+      });
     }
 
     const base = {
@@ -186,22 +198,6 @@ export class ClientsService {
       });
     }
     return this.get(id, auth);
-  }
-
-  /** Șterge definitiv clientul împreună cu punctele de lucru, angajații și contractele lui. */
-  async remove(id: string, auth: AuthContext, client: ClientInfo): Promise<void> {
-    const existing = await this.prisma.db.client.findUnique({ where: { id } });
-    if (!existing) throw AppException.notFound('Clientul nu există.');
-    await this.prisma.db.client.delete({ where: { id } });
-    await this.activity.log({
-      action: 'client.deleted',
-      userId: auth.user.id,
-      entityType: 'client',
-      entityId: id,
-      entityLabel: existing.name,
-      metadata: { cui: existing.cui },
-      ip: client.ip,
-    });
   }
 
   async setResponsibles(
@@ -274,7 +270,8 @@ export class ClientsService {
       ...this.access.scope(auth.user),
       isActive: true,
     };
-    const horizon = todayDateOnly();
+    // „Azi” în fusul orar al firmei, nu în UTC.
+    const horizon = parseDateOnly(this.config.today());
     horizon.setUTCDate(horizon.getUTCDate() + EXPIRING_WINDOW_DAYS);
 
     const [activeClients, activeEmployees, fees, expiring] = await Promise.all([
@@ -310,6 +307,29 @@ export class ClientsService {
           : [],
       ),
     };
+  }
+
+  /**
+   * Arhivarea unui client nu șterge nimic din evidență: punctele de lucru, angajații, contractele,
+   * obligațiile și task-urile rămân. Obligațiile sunt suspendate cât timp clientul este arhivat,
+   * iar task-urile lor viitoare neîncepute (create automat, în avans) sunt retrase, ca să nu
+   * apară drept restanțe; la reactivare sunt generate din nou.
+   */
+  private async archive(id: string, data: Prisma.ClientUncheckedUpdateInput): Promise<void> {
+    const today = parseDateOnly(this.config.today());
+    await this.prisma.db.$transaction(async (tx) => {
+      // Același blocaj ca la generarea task-urilor, ca o rulare simultană să nu le recreeze.
+      await lockObligations(tx, { clientId: id });
+      await tx.client.update({ where: { id }, data });
+      await tx.task.deleteMany({
+        where: {
+          clientId: id,
+          obligationId: { not: null },
+          status: 'TODO',
+          occurrenceDate: { gte: today },
+        },
+      });
+    });
   }
 
   /** „RO123” și „123” desemnează aceeași companie, deci verificăm ambele forme. */

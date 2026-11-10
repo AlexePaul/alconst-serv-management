@@ -86,7 +86,7 @@ export class MaintenanceService {
           client: { select: { name: true, assignments: { select: { userId: true } } } },
         },
       }),
-      this.db.user.findMany({ where: { isActive: true }, select: { id: true } }),
+      this.db.user.findMany({ where: { isActive: true }, select: { id: true, role: true } }),
       this.db.notificationSettings.findMany({ select: { userId: true, remindDaysBefore: true } }),
     ]);
 
@@ -103,6 +103,7 @@ export class MaintenanceService {
       today,
       new Set(users.map((user) => user.id)),
       new Map(settings.map((row) => [row.userId, row.remindDaysBefore])),
+      users.filter((user) => user.role === 'ADMIN').map((user) => user.id),
     );
     if (planned.length === 0) return 0;
 

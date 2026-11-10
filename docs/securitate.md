@@ -43,10 +43,14 @@ descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
 - Un administrator nu își poate dezactiva propriul cont și nu își poate schimba rolul, deci există
   mereu cel puțin un administrator activ.
 - Conturile nu se șterg, ci se dezactivează – istoricul din audit rămâne intact.
+- **Fără ștergere definitivă** pentru clienți, puncte de lucru, angajați și contracte: se
+  arhivează (contractele se încheie) și pot fi reactivate. API-ul nu are rute de ștergere pentru
+  ele, iar baza de date refuză ștergerea unui client care are date asociate.
 - **Acces la clienți pe responsabili**: un angajat vede și modifică doar clienții la care este
   responsabil, împreună cu punctele de lucru, angajații și contractele lor. Regula este aplicată
   pe server, la fiecare cerere; pentru clienții altora răspunsul este „nu există”. Doar
-  administratorii stabilesc responsabilii și pot șterge definitiv un client.
+  administratorii stabilesc responsabilii. Tarifele și venitul estimat urmează aceeași regulă: un
+  angajat le vede doar pentru clienții lui, iar totalurile firmei doar administratorii.
 - **Task-uri și obligații**: un angajat vede ce îi este atribuit, ce a creat el și tot ce ține de
   clienții lui. Un task atribuit unui coleg îi dă acces la task și la datele de contact ale
   clientului (adresă, persoană de contact, telefon), nu și la restul datelor clientului.
@@ -73,9 +77,10 @@ descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
 ## Jurnal de activitate
 
 Se înregistrează: autentificări reușite și eșuate, deconectări, schimbări și resetări de parolă,
-crearea, modificarea, activarea și dezactivarea conturilor, precum și orice adăugare, modificare
-sau ștergere de clienți, responsabili, servicii, puncte de lucru, angajați, contracte, obligații
-și task-uri (pentru task-uri, cu valorile vechi și noi – acesta este istoricul lor de modificări). Fiecare intrare conține autorul,
+crearea, modificarea, activarea și dezactivarea conturilor, precum și orice adăugare, modificare,
+arhivare sau reactivare de clienți, responsabili, servicii, puncte de lucru, angajați, contracte,
+obligații și task-uri (pentru task-uri, cu valorile vechi și noi – acesta este istoricul lor de
+modificări). Fiecare intrare conține autorul,
 entitatea afectată, momentul și adresa IP. Jurnalul este vizibil doar administratorilor și nu poate
 fi modificat din aplicație.
 
@@ -89,6 +94,10 @@ Singurul serviciu extern folosit este cel de email (SMTP). Prin el trec:
 - rezumatul zilnic de notificări, care conține **doar numere** (câte task-uri restante, cu termen
   azi sau în zilele următoare). Titlurile task-urilor, numele clienților și orice date despre
   angajați rămân în aplicație.
+
+Reamintirile pentru un task al cărui responsabil are contul dezactivat ajung la responsabilii
+activi ai clientului sau, în lipsa lor, la administratori – adică doar la persoane care au deja
+acces la acel task.
 
 Sesiunile și linkurile de resetare expirate sunt șterse automat, la fel și notificările citite mai
 vechi de 90 de zile.

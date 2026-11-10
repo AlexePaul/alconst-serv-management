@@ -169,7 +169,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           />
         </UFormField>
 
-        <UFormField v-if="isEdit" name="isActive" help="Angajații inactivi (de exemplu cei plecați din companie) rămân în evidență.">
+        <UFormField v-if="isEdit" name="isActive" help="Angajații arhivați (de exemplu cei plecați din companie) rămân în evidență.">
           <USwitch v-model="state.isActive" label="Angajat activ" />
         </UFormField>
 

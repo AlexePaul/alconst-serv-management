@@ -16,9 +16,14 @@ const { data: locations, status, error, refresh } = useLazyAsyncData(
 )
 
 const formOpen = ref(false)
-const deleteOpen = ref(false)
+const archiveOpen = ref(false)
 const selected = ref<LocationDto | null>(null)
-const deleting = ref(false)
+const saving = ref(false)
+
+// Punctele de lucru nu se șterg: cele închise se arhivează și rămân în evidență.
+const showArchived = ref(false)
+const archivedCount = computed(() => locations.value.filter(location => !location.isActive).length)
+const visible = computed(() => showArchived.value ? locations.value : locations.value.filter(location => location.isActive))
 
 function openCreate() {
   selected.value = null
@@ -30,9 +35,9 @@ function openEdit(location: LocationDto) {
   formOpen.value = true
 }
 
-function openDelete(location: LocationDto) {
+function openArchive(location: LocationDto) {
   selected.value = location
-  deleteOpen.value = true
+  archiveOpen.value = true
 }
 
 async function onSaved() {
@@ -40,26 +45,31 @@ async function onSaved() {
   emit('changed')
 }
 
-async function confirmDelete() {
-  const location = selected.value
-  if (!location) return
-  deleting.value = true
+async function setActive(location: LocationDto, isActive: boolean) {
+  saving.value = true
   try {
-    await api(`/locations/${location.id}`, { method: 'DELETE' })
-    toast.add({ title: 'Punctul de lucru a fost șters', description: location.name, color: 'success', icon: 'i-lucide-check' })
-    deleteOpen.value = false
+    await api(`/locations/${location.id}`, { method: 'PATCH', body: { isActive } })
+    toast.add({
+      title: isActive ? 'Punctul de lucru a fost reactivat' : 'Punctul de lucru a fost arhivat',
+      description: location.name,
+      color: 'success',
+      icon: 'i-lucide-check'
+    })
+    archiveOpen.value = false
     await onSaved()
   } catch (error) {
-    toast.add({ title: 'Ștergerea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
+    toast.add({ title: 'Modificarea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
   } finally {
-    deleting.value = false
+    saving.value = false
   }
 }
 
 function actions(location: LocationDto): DropdownMenuItem[][] {
   return [
     [{ label: 'Modifică', icon: 'i-lucide-pencil', onSelect: () => openEdit(location) }],
-    [{ label: 'Șterge', icon: 'i-lucide-trash-2', color: 'error', onSelect: () => openDelete(location) }]
+    [location.isActive
+      ? { label: 'Arhivează', icon: 'i-lucide-archive', onSelect: () => openArchive(location) }
+      : { label: 'Reactivează', icon: 'i-lucide-archive-restore', onSelect: () => { setActive(location, true) } }]
   ]
 }
 </script>
@@ -95,47 +105,63 @@ function actions(location: LocationDto): DropdownMenuItem[][] {
       variant="naked"
     />
 
-    <ul v-else class="grid gap-3 sm:grid-cols-2">
-      <li
-        v-for="location in locations"
-        :key="location.id"
-        class="flex items-start gap-3 rounded-lg border border-default bg-default p-4"
-      >
-        <div class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-elevated text-muted">
-          <UIcon name="i-lucide-map-pin" class="size-4" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="font-medium text-highlighted">
-            {{ location.name }}
-            <UBadge
-              v-if="!location.isActive"
-              label="Inactiv"
+    <template v-else>
+      <p v-if="visible.length === 0" class="py-6 text-center text-sm text-muted">
+        Toate punctele de lucru sunt arhivate.
+      </p>
+      <ul v-else class="grid gap-3 sm:grid-cols-2">
+        <li
+          v-for="location in visible"
+          :key="location.id"
+          class="flex items-start gap-3 rounded-lg border border-default bg-default p-4"
+          :class="{ 'opacity-70': !location.isActive }"
+        >
+          <div class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-elevated text-muted">
+            <UIcon name="i-lucide-map-pin" class="size-4" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="font-medium text-highlighted">
+              {{ location.name }}
+              <UBadge
+                v-if="!location.isActive"
+                label="Arhivat"
+                color="neutral"
+                variant="subtle"
+                size="sm"
+                class="ml-1 align-middle"
+              />
+            </p>
+            <p class="text-sm text-muted">
+              {{ orDash(location.address) }}
+            </p>
+            <p class="mt-1 text-xs text-muted">
+              {{ countLabel(location.employeeCount, 'angajat', 'angajați') }}
+            </p>
+            <p v-if="location.notes" class="mt-2 text-sm whitespace-pre-line text-default">
+              {{ location.notes }}
+            </p>
+          </div>
+          <UDropdownMenu :items="actions(location)" :content="{ align: 'end' }">
+            <UButton
               color="neutral"
-              variant="subtle"
-              size="sm"
-              class="ml-1 align-middle"
+              variant="ghost"
+              icon="i-lucide-ellipsis-vertical"
+              :aria-label="`Acțiuni pentru ${location.name}`"
             />
-          </p>
-          <p class="text-sm text-muted">
-            {{ orDash(location.address) }}
-          </p>
-          <p class="mt-1 text-xs text-muted">
-            {{ countLabel(location.employeeCount, 'angajat', 'angajați') }}
-          </p>
-          <p v-if="location.notes" class="mt-2 text-sm whitespace-pre-line text-default">
-            {{ location.notes }}
-          </p>
-        </div>
-        <UDropdownMenu :items="actions(location)" :content="{ align: 'end' }">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            icon="i-lucide-ellipsis-vertical"
-            :aria-label="`Acțiuni pentru ${location.name}`"
-          />
-        </UDropdownMenu>
-      </li>
-    </ul>
+          </UDropdownMenu>
+        </li>
+      </ul>
+      <UButton
+        v-if="archivedCount > 0"
+        class="mt-3"
+        color="neutral"
+        variant="link"
+        size="sm"
+        :icon="showArchived ? 'i-lucide-eye-off' : 'i-lucide-archive'"
+        :label="showArchived ? 'Ascunde punctele de lucru arhivate' : `Arată și punctele de lucru arhivate (${archivedCount})`"
+        @click="showArchived = !showArchived"
+      />
+    </template>
 
     <ClientsLocationFormModal
       v-model:open="formOpen"
@@ -144,15 +170,13 @@ function actions(location: LocationDto): DropdownMenuItem[][] {
       @saved="onSaved"
     />
     <ConfirmDialog
-      v-model:open="deleteOpen"
-      title="Ștergi punctul de lucru?"
-      :description="selected?.employeeCount
-        ? `„${selected.name}” va fi șters. ${countLabel(selected.employeeCount, 'angajat rămâne', 'angajați rămân')} în evidența clientului, fără punct de lucru asociat.`
-        : `„${selected?.name}” va fi șters definitiv.`"
-      confirm-label="Șterge punctul de lucru"
-      color="error"
-      :loading="deleting"
-      @confirm="confirmDelete"
+      v-model:open="archiveOpen"
+      title="Arhivezi punctul de lucru?"
+      :description="`„${selected?.name}” nu va mai putea fi ales pentru angajați, obligații și task-uri noi. Angajații și istoricul lui rămân în evidență, iar punctul de lucru poate fi reactivat oricând. Obligațiile recurente legate de el rămân active până le dezactivezi.`"
+      confirm-label="Arhivează"
+      color="warning"
+      :loading="saving"
+      @confirm="selected && setActive(selected, false)"
     />
   </div>
 </template>

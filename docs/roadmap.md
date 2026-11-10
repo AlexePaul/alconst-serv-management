@@ -55,6 +55,17 @@ Importul din Excel a fost scos din plan: nu există fișiere Excel de migrat.
       inițiată de oricare dintre cei doi colegi, cu acordul celuilalt
 - [x] Emailuri imediate pentru evenimente (task atribuit, cereri de predare și răspunsul la ele)
 
+Completări după discuția din noiembrie 2026:
+
+- [x] Arhivare în loc de ștergere pentru clienți, puncte de lucru, angajați și contracte; baza de
+      date refuză ștergerea unui client cu istoric
+- [x] Arhivarea unui client suspendă obligațiile lui; reactivarea le reia
+- [x] Reamintirile unui coleg cu contul dezactivat ajung la responsabilii clientului sau la
+      administratori
+- [x] Teste pentru cazurile-limită ale obligațiilor: worker oprit, schimbarea frecvenței,
+      dezactivare, schimbarea responsabilului, ora de vară/iarnă, anulări, rulări simultane
+      (rezultatele sunt în [arhitectura.md](arhitectura.md), „Cazuri-limită verificate prin teste”)
+
 Amânat: **Web Push**. Necesită un service worker propriu, chei VAPID și stocarea abonamentelor,
 iar pe iPhone funcționează doar pentru aplicația instalată pe ecranul principal. Notificările din
 aplicație și emailul acoperă nevoia de bază; Web Push se adaugă în etapa de stabilizare.
@@ -74,9 +85,30 @@ aplicație și emailul acoperă nevoia de bază; Web Push se adaugă în etapa d
 - Backup automat (bază de date + fișiere) și test de restaurare
 - Politică de retenție a datelor
 - Întărirea CSP, revizuire de securitate
-- Monitorizare și alerte
+- Monitorizare și alerte – în primul rând pentru worker: dacă rularea periodică nu a avut loc de
+  câteva ore, cineva trebuie să afle (o oprire mai lungă de 60 de zile ar pierde termene)
 - Optimizări (de exemplu dimensiunea imaginilor Docker: CLI-ul Prisma ajunge acum și în imaginea API)
 - Pipeline de deploy, lansarea în producție
+
+## Module viitoare (neplanificate încă)
+
+Sunt notate ca să nu se piardă; nu fac parte din etapele 1–5 și nu se implementează acum. Ce
+permite deja modelul de date pentru ele este descris în [arhitectura.md](arhitectura.md),
+„Extensii viitoare”.
+
+- **Evidența instruirilor pe angajat.** Acum se confirmă fișele o dată pe deplasare. Extinderea
+  la nivel de angajat se poate face printr-un tabel nou, fără restructurare.
+- **Integrare SmartBill.** Emiterea facturilor și verificarea încasărilor; se analizează separat.
+- **Planificarea automată a programului de lucru.** Propunerea unui program optim pentru fiecare
+  angajat, ținând cont de: programul de lucru și disponibilitate, durata estimată a deplasărilor,
+  termene și frecvențe, adresele și distanțele dintre puncte de lucru, timpii de deplasare (de
+  exemplu prin Google Maps Routes API), gruparea geografică, priorități și task-uri care nu pot fi
+  mutate, intervale blocate manual, recalculare la urgențe și acceptarea sau modificarea
+  propunerii fără suprascrierea calendarului existent. Structura actuală (task-uri cu termen,
+  interval orar, responsabil și punct de lucru; obligații cu frecvență) permite adăugarea lui ca
+  modul separat; lipsesc, toate aditive: coordonatele adreselor, durata estimată, programul de
+  lucru și blocajele, timpii de deplasare și stocarea propunerilor. Un serviciu extern de rutare
+  ar primi adresele clienților, deci necesită aprobare explicită.
 
 ## Riscuri tehnice identificate
 
@@ -111,21 +143,30 @@ aplicație și emailul acoperă nevoia de bază; Web Push se adaugă în etapa d
 - **Facturare**: facturile se emit prin SmartBill și nu sunt legate unu-la-unu de deplasări – pot
   exista facturi fără deplasare și deplasări fără factură. De aceea deplasările nu conțin nimic
   despre încasare; integrarea cu SmartBill va fi un modul separat.
+- **Vizibilitatea sumelor**: un angajat vede tarifele și venitul estimat doar pentru clienții lui;
+  administratorii văd situația întregii firme. Angajații nu văd totalurile firmei și nici
+  contractele colegilor.
+- **Arhivare, nu ștergere**: clienții, punctele de lucru, angajații și contractele se arhivează
+  sau se dezactivează. Istoricul activităților, al documentelor și al responsabilităților se
+  păstrează, inclusiv după plecarea unui angajat sau încetarea unui contract.
+- **Evidența instruirilor**: deocamdată confirmarea fișelor rămâne la nivel de deplasare; modelul
+  permite extinderea ulterioară la nivel de angajat.
+- **Emailuri**: rezumatul zilnic conține doar numere. Numele clienților și detaliile activităților
+  nu se trimit prin email.
+- **SmartBill**: nu se implementează acum; emiterea facturilor și verificarea încasărilor se
+  analizează separat.
+- **Documente**: înainte de implementarea template-urilor, firma furnizează câte un DOCX
+  anonimizat pentru fiecare tip (tematică de instruire, decizie internă, proces-verbal).
 
 ## Întrebări deschise
 
-1. **Documente reale** – câte un exemplu din fiecare tip (tematică, decizie, proces-verbal),
-   ideal anonimizate, pentru a testa editorul și a pregăti template-urile. Necesare la începutul
-   Etapei 4.
-2. **Fișele, pe deplasare sau pe angajat** – acum se confirmă o singură dată pentru toată
-   deplasarea. Dacă trebuie știut pentru fiecare angajat al clientului dacă are fișa completată,
-   evidența se poate detalia (se leagă de „evidența instruirilor”).
-3. **SmartBill** – ce ar trebui să facă integrarea: doar să emită factura din aplicație, sau și să
-   aducă înapoi starea plății? Nu este în etapele curente.
-4. **Vizibilitatea sumelor** – acum un angajat vede tarifele clienților lui. Dacă sumele trebuie
-   să fie vizibile doar administratorilor, este o schimbare mică.
-5. **Conținutul emailurilor** – rezumatul zilnic conține doar numere, iar notificările imediate
-   au text general („Un coleg vrea să îți predea un client”), ca titlurile task-urilor și numele
-   clienților să nu treacă prin furnizorul de email. Dacă preferați emailuri cu detalii, se poate.
-6. **Ștergerea** – acum un angajat poate șterge puncte de lucru, angajați și contracte ale
-   clienților lui, dar nu clientul. De confirmat.
+1. **Documente reale** – așteptăm câte un DOCX anonimizat din fiecare tip (tematică de instruire,
+   decizie internă, proces-verbal), pentru a testa editorul și a pregăti template-urile. Necesare
+   la începutul Etapei 4.
+2. **Ștergerea task-urilor și a obligațiilor** – un task creat manual poate fi șters doar cât timp
+   nu a fost început, iar o obligație poate fi ștearsă (task-urile ei încheiate rămân). Dacă vreți
+   ca și acestea să fie doar dezactivate, este o schimbare mică.
+3. **Obligațiile unui punct de lucru arhivat** – rămân active până sunt dezactivate manual. Dacă
+   arhivarea punctului de lucru ar trebui să le suspende automat, ca la clienți, se poate.
+4. **Data plecării unui angajat** – acum se ține doar starea (activ/arhivat). Dacă data exactă
+   contează, de exemplu pentru evidența instruirilor, se adaugă un câmp.

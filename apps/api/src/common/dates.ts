@@ -6,8 +6,3 @@ export function parseDateOnly(value: string): Date {
 export function formatDateOnly(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
-
-/** Data de azi (UTC), fără oră – comparabilă cu valorile din coloanele DATE. */
-export function todayDateOnly(): Date {
-  return parseDateOnly(formatDateOnly(new Date()));
-}

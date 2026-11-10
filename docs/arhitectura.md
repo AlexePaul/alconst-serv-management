@@ -142,7 +142,35 @@ legate de un client – puncte de lucru, angajați, contracte:
   devine automat responsabilul lui;
 - pentru clienții inaccesibili API-ul răspunde „nu există” (404), astfel încât un angajat să nu
   poată afla ce alți clienți are firma;
-- ștergerea definitivă a unui client este rezervată administratorilor.
+- un client arhivat rămâne vizibil responsabililor lui, cu toate datele (vezi mai jos).
+
+### Arhivare în loc de ștergere
+
+Clienții, punctele de lucru, angajații clienților și contractele **nu se șterg**. API-ul nu are
+rute de ștergere pentru ele, iar în baza de date relațiile către client sunt `ON DELETE RESTRICT`,
+deci nicio intervenție directă nu poate șterge un client care are istoric.
+
+| Entitate       | Cum iese din uz               | Ce se întâmplă                                                                                                                                                           |
+| -------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Client         | Arhivare (`isActive = false`) | Dispare dintre clienții activi și din cifrele de pe pagina principală; rămâne accesibil responsabililor. Obligațiile lui sunt suspendate (vezi „Obligații și task-uri”). |
+| Punct de lucru | Arhivare (`isActive = false`) | Nu mai poate fi ales pentru înregistrări noi; angajații și task-urile rămân legate de el.                                                                                |
+| Angajat        | Arhivare (`isActive = false`) | De exemplu la plecarea din companie; rămâne în evidență, cu filtrul „arhivați”.                                                                                          |
+| Contract       | Încheiere (`status = ENDED`)  | Rămâne cu tarifele lui; nu mai intră în venitul lunar estimat.                                                                                                           |
+| Utilizator     | Dezactivare (din Etapa 1)     | Nu se mai poate autentifica; tot ce a făcut rămâne pe numele lui.                                                                                                        |
+
+Arhivarea și reactivarea apar în jurnalul de activitate ca acțiuni distincte. Totul este
+reversibil. Greșelile de introducere se corectează prin modificare, nu prin ștergere.
+
+Ce se mai poate șterge, și de ce:
+
+- un **serviciu** din catalog, doar dacă nu este folosit nicăieri;
+- un **task creat manual și încă neînceput** (o greșeală de introducere); cele începute,
+  finalizate sau anulate rămân ca istoric al activității;
+- o **obligație**: definiția dispare, dar task-urile ei începute, finalizate sau anulate rămân.
+
+Istoricul responsabilităților se păstrează în jurnalul de activitate (modificarea responsabililor
+și predările de clienți, cu utilizatorii implicați) și pe task-uri (cine a fost responsabil, cine
+a finalizat, cine a confirmat fișele).
 
 ### Contracte și tarife
 
@@ -177,9 +205,13 @@ este o execuție concretă, cu termen și responsabil. Un task poate exista și 
   Rulează imediat la salvarea obligației (din API) și din oră în oră (din worker). Constrângerea
   de unicitate (obligație, apariție) din baza de date face imposibile duplicatele, chiar și la
   rulări simultane. Termenele trecute nu se generează retroactiv.
-- **Modificarea unei obligații** se propagă doar asupra task-urilor viitoare neîncepute: schimbarea
-  frecvenței le șterge și le regenerează; celelalte modificări le actualizează pe loc, păstrând
-  reprogramările. Task-urile începute, finalizate sau anulate nu sunt atinse.
+- **Modificarea unei obligații** se propagă doar asupra task-urilor viitoare neîncepute. La
+  schimbarea frecvenței sau a perioadei, task-urile ale căror termene nu mai fac parte din program
+  sunt șterse, iar cele noi sunt generate; cele ale căror termene rămân în program sunt păstrate,
+  cu reprogramările lor. Celelalte modificări se aplică pe loc, doar pentru câmpurile schimbate
+  efectiv. Task-urile începute, finalizate sau anulate nu sunt atinse.
+- **Dezactivarea** unei obligații și **arhivarea clientului** retrag task-urile viitoare
+  neîncepute; reactivarea reia programul de azi încolo.
 - Task-urile generate **nu se șterg, se anulează** – altfel următoarea generare le-ar recrea.
 - Un task nu se finalizează niciodată automat. Generarea unui document (Etapa 4) și execuția
   activității sunt operațiuni distincte.
@@ -191,6 +223,28 @@ este o execuție concretă, cu termen și responsabil. Un task poate exista și 
 - **Intervalul orar** (`startTime`–`endTime`, opțional) este o estimare a responsabilului, nu o
   programare fixă. Fiecare își organizează singur calendarul: mută deplasările pe altă zi sau la
   alte ore, iar aceste ajustări se păstrează când obligația este modificată fără legătură cu ele.
+
+#### Cazuri-limită verificate prin teste
+
+| Situație                                   | Comportament                                                                                                                                                                                                                       |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Worker-ul este oprit câteva zile           | Nu se pierde nimic: task-urile sunt create cu 60 de zile în avans, deci termenele din perioada opririi există deja și apar ca restanțe. La repornire se completează orizontul, iar reamintirile ratate sunt create o singură dată. |
+| Se schimbă frecvența unei obligații active | Rămân task-urile ale căror termene coincid cu noul program (cu ora, reprogramarea sau preluarea de pe ele); celelalte task-uri viitoare neîncepute sunt înlocuite.                                                                 |
+| Obligația este dezactivată                 | Task-urile viitoare neîncepute dispar; restanțele și cele începute, finalizate sau anulate rămân. Worker-ul nu le recreează.                                                                                                       |
+| Se schimbă responsabilul                   | Noul responsabil primește task-urile neîncepute ale celui vechi. Un task preluat de un coleg pentru o singură deplasare rămâne la acel coleg; cele începute rămân la cine le-a început.                                            |
+| Schimbarea orei de vară/iarnă              | Termenele sunt date calendaristice, fără oră, calculate în UTC; „azi” se stabilește în fusul orar al firmei. Ziua de 23 și cea de 25 de ore au fiecare exact un termen, o reamintire și un rezumat.                                |
+| Un task generat este anulat manual         | Apariția rămâne ocupată de task-ul anulat, deci nu este regenerată de nicio operațiune ulterioară.                                                                                                                                 |
+| Rulări simultane (API + worker)            | Constrângerea de unicitate împiedică duplicatele; în plus, generarea și modificările iau același blocaj pe rândul obligației, deci o generare nu poate folosi date depășite.                                                       |
+
+Limite cunoscute, acceptate deocamdată:
+
+- Dacă worker-ul stă oprit **mai mult decât orizontul de generare** (60 de zile), termenele care
+  ar fi intrat în orizont și au și trecut în acest timp nu mai sunt create. Remediul potrivit este
+  monitorizarea worker-ului (Etapa 5), nu generarea retroactivă.
+- La schimbarea frecvenței, un task **început** pe vechiul program rămâne, chiar dacă noul program
+  are un termen apropiat – aplicația nu ghicește că ar fi „același” task.
+- Reprogramarea de pe un task viitor se pierde dacă termenul lui inițial nu mai face parte din
+  noul program.
 
 ### Preluarea unui client de către alt coleg
 
@@ -218,8 +272,10 @@ Worker-ul rulează din oră în oră o sarcină idempotentă care:
 
 Fiecare reamintire are o cheie care îi descrie motivul (tip, task, destinatar, termen), cu
 constrângere de unicitate în baza de date. Rulările repetate nu pot produce notificări duplicate,
-iar un task reprogramat primește reamintiri noi. Destinatarul este responsabilul task-ului sau, în
-lipsa lui, responsabilii clientului.
+iar un task reprogramat primește reamintiri noi. Destinatarul este responsabilul task-ului; dacă
+task-ul nu are responsabil sau contul acestuia a fost dezactivat, reamintirea ajunge la
+responsabilii activi ai clientului, iar în lipsa lor la administratori. Astfel, după plecarea unui
+coleg, termenele rămase pe numele lui nu trec neobservate.
 
 Evenimentele – un task atribuit de altcineva, o cerere de predare a unui client, răspunsul la ea,
 un transfer făcut de administrator – sunt anunțate imediat: în aplicație, cu toate detaliile, și
@@ -236,6 +292,50 @@ Clienții și angajații au o coloană `searchText` – textul relevant, fără 
 mici – actualizată la fiecare salvare. Căutarea normalizează la fel termenul introdus, deci
 „stefan” găsește „Ștefan”. Soluția nu depinde de extensii PostgreSQL și poate primi ulterior un
 index trigram dacă volumul o cere.
+
+## Extensii viitoare: ce permite modelul actual
+
+Niciuna dintre extensiile de mai jos nu este implementată. Analiza arată doar că se pot adăuga
+fără restructurarea a ceea ce există – prin tabele și coloane noi.
+
+### Evidența instruirilor pe angajat
+
+Acum confirmarea fișelor se ține la nivel de deplasare (`tasks.sheetsCompletedAt`,
+`sheetsCompletedById`). Evidența pe angajat se poate adăuga printr-un tabel nou, de exemplu
+`task_employee_records` (task, angajat, tip, moment, cine a confirmat):
+
+- task-ul are deja client și punct de lucru, deci lista angajaților vizați de o deplasare se
+  obține direct;
+- angajații nu se mai șterg, deci evidențele rămân valabile și după plecarea lor;
+- confirmarea la nivel de deplasare rămâne ca rezumat („toate fișele”) sau se calculează din
+  înregistrările individuale; datele existente nu trebuie migrate.
+
+Ar mai fi de adăugat, tot aditiv: data plecării angajatului (acum există doar starea
+activ/arhivat) și, dacă este nevoie, istoricul schimbărilor de funcție sau de punct de lucru.
+
+### Planificarea automată a programului de lucru
+
+Un modul separat ar propune fiecărui angajat un program (ordinea și orele deplasărilor) și ar
+scrie în task-uri doar după acceptarea propunerii, prin aceeași operațiune de modificare folosită
+azi – cu istoricul de modificări păstrat.
+
+| Necesar pentru planificare                 | Stare în modelul actual                                                                                                           |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Ce trebuie făcut, de cine, până când       | Există: task (tip, responsabil, termen, prioritate, status).                                                                      |
+| Frecvențe                                  | Există: obligații; apariția inițială (`occurrenceDate`) este separată de termenul curent, deci reprogramarea nu strică recurența. |
+| Interval orar pe zi                        | Există: `startTime`/`endTime` pe task, ajustabile manual.                                                                         |
+| Adrese                                     | Există ca text: adresa clientului și a punctelor de lucru. Lipsesc coordonatele (două coloane noi pe `locations` și `clients`).   |
+| Durata estimată a unei deplasări           | Se deduce doar când sunt completate ambele ore. De adăugat o durată estimată pe obligație și pe task.                             |
+| Termen-limită separat de ziua planificată  | Acum există o singură dată (`dueDate`). De adăugat o dată planificată sau o fereastră permisă.                                    |
+| Program de lucru, disponibilitate, blocaje | Lipsesc: tabele noi per utilizator (program săptămânal, intervale blocate).                                                       |
+| Task-uri care nu pot fi mutate             | Lipsește: un marcaj pe task.                                                                                                      |
+| Timpi de deplasare                         | Lipsesc: serviciu de rutare și un tabel de cache între perechi de adrese.                                                         |
+| Propuneri care nu suprascriu calendarul    | Lipsesc: tabele pentru propunere și elementele ei, cu acceptare/modificare.                                                       |
+
+De hotărât înainte de implementare: un serviciu extern de rutare (de exemplu Google Maps Routes
+API) ar primi adresele clienților, deci are nevoie de aprobare explicită, conform regulii privind
+datele trimise în afara aplicației; alternativa este un motor de rutare găzduit pe serverul
+propriu.
 
 ## Convenții
 

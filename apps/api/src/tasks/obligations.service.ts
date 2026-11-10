@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { generateObligationTasks, type Prisma } from '@alconst/database';
+import { generateObligationTasks, lockObligations, type Prisma } from '@alconst/database';
 import {
+  addDays,
   nextOccurrence,
   normalizeSearch,
   type ObligationDto,
+  occurrencesBetween,
   OPEN_TASK_STATUSES,
   type Paginated,
 } from '@alconst/shared';
@@ -124,9 +126,12 @@ export class ObligationsService {
 
   /**
    * Modificările se propagă doar asupra task-urilor viitoare neîncepute:
-   *  - schimbarea frecvenței, a perioadei sau dezactivarea le șterge și le regenerează;
-   *  - celelalte modificări (titlu, responsabil, prioritate etc.) le actualizează pe loc,
-   *    păstrând eventualele reprogramări.
+   *  - la schimbarea frecvenței, a perioadei sau la dezactivare, task-urile ale căror termene nu
+   *    mai fac parte din program sunt șterse, iar cele noi sunt generate; cele care rămân în
+   *    program își păstrează reprogramările, orele și responsabilul;
+   *  - celelalte modificări (titlu, prioritate etc.) se aplică pe loc, doar pentru câmpurile
+   *    schimbate efectiv; noul responsabil primește task-urile care erau ale celui vechi, nu și
+   *    pe cele preluate între timp de un coleg.
    * Task-urile începute, finalizate sau anulate nu sunt atinse niciodată.
    */
   async update(
@@ -158,8 +163,6 @@ export class ObligationsService {
     const startTime = dto.startTime !== undefined ? dto.startTime : before.startTime;
     const endTime = dto.endTime !== undefined ? dto.endTime : before.endTime;
     assertTimeRange(startTime, endTime);
-    // Intervalul orar se propagă doar dacă s-a schimbat, ca să nu suprascrie orele ajustate
-    // manual pe task-uri la o modificare fără legătură (ex. titlul).
     const timeChanged = startTime !== before.startTime || endTime !== before.endTime;
 
     const next = {
@@ -186,28 +189,55 @@ export class ObligationsService {
       endDate !== (before.endDate ? formatDateOnly(before.endDate) : null) ||
       next.isActive !== before.isActive;
 
+    const today = this.config.today();
+    // Termenele care rămân în program după modificare (niciunul, dacă obligația devine inactivă).
+    const keptDates =
+      scheduleChanged && next.isActive
+        ? occurrencesBetween(
+            {
+              startDate,
+              endDate,
+              unit: next.recurrenceUnit,
+              interval: next.recurrenceInterval,
+            },
+            today,
+            addDays(today, this.config.taskHorizonDays),
+          ).map(parseDateOnly)
+        : [];
+
+    const title = next.title !== before.title;
+    const content: Prisma.TaskUncheckedUpdateManyInput = {
+      ...(title ? { title: next.title, searchText: normalizeSearch(next.title) } : {}),
+      ...(next.description !== before.description ? { description: next.description } : {}),
+      ...(next.kind !== before.kind ? { kind: next.kind } : {}),
+      ...(next.priority !== before.priority ? { priority: next.priority } : {}),
+      ...(clientId !== before.clientId ? { clientId } : {}),
+      ...(locationId !== before.locationId ? { locationId } : {}),
+      // Intervalul orar se propagă doar dacă s-a schimbat, ca să nu suprascrie orele ajustate
+      // manual pe task-uri la o modificare fără legătură (ex. titlul).
+      ...(timeChanged ? { startTime, endTime } : {}),
+    };
+
     const pending = this.pendingGeneratedTasks(id);
     await this.prisma.db.$transaction(async (tx) => {
+      // Același blocaj ca la generare: o rulare periodică simultană așteaptă și apoi vede noile date.
+      await lockObligations(tx, { obligationId: id });
       await tx.obligation.update({
         where: { id },
         data: { ...next, searchText: normalizeSearch(next.title) },
       });
       if (scheduleChanged) {
-        await tx.task.deleteMany({ where: pending });
-      } else {
+        await tx.task.deleteMany({
+          where: { ...pending, occurrenceDate: { gte: parseDateOnly(today), notIn: keptDates } },
+        });
+      }
+      if (Object.keys(content).length > 0) {
+        await tx.task.updateMany({ where: pending, data: content });
+      }
+      if (assigneeId !== before.assigneeId) {
         await tx.task.updateMany({
-          where: pending,
-          data: {
-            title: next.title,
-            description: next.description,
-            kind: next.kind,
-            priority: next.priority,
-            clientId: next.clientId,
-            locationId: next.locationId,
-            assigneeId: next.assigneeId,
-            searchText: normalizeSearch(next.title),
-            ...(timeChanged ? { startTime, endTime } : {}),
-          },
+          where: { ...pending, assigneeId: before.assigneeId },
+          data: { assigneeId },
         });
       }
     });
@@ -227,10 +257,11 @@ export class ObligationsService {
   /** Șterge obligația și task-urile ei viitoare neîncepute; restul task-urilor rămân în evidență. */
   async remove(id: string, auth: AuthContext, client: ClientInfo): Promise<void> {
     const existing = await this.find(id, auth);
-    await this.prisma.db.$transaction([
-      this.prisma.db.task.deleteMany({ where: this.pendingGeneratedTasks(id) }),
-      this.prisma.db.obligation.delete({ where: { id } }),
-    ]);
+    await this.prisma.db.$transaction(async (tx) => {
+      await lockObligations(tx, { obligationId: id });
+      await tx.task.deleteMany({ where: this.pendingGeneratedTasks(id) });
+      await tx.obligation.delete({ where: { id } });
+    });
     await this.activity.log({
       action: 'obligation.deleted',
       userId: auth.user.id,
