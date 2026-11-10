@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/.nuxt
+**/.output
+**/.data
+**/coverage
+**/*.tsbuildinfo
+packages/database/src/generated
+.git
+.github
+.env
+.env.*
+!.env.example
+docs
+*.md

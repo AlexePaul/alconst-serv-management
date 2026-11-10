@@ -1,0 +1,33 @@
+{
+  "name": "alconst-serv-management",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aplicație internă de management SSM/PSI – Alconst Serv",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "dev": "pnpm build:packages && pnpm --parallel --filter \"./packages/*\" --filter \"./apps/*\" dev",
+    "dev:web": "pnpm --filter @alconst/web dev",
+    "dev:api": "pnpm --filter @alconst/api dev",
+    "dev:worker": "pnpm --filter @alconst/worker dev",
+    "build": "pnpm build:packages && pnpm --filter \"./apps/*\" build",
+    "build:packages": "pnpm --filter \"./packages/*\" build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @alconst/api test:e2e",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @alconst/database generate",
+    "db:migrate": "pnpm --filter @alconst/database migrate:dev",
+    "db:deploy": "pnpm --filter @alconst/database migrate:deploy",
+    "db:studio": "pnpm --filter @alconst/database studio",
+    "admin:create": "pnpm build:packages && pnpm --filter @alconst/api admin:create"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}

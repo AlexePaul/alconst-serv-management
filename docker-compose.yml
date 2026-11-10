@@ -1,0 +1,52 @@
+# Servicii pentru DEZVOLTARE: bază de date, Redis și un server de email de test.
+# Aplicațiile (web, API, worker) rulează local cu `pnpm dev`.
+#
+#   docker compose up -d
+#
+# Porturile sunt expuse doar pe 127.0.0.1.
+
+name: alconst-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: alconst
+      POSTGRES_PASSWORD: alconst
+      POSTGRES_DB: alconst
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Creează și baza de date folosită de testele e2e.
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-test-database.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U alconst -d alconst']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # BullMQ cere ca Redis să nu elimine chei atunci când memoria se umple.
+    command: ['redis-server', '--maxmemory-policy', 'noeviction']
+    ports:
+      - '127.0.0.1:6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Prinde toate emailurile trimise în dezvoltare. Interfață web: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:1025:1025'
+      - '127.0.0.1:8025:8025'
+
+volumes:
+  postgres-data:

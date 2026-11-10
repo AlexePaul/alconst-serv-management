@@ -1,0 +1,32 @@
+# Dependențe
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+.output/
+.nuxt/
+.nitro/
+.data/
+.cache/
+*.tsbuildinfo
+
+# Prisma – clientul este generat la build
+packages/database/src/generated/
+
+# Mediu și secrete
+.env
+.env.*
+!.env.example
+
+# Loguri și fișiere temporare
+*.log
+logs/
+coverage/
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/*
+!.vscode/extensions.json

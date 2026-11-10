@@ -1,0 +1,127 @@
+# Configurația de PRODUCȚIE (un singur server / VPS).
+#
+#   cp .env.example .env.production   # apoi completează valorile reale
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# Singurul serviciu expus public este `web` (Caddy, porturile 80/443). Baza de date și Redis
+# sunt accesibile doar din rețeaua internă Docker.
+
+name: alconst
+
+x-app-env: &app-env
+  NODE_ENV: production
+  APP_URL: https://${APP_DOMAIN:?APP_DOMAIN este obligatoriu}
+  DATABASE_URL: postgresql://${POSTGRES_USER:-alconst}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD este obligatoriu}@postgres:5432/${POSTGRES_DB:-alconst}
+  REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD este obligatoriu}@redis:6379
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL este obligatoriu}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/node.Dockerfile
+      target: api
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      API_PORT: 3001
+      # API-ul se află în spatele unui singur reverse proxy (Caddy).
+      TRUST_PROXY: 1
+      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-14}
+      PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-60}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/node.Dockerfile
+      target: worker
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      SMTP_HOST: ${SMTP_HOST:?SMTP_HOST este obligatoriu}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-Alconst Serv <no-reply@alconst-serv.ro>}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Aplică migrările bazei de date, apoi se oprește. API-ul pornește doar dacă a reușit.
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/node.Dockerfile
+      target: migrate
+    restart: 'no'
+    environment:
+      <<: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-alconst}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-alconst}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD}
+      - --maxmemory-policy
+      - noeviction
+      - --appendonly
+      - 'yes'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+volumes:
+  postgres-data:
+  redis-data:
+  caddy-data:
+  caddy-config:

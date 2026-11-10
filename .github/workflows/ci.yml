@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, typecheck, teste și build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: alconst
+          POSTGRES_PASSWORD: alconst
+          POSTGRES_DB: alconst_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U alconst -d alconst_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgresql://alconst:alconst@127.0.0.1:5432/alconst_test
+      TEST_REDIS_URL: redis://127.0.0.1:6379/1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Instalează dependențele
+        run: pnpm install --frozen-lockfile
+
+      - name: Compilează pachetele comune
+        run: pnpm build:packages
+
+      - name: Verifică formatarea
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Teste unitare
+        run: pnpm test
+
+      - name: Teste e2e (API)
+        run: pnpm test:e2e
+
+      - name: Build
+        run: pnpm build

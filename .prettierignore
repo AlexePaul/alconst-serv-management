@@ -1,0 +1,10 @@
+node_modules
+dist
+.output
+.nuxt
+coverage
+pnpm-lock.yaml
+packages/database/src/generated
+packages/database/prisma/migrations
+# Frontend-ul este formatat de ESLint (@nuxt/eslint stylistic)
+apps/web

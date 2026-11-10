@@ -1,0 +1,95 @@
+// Schema bazei de date – Alconst Serv Management.
+// Etapa 1 (Foundation): utilizatori, sesiuni, resetare parolă, jurnal de activitate.
+// Entitățile pentru clienți, task-uri și documente se adaugă în etapele următoare.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  EMPLOYEE
+}
+
+/// Utilizator intern al aplicației (personal Alconst Serv). Nu există înregistrare publică.
+model User {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  /// Stocat întotdeauna cu litere mici.
+  email              String    @unique
+  passwordHash       String
+  firstName          String
+  lastName           String
+  role               UserRole  @default(EMPLOYEE)
+  isActive           Boolean   @default(true)
+  /// Setat când un administrator stabilește o parolă temporară.
+  mustChangePassword Boolean   @default(false)
+  passwordChangedAt  DateTime?
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  activityLogs        ActivityLog[]
+
+  @@map("users")
+}
+
+/// Sesiune de autentificare. În bază se păstrează doar hash-ul token-ului din cookie.
+model Session {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  tokenHash  String   @unique
+  userId     String   @db.Uuid
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  expiresAt  DateTime
+  ip         String?
+  userAgent  String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Token de resetare a parolei, de unică folosință. Se păstrează doar hash-ul.
+model PasswordResetToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  tokenHash String    @unique
+  userId    String    @db.Uuid
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+/// Jurnal de activitate (audit log). Înregistrările nu se modifică și nu se șterg din aplicație.
+model ActivityLog {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  /// Utilizatorul care a efectuat acțiunea; null pentru acțiuni anonime (ex. login eșuat).
+  userId      String?  @db.Uuid
+  action      String
+  entityType  String?
+  entityId    String?
+  entityLabel String?
+  metadata    Json?
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@map("activity_logs")
+}

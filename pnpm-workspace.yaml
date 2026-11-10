@@ -1,0 +1,14 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Doar aceste dependențe au voie să ruleze scripturi de instalare (build nativ / codegen).
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - esbuild
+  - msgpackr-extract
+  - prisma
+  - '@prisma/engines'
+  - sharp
+  - unrs-resolver
+  - vue-demi

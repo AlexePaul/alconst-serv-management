@@ -1,0 +1,35 @@
+{
+  "name": "@alconst/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Frontend (Nuxt) – Alconst Serv Management",
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "typecheck": "nuxt typecheck",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@alconst/shared": "workspace:*",
+    "@fontsource-variable/inter": "^5.2.8",
+    "@iconify-json/lucide": "^1.2.152",
+    "@nuxt/ui": "^4.12.0",
+    "@vite-pwa/nuxt": "^1.1.1",
+    "nuxt": "^4.6.4",
+    "tailwindcss": "^4.3.5",
+    "vue": "^3.5.45",
+    "vue-router": "^5.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "^1.17.0",
+    "eslint": "^10.14.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.2",
+    "vue-tsc": "^3.3.14"
+  }
+}
