@@ -3,7 +3,6 @@ import type { TaskDto, TasksOverviewDto } from '@alconst/shared'
 
 /** Ce are nevoie de atenție: restanțe, termene de azi și din următoarele 7 zile. */
 const api = useApi()
-const toast = useToast()
 
 const scope = ref<'mine' | 'all'>('mine')
 const scopeItems = [
@@ -51,33 +50,13 @@ const sections = computed(() => [
 
 const formOpen = ref(false)
 const selected = ref<TaskDto | null>(null)
-const busyId = ref<string | null>(null)
 
 function openTask(task: TaskDto) {
   selected.value = task
   formOpen.value = true
 }
 
-const visitOpen = ref(false)
-const visitTask = ref<TaskDto | null>(null)
-
-async function complete(task: TaskDto) {
-  if (task.kind === 'VISIT') {
-    visitTask.value = task
-    visitOpen.value = true
-    return
-  }
-  busyId.value = task.id
-  try {
-    await api(`/tasks/${task.id}`, { method: 'PATCH', body: { status: 'DONE' } })
-    toast.add({ title: 'Task finalizat', description: task.title, color: 'success', icon: 'i-lucide-check' })
-    await refresh()
-  } catch (error) {
-    toast.add({ title: 'Operațiunea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
-  } finally {
-    busyId.value = null
-  }
-}
+const { toggle: complete, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(() => refresh())
 </script>
 
 <template>
@@ -179,7 +158,12 @@ async function complete(task: TaskDto) {
       class="mt-4"
     />
 
-    <TasksVisitCompleteDialog v-model:open="visitOpen" :task="visitTask" @done="refresh()" />
+    <TasksCompleteDialog
+      v-model:open="dialogOpen"
+      :task="dialogTask"
+      :skipped="skipped"
+      @done="refresh()"
+    />
     <TasksTaskFormModal
       v-model:open="formOpen"
       :task="selected"

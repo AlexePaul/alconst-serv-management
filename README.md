@@ -134,6 +134,8 @@ Testele e2e folosesc o bază de date separată (`alconst_test`), creată automat
   utilizator.
 - **Deplasări**: interval orar estimat, evidența completării fișelor și preluarea unei deplasări
   de către un coleg.
+- **Apariții sărite**: la bifarea unei deplasări, aplicația întreabă dacă și cea rămasă nebifată
+  din perioada anterioară este făcută și le finalizează împreună.
 - **Predarea definitivă a unui client**: direct de către un administrator sau prin cerere între
   colegi, cu acordul amândurora.
 - **Emailuri imediate** pentru task-urile atribuite și cererile de predare.

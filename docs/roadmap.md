@@ -66,6 +66,9 @@ Completări după discuția din noiembrie 2026:
       dezactivare, schimbarea responsabilului, ora de vară/iarnă, anulări, rulări simultane
       (rezultatele sunt în [arhitectura.md](arhitectura.md), „Cazuri-limită verificate prin teste”)
 
+- [x] Apariții sărite: la bifarea unei deplasări, aplicația întreabă dacă și cea rămasă nebifată
+      din perioada anterioară este făcută și le finalizează împreună
+
 Amânat: **Web Push**. Necesită un service worker propriu, chei VAPID și stocarea abonamentelor,
 iar pe iPhone funcționează doar pentru aplicația instalată pe ecranul principal. Notificările din
 aplicație și emailul acoperă nevoia de bază; Web Push se adaugă în etapa de stabilizare.
@@ -155,6 +158,10 @@ permite deja modelul de date pentru ele este descris în [arhitectura.md](arhite
   nu se trimit prin email.
 - **SmartBill**: nu se implementează acum; emiterea facturilor și verificarea încasărilor se
   analizează separat.
+- **Fără planificare automată deocamdată**: aplicația știe doar ce trebuie făcut și cât de des
+  (lunar, la 3 luni etc.); fiecare angajat bifează ce a făcut. Nu propune zile, ore sau trasee.
+- **Clienți săriți**: un client ratat într-o lună este de regulă vizitat luna următoare, pentru
+  ambele perioade; ambele se marchează ca făcute, fără alte explicații.
 - **Documente**: înainte de implementarea template-urilor, firma furnizează câte un DOCX
   anonimizat pentru fiecare tip (tematică de instruire, decizie internă, proces-verbal).
 

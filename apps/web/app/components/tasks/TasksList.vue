@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Paginated, TaskDto, TaskKind } from '@alconst/shared'
-import { isOpenTask } from '@alconst/shared'
 
 /**
  * Lista de task-uri cu căutare, filtre și grupare după urgență.
@@ -87,7 +86,6 @@ function clearFilters() {
 const formOpen = ref(false)
 const selected = ref<TaskDto | null>(null)
 const createKind = ref<TaskKind>('GENERAL')
-const busyId = ref<string | null>(null)
 
 function openCreate(kind: TaskKind = 'GENERAL') {
   selected.value = null
@@ -114,40 +112,14 @@ async function onChanged() {
   emit('changed')
 }
 
-const visitOpen = ref(false)
-const visitTask = ref<TaskDto | null>(null)
-
 /** Arată deplasările finalizate pentru care fișele nu au fost confirmate (ex. din pagina principală). */
 function showMissingSheets() {
   status.value = 'missing-sheets'
   assignee.value = 'all'
 }
 
-/** Bifa rapidă: finalizează un task deschis sau redeschide unul finalizat. */
-async function toggle(task: TaskDto) {
-  // La o deplasare se întreabă mai întâi dacă fișele au fost completate.
-  if (task.kind === 'VISIT' && isOpenTask(task.status)) {
-    visitTask.value = task
-    visitOpen.value = true
-    return
-  }
-  busyId.value = task.id
-  try {
-    const next = isOpenTask(task.status) ? 'DONE' : 'TODO'
-    await api(`/tasks/${task.id}`, { method: 'PATCH', body: { status: next } })
-    toast.add({
-      title: next === 'DONE' ? 'Task finalizat' : 'Task redeschis',
-      description: task.title,
-      color: 'success',
-      icon: 'i-lucide-check'
-    })
-    await onChanged()
-  } catch (error) {
-    toast.add({ title: 'Operațiunea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
-  } finally {
-    busyId.value = null
-  }
-}
+/** Bifa rapidă: finalizează un task deschis (cu întrebările necesare) sau redeschide unul finalizat. */
+const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(onChanged)
 
 defineExpose({ openCreate, openById, refresh, showMissingSheets })
 </script>
@@ -252,7 +224,12 @@ defineExpose({ openCreate, openById, refresh, showMissingSheets })
       </div>
     </template>
 
-    <TasksVisitCompleteDialog v-model:open="visitOpen" :task="visitTask" @done="onChanged" />
+    <TasksCompleteDialog
+      v-model:open="dialogOpen"
+      :task="dialogTask"
+      :skipped="skipped"
+      @done="onChanged"
+    />
     <TasksTaskFormModal
       v-model:open="formOpen"
       :task="selected"

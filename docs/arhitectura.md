@@ -220,6 +220,11 @@ este o execuție concretă, cu termen și responsabil. Un task poate exista și 
 - **Fișele**: aplicația ține doar evidența faptului că au fost completate (cine a confirmat și
   când), nu fișele propriu-zise. O deplasare poate fi finalizată și fără confirmare; rămâne atunci
   semnalată pe pagina principală și în filtrul „Deplasări fără fișe”.
+- **Apariții sărite**: dacă un client este ratat într-o lună, apariția rămâne ca restanță. Când
+  cineva bifează apariția următoare a aceleiași obligații, aplicația întreabă dacă și cea rămasă
+  din urmă este făcută; un singur clic le finalizează pe amândouă. Nu se face nicio distincție
+  între „a fost făcută atunci, dar nu a fost bifată” și „a fost recuperată acum”. Fiecare task
+  își păstrează propria intrare în istoric.
 - **Intervalul orar** (`startTime`–`endTime`, opțional) este o estimare a responsabilului, nu o
   programare fixă. Fiecare își organizează singur calendarul: mută deplasările pe altă zi sau la
   alte ore, iar aceste ajustări se păstrează când obligația este modificată fără legătură cu ele.

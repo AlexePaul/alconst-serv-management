@@ -298,6 +298,33 @@ export class TasksService {
     });
   }
 
+  /**
+   * Aparițiile anterioare ale aceleiași obligații care au rămas nebifate (ex. luna trecută a fost
+   * sărită). La finalizarea unui task, interfața întreabă dacă trebuie marcate și ele ca făcute –
+   * de regulă clientul sărit este vizitat luna următoare, pentru ambele perioade.
+   */
+  async skipped(id: string, auth: AuthContext): Promise<TaskDto[]> {
+    const task = await this.find(id, auth);
+    if (!task.obligationId) return [];
+    const rows = await this.prisma.db.task.findMany({
+      where: {
+        AND: [
+          this.access.taskScope(auth.user),
+          {
+            obligationId: task.obligationId,
+            id: { not: task.id },
+            status: { in: OPEN },
+            dueDate: { lt: task.dueDate },
+          },
+        ],
+      },
+      include: taskInclude,
+      orderBy: { dueDate: 'asc' },
+      take: 24,
+    });
+    return rows.map(toTaskDto);
+  }
+
   /** Istoricul unui task, reconstituit din jurnalul de activitate. */
   async history(id: string, auth: AuthContext): Promise<TaskHistoryEntryDto[]> {
     await this.find(id, auth);

@@ -354,6 +354,88 @@ describe('Robustețea obligațiilor recurente (e2e)', () => {
     });
   });
 
+  describe('apariții sărite (clientul a fost ratat luna trecută)', () => {
+    const get = (url: string, cookie: string) => t.http().get(url).set('Cookie', cookie);
+    /** O apariție mai veche a obligației, rămasă nebifată. */
+    const pastOccurrence = (obligationId: string, daysAgo: number, status = 'TODO') =>
+      t.prisma.db.task.create({
+        data: {
+          title: 'Deplasare periodică',
+          kind: 'VISIT',
+          status: status as 'TODO',
+          dueDate: new Date(`${addDays(today, -daysAgo)}T00:00:00Z`),
+          occurrenceDate: new Date(`${addDays(today, -daysAgo)}T00:00:00Z`),
+          obligationId,
+          clientId,
+          assigneeId: ana.id,
+          searchText: 'deplasare periodica',
+        },
+      });
+
+    it('la finalizare sunt găsite aparițiile anterioare nebifate ale aceleiași obligații', async () => {
+      const obligation = await createObligation();
+      const other = await createObligation({ title: 'Altă obligație' });
+      const [current, next] = await tasksOf(obligation.id);
+      const older = await pastOccurrence(obligation.id, 28);
+      const newer = await pastOccurrence(obligation.id, 14);
+      await pastOccurrence(obligation.id, 42, 'DONE');
+      await pastOccurrence(obligation.id, 56, 'CANCELLED');
+      await pastOccurrence(other.id, 14);
+
+      const skipped = await get(`/api/tasks/${current!.id}/skipped`, ana.cookie).expect(200);
+      expect(skipped.body.map((task: Task) => task.id)).toEqual([older.id, newer.id]);
+
+      // Pentru apariția următoare, și cea de azi contează ca sărită cât timp nu este bifată.
+      const forNext = await get(`/api/tasks/${next!.id}/skipped`, ana.cookie).expect(200);
+      expect(forNext.body).toHaveLength(3);
+      // Cea mai veche nu are nimic înaintea ei.
+      expect((await get(`/api/tasks/${older.id}/skipped`, ana.cookie)).body).toEqual([]);
+    });
+
+    it('bifate împreună, toate rămân finalizate și nu mai apar ca restanțe', async () => {
+      const obligation = await createObligation();
+      const [current] = await tasksOf(obligation.id);
+      const missed = await pastOccurrence(obligation.id, 14);
+      const before = await get('/api/tasks/overview?scope=mine', ana.cookie).expect(200);
+      expect(before.body.counts.overdue).toBe(1);
+
+      // Exact ce face interfața când utilizatorul confirmă: întâi cea sărită, apoi cea curentă.
+      for (const id of [missed.id, current!.id]) {
+        await patch(`/api/tasks/${id}`, ana.cookie, {
+          status: 'DONE',
+          sheetsCompleted: true,
+        }).expect(200);
+      }
+      await workerRun();
+
+      const after = await get('/api/tasks/overview?scope=mine', ana.cookie).expect(200);
+      expect(after.body.counts).toMatchObject({ overdue: 0, dueToday: 0 });
+      const tasks = await tasksOf(obligation.id);
+      expect(tasks.slice(0, 2).map((task) => task.status)).toEqual(['DONE', 'DONE']);
+      expect((await get(`/api/tasks/${current!.id}/skipped`, ana.cookie)).body).toEqual([]);
+      // Fiecare are propria intrare în istoric, cu cine și când a bifat-o.
+      const history = await get(`/api/tasks/${missed.id}/history`, ana.cookie).expect(200);
+      expect(history.body[0]).toMatchObject({ user: { id: ana.id } });
+      await expectNoDuplicates();
+    });
+
+    it('task-urile fără obligație nu au apariții sărite, iar accesul rămâne cel obișnuit', async () => {
+      const manual = (
+        await post('/api/tasks', ana.cookie, { title: 'Sună clientul', dueDate: today }).expect(201)
+      ).body as { id: string };
+      expect((await get(`/api/tasks/${manual.id}/skipped`, ana.cookie)).body).toEqual([]);
+
+      const obligation = await createObligation();
+      const [current] = await tasksOf(obligation.id);
+      await pastOccurrence(obligation.id, 14);
+      // Dan nu are acces la client: nu vede nici task-ul…
+      await get(`/api/tasks/${current!.id}/skipped`, dan.cookie).expect(404);
+      // …iar dacă preia doar deplasarea de azi, nu vede aparițiile vechi ale colegei.
+      await patch(`/api/tasks/${current!.id}`, ana.cookie, { assigneeId: dan.id }).expect(200);
+      expect((await get(`/api/tasks/${current!.id}/skipped`, dan.cookie)).body).toEqual([]);
+    });
+  });
+
   describe('arhivarea clientului', () => {
     it('suspendă obligațiile: retrage task-urile viitoare neîncepute și păstrează restul', async () => {
       const obligation = await createObligation();

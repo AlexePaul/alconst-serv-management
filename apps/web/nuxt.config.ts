@@ -64,7 +64,11 @@ export default defineNuxtConfig({
     provider: 'none',
     fallbackToApi: false,
     clientBundle: {
-      scan: true
+      // Implicit sunt scanate doar componentele; unele iconițe sunt definite în fișiere .ts
+      // (de exemplu în `utils/`), așa că le includem și pe acestea.
+      scan: {
+        globInclude: ['**/*.{vue,ts}']
+      }
     }
   },
 

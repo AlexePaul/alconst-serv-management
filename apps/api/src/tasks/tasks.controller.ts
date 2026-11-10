@@ -55,6 +55,14 @@ export class TasksController {
     return this.tasks.history(id, auth);
   }
 
+  @Get(':id/skipped')
+  skipped(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAuth() auth: AuthContext,
+  ): Promise<TaskDto[]> {
+    return this.tasks.skipped(id, auth);
+  }
+
   @Post()
   create(
     @Body() dto: CreateTaskDto,

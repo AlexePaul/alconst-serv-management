@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import type { Paginated, TaskDto } from '@alconst/shared'
-import { addDays, addMonths, diffDays, endOfMonth, isOpenTask, startOfMonth, startOfWeek } from '@alconst/shared'
+import { addDays, addMonths, diffDays, endOfMonth, startOfMonth, startOfWeek } from '@alconst/shared'
 
 useHead({ title: 'Calendar' })
 
 const api = useApi()
-const toast = useToast()
 
 type View = 'month' | 'week' | 'day'
 
@@ -112,7 +111,6 @@ function chipClass(task: TaskDto): string {
 const formOpen = ref(false)
 const selected = ref<TaskDto | null>(null)
 const createDate = ref(today)
-const busyId = ref<string | null>(null)
 
 function openTask(task: TaskDto) {
   selected.value = task
@@ -125,25 +123,7 @@ function openCreate(day: string) {
   formOpen.value = true
 }
 
-const visitOpen = ref(false)
-const visitTask = ref<TaskDto | null>(null)
-
-async function toggle(task: TaskDto) {
-  if (task.kind === 'VISIT' && isOpenTask(task.status)) {
-    visitTask.value = task
-    visitOpen.value = true
-    return
-  }
-  busyId.value = task.id
-  try {
-    await api(`/tasks/${task.id}`, { method: 'PATCH', body: { status: isOpenTask(task.status) ? 'DONE' : 'TODO' } })
-    await refresh()
-  } catch (error) {
-    toast.add({ title: 'Operațiunea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
-  } finally {
-    busyId.value = null
-  }
-}
+const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(() => refresh())
 </script>
 
 <template>
@@ -416,7 +396,12 @@ async function toggle(task: TaskDto) {
         </template>
       </div>
 
-      <TasksVisitCompleteDialog v-model:open="visitOpen" :task="visitTask" @done="refresh()" />
+      <TasksCompleteDialog
+        v-model:open="dialogOpen"
+        :task="dialogTask"
+        :skipped="skipped"
+        @done="refresh()"
+      />
       <TasksTaskFormModal
         v-model:open="formOpen"
         :task="selected"
