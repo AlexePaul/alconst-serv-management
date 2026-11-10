@@ -31,6 +31,8 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 # --- Migrări: rulează `prisma migrate deploy` înainte de pornirea API-ului ----------------------
 FROM build AS migrate
 ENV NODE_ENV=production
+# CLI-ul Prisma nu trebuie să contacteze serverele Prisma (verificarea de versiune) din producție.
+ENV CHECKPOINT_DISABLE=1
 WORKDIR /repo/packages/database
 USER node
 CMD ["pnpm", "exec", "prisma", "migrate", "deploy"]

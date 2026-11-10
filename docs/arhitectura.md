@@ -107,17 +107,65 @@ Fontul (Inter) și iconițele (Lucide) sunt incluse în build. Aplicația nu fac
 servicii terțe (Google Fonts, API-ul Iconify etc.) – verificat automat în browser. Asta contează
 pentru confidențialitate și permite o politică CSP strictă (`connect-src 'self'`).
 
-## Modelul de date (Etapa 1)
+## Modelul de date
 
-| Tabel                   | Rol                                                   |
-| ----------------------- | ----------------------------------------------------- |
-| `users`                 | Utilizatori interni, rol, stare, hash-ul parolei      |
-| `sessions`              | Sesiuni active (hash token, expirare, IP, user agent) |
-| `password_reset_tokens` | Token-uri de resetare, de unică folosință             |
-| `activity_logs`         | Jurnal de activitate (cine, ce, asupra cui, când)     |
+| Tabel                   | Rol                                                                      |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `users`                 | Utilizatori interni, rol, stare, hash-ul parolei                         |
+| `sessions`              | Sesiuni active (hash token, expirare, IP, user agent)                    |
+| `password_reset_tokens` | Token-uri de resetare, de unică folosință                                |
+| `activity_logs`         | Jurnal de activitate (cine, ce, asupra cui, când)                        |
+| `clients`               | Companiile cliente                                                       |
+| `client_assignments`    | Responsabilii unui client (client ↔ utilizator intern)                   |
+| `services`              | Catalogul serviciilor oferite de firmă                                   |
+| `client_services`       | Serviciile prestate unui client                                          |
+| `locations`             | Punctele de lucru ale clienților                                         |
+| `employees`             | Angajații clienților (date personale)                                    |
+| `contracts`             | Contracte: perioadă, status                                              |
+| `contract_fees`         | Tarifele unui contract: sumă + frecvență, opțional legate de un serviciu |
 
-Entitățile pentru clienți, task-uri și documente se adaugă în etapele respective, nu în avans.
+Entitățile pentru task-uri și documente se adaugă în etapele respective, nu în avans.
 Cheile primare sunt UUID v7 (ordonabile cronologic).
+
+### Accesul la clienți
+
+Regula este implementată într-un singur loc (`ClientAccessService`) și se aplică tuturor datelor
+legate de un client – puncte de lucru, angajați, contracte:
+
+- administratorii văd și modifică toți clienții și stabilesc responsabilii;
+- un angajat vede și modifică doar clienții la care este responsabil; când adaugă un client,
+  devine automat responsabilul lui;
+- pentru clienții inaccesibili API-ul răspunde „nu există” (404), astfel încât un angajat să nu
+  poată afla ce alți clienți are firma;
+- ștergerea definitivă a unui client este rezervată administratorilor.
+
+### Contracte și tarife
+
+Clienții plătesc foarte diferit: lunar, săptămânal, la 3 luni, la deplasare sau combinat. De aceea
+un contract nu are un singur „preț”, ci o listă de **tarife**, fiecare cu:
+
+- o sumă (lei);
+- o frecvență = unitate (`WEEK`, `MONTH`, `YEAR`, `VISIT`, `ONCE`) + interval
+  (ex. `MONTH` + 3 = la 3 luni);
+- opțional un serviciu din catalog și/sau o descriere liberă.
+
+Exemplu: „400 lei lunar pentru SSM + 300 lei la 3 luni pentru verificare + 150 lei la fiecare
+deplasare suplimentară” înseamnă trei tarife pe același contract.
+
+Din tarifele recurente se calculează un **venit lunar estimat** (pe contract, pe client și total).
+Tarifele „la deplasare” și cele unice nu intră în estimare, pentru că depind de câte deplasări au
+loc. Aplicația ține evidența a ceea ce s-a convenit, **nu** a încasărilor efective – facturarea și
+urmărirea plăților sunt în afara etapelor curente.
+
+Frecvența deplasărilor (când mergem la client) nu ține de contract, ci de obligații și task-uri –
+Etapa 3.
+
+### Căutare
+
+Clienții și angajații au o coloană `searchText` – textul relevant, fără diacritice și cu litere
+mici – actualizată la fiecare salvare. Căutarea normalizează la fel termenul introdus, deci
+„stefan” găsește „Ștefan”. Soluția nu depinde de extensii PostgreSQL și poate primi ulterior un
+index trigram dacă volumul o cere.
 
 ## Convenții
 

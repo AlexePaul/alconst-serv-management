@@ -3,7 +3,7 @@
 > **Nimic din acest document nu a fost executat.** Aplicația nu este instalată în producție și
 > DNS-ul nu a fost modificat. Pașii de mai jos descriu cum se face instalarea, după aprobare.
 
-Ținta este un singur server (VPS) cu Docker, la `https://app.alconst-serv.ro`. Website-ul public
+Ținta este o instanță AWS EC2 cu Docker, la `https://app.alconst-serv.ro`. Website-ul public
 `alconst-serv.ro` nu este atins: aplicația are propriul subdomeniu, propriul server/containere și
 propriul pipeline.
 
@@ -22,11 +22,36 @@ propriul pipeline.
 
 ## Cerințe
 
-- Server Linux cu Docker Engine și pluginul Compose; 2 vCPU / 4 GB RAM sunt suficiente pentru
-  început (generarea documentelor și LibreOffice, din Etapa 4, vor folosi mai mult).
-- Porturile 80 și 443 deschise.
-- Înregistrare DNS de tip `A` (și `AAAA`, dacă există IPv6): `app.alconst-serv.ro` → IP-ul serverului.
-- Un cont SMTP pentru emailurile aplicației (resetare parolă; ulterior notificări).
+- Instanță EC2 Linux (Ubuntu LTS sau Amazon Linux) cu Docker Engine și pluginul Compose.
+  2 vCPU / 4 GB RAM sunt suficiente pentru început (de exemplu `t3.medium`); generarea documentelor
+  și LibreOffice, din Etapa 4, vor folosi mai mult. Imaginile au fost construite și testate doar
+  pe x86-64; instanțele ARM (`t4g`) nu au fost încercate.
+- **Elastic IP** asociat instanței, ca adresa să nu se schimbe la repornire.
+- **Security Group**: 80 și 443 deschise public; 22 (SSH) doar de la adresele administratorilor
+  sau, preferabil, acces prin Session Manager. PostgreSQL și Redis nu se expun.
+- Înregistrare DNS de tip `A`: `app.alconst-serv.ro` → Elastic IP. Website-ul public rămâne
+  neschimbat; se adaugă doar această înregistrare nouă.
+- Trimiterea emailurilor prin **Resend** (vezi mai jos).
+- Volumul EBS criptat; snapshot-urile EBS se pot folosi ca plasă de siguranță, pe lângă backup-ul
+  bazei de date.
+
+### Email prin Resend
+
+Căsuțele de email ale firmei sunt pe Zoho, iar trimiterea automată se face prin Resend – la fel
+ca pe website. Aplicația trimite prin SMTP, deci nu este nevoie de cod specific Resend:
+
+| Variabilă       | Valoare                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| `SMTP_HOST`     | `smtp.resend.com`                                                                          |
+| `SMTP_PORT`     | `465`                                                                                      |
+| `SMTP_USER`     | `resend`                                                                                   |
+| `SMTP_PASSWORD` | o cheie API Resend, creată special pentru aplicație                                        |
+| `MAIL_FROM`     | o adresă de pe domeniul verificat în Resend, ex. `Alconst Serv <no-reply@alconst-serv.ro>` |
+
+Valorile sunt cele din documentația Resend pentru SMTP; verifică-le în contul Resend la
+configurare. Recomand o cheie API separată de cea a website-ului, cu drept doar de trimitere, ca
+să poată fi revocată independent. AWS limitează implicit portul 25 la ieșire; porturile 465 și 587
+nu sunt afectate.
 
 ## Instalare
 
@@ -50,7 +75,7 @@ cp .env.example .env.production
 | `ACME_EMAIL`                                           | Adresă de contact pentru certificatul TLS   |
 | `POSTGRES_PASSWORD`                                    | Parolă generată (`openssl rand -base64 32`) |
 | `REDIS_PASSWORD`                                       | Parolă generată (`openssl rand -base64 32`) |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | Datele contului SMTP                        |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | Datele Resend (vezi „Email prin Resend”)    |
 | `MAIL_FROM`                                            | Expeditorul emailurilor                     |
 
 Fișierul trebuie să fie lizibil doar de utilizatorul care rulează Docker (`chmod 600`).
@@ -100,7 +125,8 @@ docker compose -f docker-compose.prod.yml --env-file .env.production exec -T pos
 ```
 
 Backup-urile trebuie păstrate **în afara serverului** și restaurarea trebuie testată periodic.
-Din Etapa 4 se adaugă și backup-ul fișierelor (documente, template-uri) din stocarea S3.
+Din Etapa 4, documentele și template-urile vor sta în Amazon S3 (bucket privat, cu versionare),
+accesat de instanță printr-un rol IAM – fără chei de acces stocate pe server.
 
 ## CI/CD
 
@@ -114,5 +140,5 @@ configurat; se adaugă după alegerea serverului, ca pipeline separat de cel al 
 - Ambele fișiere Compose sunt valide (`docker compose config`).
 - Build-ul static al frontend-ului a fost rulat în browser cu service worker-ul activ.
 
-**Nu a fost verificat:** pornirea întregului `docker-compose.prod.yml` pe un server real, obținerea
-certificatului TLS și trimiterea de emailuri printr-un SMTP real.
+**Nu a fost verificat:** pornirea întregului `docker-compose.prod.yml` pe o instanță EC2 reală,
+obținerea certificatului TLS și trimiterea de emailuri prin Resend.

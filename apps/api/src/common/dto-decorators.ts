@@ -1,6 +1,14 @@
 import { applyDecorators } from '@nestjs/common';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsISO8601,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@alconst/shared';
 
 /** Adresă de email validă, normalizată (fără spații, cu litere mici). */
@@ -36,5 +44,50 @@ export function IsTrimmedText(label: string, maxLength: number): PropertyDecorat
     IsString({ message: `${label} este obligatoriu.` }),
     MinLength(1, { message: `${label} este obligatoriu.` }),
     MaxLength(maxLength, { message: `${label} poate avea cel mult ${maxLength} caractere.` }),
+  );
+}
+
+/** Text opțional: spațiile de la capete sunt eliminate, iar textul gol devine `null` (șterge valoarea). */
+export function IsOptionalText(label: string, maxLength: number): PropertyDecorator {
+  return applyDecorators(
+    Transform(({ value }: { value: unknown }) => {
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      return trimmed === '' ? null : trimmed;
+    }),
+    IsOptional(),
+    IsString({ message: `${label} trebuie să fie un text.` }),
+    MaxLength(maxLength, { message: `${label} poate avea cel mult ${maxLength} caractere.` }),
+  );
+}
+
+/** Adresă de email opțională; textul gol devine `null`. */
+export function IsOptionalEmail(): PropertyDecorator {
+  return applyDecorators(
+    Transform(({ value }: { value: unknown }) => {
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim().toLowerCase();
+      return trimmed === '' ? null : trimmed;
+    }),
+    IsOptional(),
+    IsEmail({}, { message: 'Introdu o adresă de email validă.' }),
+    MaxLength(254, { message: 'Adresa de email este prea lungă.' }),
+  );
+}
+
+/** Dată calendaristică în format `YYYY-MM-DD`. */
+export function IsDateOnly(label: string): PropertyDecorator {
+  return applyDecorators(
+    Matches(/^\d{4}-\d{2}-\d{2}$/, { message: `${label} nu este o dată validă.` }),
+    IsISO8601({ strict: true }, { message: `${label} nu este o dată validă.` }),
+  );
+}
+
+/** Dată opțională în format `YYYY-MM-DD`; textul gol devine `null`. */
+export function IsOptionalDateOnly(label: string): PropertyDecorator {
+  return applyDecorators(
+    Transform(({ value }: { value: unknown }) => (value === '' ? null : value)),
+    IsOptional(),
+    IsDateOnly(label),
   );
 }

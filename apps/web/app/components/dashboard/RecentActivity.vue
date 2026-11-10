@@ -24,6 +24,19 @@ const ICONS: Partial<Record<string, string>> = {
   'user.activated': 'i-lucide-user-check'
 }
 
+/** Iconița unei acțiuni: cea specifică, altfel cea a tipului de entitate (prefixul acțiunii). */
+const GROUP_ICONS: Record<string, string> = {
+  client: 'i-lucide-building-2',
+  location: 'i-lucide-map-pin',
+  employee: 'i-lucide-users-round',
+  contract: 'i-lucide-file-signature',
+  service: 'i-lucide-briefcase'
+}
+
+function iconFor(action: string): string {
+  return ICONS[action] ?? GROUP_ICONS[action.split('.')[0] ?? ''] ?? 'i-lucide-activity'
+}
+
 function describe(entry: ActivityLogDto): string {
   const label = ACTIVITY_ACTION_LABELS[entry.action as ActivityAction] ?? entry.action
   return entry.entityLabel ? `${label}: ${entry.entityLabel}` : label
@@ -92,7 +105,7 @@ function actor(entry: ActivityLogDto): string {
           class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full"
           :class="entry.action === 'auth.login_failed' ? 'bg-warning/10 text-warning' : 'bg-elevated text-muted'"
         >
-          <UIcon :name="ICONS[entry.action] ?? 'i-lucide-activity'" class="size-4" />
+          <UIcon :name="iconFor(entry.action)" class="size-4" />
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-sm text-default">

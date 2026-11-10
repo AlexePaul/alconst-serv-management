@@ -14,15 +14,16 @@ const soon = { disabled: true, badge: { label: 'În curând', color: 'neutral', 
 
 const mainItems = computed<NavigationMenuItem[]>(() => [
   { label: 'Acasă', icon: 'i-lucide-layout-dashboard', to: '/', exact: true, onSelect: close },
+  { label: 'Clienți', icon: 'i-lucide-building-2', to: '/clienti', onSelect: close },
+  { label: 'Angajați', icon: 'i-lucide-users-round', to: '/angajati', onSelect: close },
   { label: 'Task-uri', icon: 'i-lucide-list-checks', ...soon },
   { label: 'Calendar', icon: 'i-lucide-calendar-days', ...soon },
-  { label: 'Clienți', icon: 'i-lucide-building-2', ...soon },
-  { label: 'Angajați', icon: 'i-lucide-users-round', ...soon },
   { label: 'Documente', icon: 'i-lucide-file-text', ...soon }
 ])
 
 const adminItems = computed<NavigationMenuItem[]>(() => [
   { label: 'Administrare', type: 'label' },
+  { label: 'Servicii', icon: 'i-lucide-briefcase', to: '/servicii', onSelect: close },
   { label: 'Utilizatori', icon: 'i-lucide-user-cog', to: '/utilizatori', onSelect: close }
 ])
 </script>

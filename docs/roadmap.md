@@ -18,19 +18,25 @@ Aplicația se construiește incremental. Fiecare etapă livrează funcționalit�
 - [x] Teste (unitare + e2e), lint, typecheck, CI pe GitHub Actions
 - [x] Evaluarea bibliotecilor de editare DOCX, cu test practic
 
-## Etapa 2 – Clienți și angajați
+## Etapa 2 – Clienți și angajați ✅
 
-- CRUD companii cliente (date de identificare, contact, reprezentant legal, status)
-- Contracte (perioadă, servicii, preț, status)
-- Catalog de servicii configurabil și asocierea lor cu clienții
-- Puncte de lucru
-- Angajații clienților (cu punct de lucru, funcție, status)
-- Căutare, filtrare, paginare pe server
-- Import din Excel – de evaluat pe fișierele reale ale firmei
+- [x] Companii cliente: date de identificare, contact, reprezentant legal, status
+- [x] Responsabili: angajații văd și modifică doar clienții lor; administratorii văd tot
+- [x] Catalog de servicii configurabil și asocierea lui cu clienții
+- [x] Puncte de lucru
+- [x] Angajații clienților (funcție, punct de lucru, data angajării, status)
+- [x] Contracte cu oricâte tarife, fiecare cu propria frecvență; venit lunar estimat
+- [x] Avertizare pentru contractele care expiră, pe pagina principală și în pagina clientului
+- [x] Căutare fără diacritice, filtrare, paginare pe server
+- [x] Logo-ul și culorile firmei în interfață, iconițe și emailuri
+
+Importul din Excel a fost scos din plan: nu există fișiere Excel de migrat.
 
 ## Etapa 3 – Task-uri, obligații și calendar
 
-- Obligații recurente configurabile per client (fără frecvențe legale hardcodate)
+- Obligații recurente configurabile per client (fără frecvențe legale hardcodate), inclusiv
+  deplasările: unele lunare, altele săptămânale sau la 3 luni, uneori cu frecvențe diferite pentru
+  angajați diferiți ai aceluiași client
 - Generarea automată a task-urilor din obligații (job programat în worker)
 - Task-uri: responsabil, prioritate, termen, status, istoric de modificări
 - Calendar (zi / săptămână / lună) și vedere listă
@@ -69,21 +75,32 @@ Aplicația se construiește incremental. Fiecare etapă livrează funcționalit�
 | Prisma 8 schimbă modelul de lucru                                               | Mic    | Rămânem pe 7.x stabil; evaluare după lansarea finală                                                                   |
 | Ecosistem foarte nou (NestJS 12, BullMQ 6, Nuxt 4)                              | Mic    | Versiuni fixate în lockfile, teste automate, actualizări controlate                                                    |
 | Web Push pe iOS funcționează doar pentru PWA instalată, cu permisiune explicită | Mediu  | Emailul și notificările din aplicație rămân canalele de bază                                                           |
-| Stocarea S3 self-hosted (MinIO community a intrat în mod de mentenanță)         | Mediu  | Decizie la începutul Etapei 4: serviciu găzduit (ex. Hetzner, Cloudflare R2) sau Garage/SeaweedFS                      |
+| Stocarea fișierelor                                                             | Mic    | Amazon S3 (bucket privat, versionare), accesat prin rol IAM de pe instanța EC2                                         |
 | Un singur server = un singur punct de eșec                                      | Mediu  | Backup în afara serverului + procedură de restaurare (Etapa 5)                                                         |
+
+## Decizii luate împreună cu firma
+
+- **Identitate vizuală**: logo-ul oficial (din repository-ul website-ului) și bleumarinul lui.
+- **Găzduire**: AWS EC2; fișierele vor sta în Amazon S3.
+- **Email**: căsuțe pe Zoho, trimitere automată prin Resend (SMTP).
+- **Import Excel**: nu este necesar.
+- **Permisiuni**: un angajat vede și modifică doar clienții lui și își poate adăuga clienți noi.
+- **Încasări**: fiecare client are propriile sume și frecvențe; cerințele se vor rafina pe parcurs,
+  deci modelul de tarife este deliberat flexibil.
 
 ## Întrebări deschise
 
-Nu blochează Etapa 2, dar răspunsurile sunt necesare pe parcurs:
+Nu blochează Etapa 3, dar răspunsurile sunt necesare pe parcurs:
 
-1. **Identitate vizuală** – există un logo și culori oficiale? Acum se folosește un simbol
-   provizoriu (scut) și albastru; se schimbă din `apps/web/app/app.config.ts` și `apps/web/public/`.
-2. **Găzduire** – pe ce server/furnizor va rula aplicația? De aici depind stocarea fișierelor și
-   backup-ul.
-3. **Email** – ce cont SMTP folosim pentru emailurile aplicației (ex. `no-reply@alconst-serv.ro`)?
-4. **Documente reale** – câte un exemplu din fiecare tip (tematică, decizie, proces-verbal),
-   ideal anonimizate, pentru a testa editorul și a pregăti template-urile.
-5. **Fișierele Excel actuale** – un exemplu de structură, pentru a decide dacă importul merită
-   făcut în Etapa 2.
-6. **Permisiunile rolului „Angajat”** – ce poate vedea și modifica față de administrator
-   (de exemplu: toți clienții sau doar cei alocați? poate șterge?).
+1. **Documente reale** – câte un exemplu din fiecare tip (tematică, decizie, proces-verbal),
+   ideal anonimizate, pentru a testa editorul și a pregăti template-urile (Etapa 4).
+2. **Vizibilitatea sumelor** – acum un angajat vede tarifele clienților lui. Dacă sumele trebuie
+   să fie vizibile doar administratorilor, este o schimbare mică.
+3. **Urmărirea încasărilor** – aplicația reține ce s-a convenit (tarife și frecvențe), nu și ce
+   s-a încasat efectiv. Dacă vreți evidența plăților (plătit / restant per deplasare sau lună),
+   trebuie stabilit cum arată – se leagă natural de deplasările din Etapa 3.
+4. **Deplasări** – ce înseamnă concret o deplasare (cine merge, la ce punct de lucru, ce se face,
+   ce se încasează) și cum se stabilește frecvența ei pentru fiecare client.
+5. **Mai mulți responsabili pe client** – modelul permite mai mulți; de confirmat că așa se lucrează.
+6. **Ștergerea** – acum un angajat poate șterge puncte de lucru, angajați și contracte ale
+   clienților lui, dar nu clientul. De confirmat.

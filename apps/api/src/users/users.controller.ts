@@ -9,7 +9,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import type { UserDto } from '@alconst/shared';
+import type { UserDto, UserOptionDto } from '@alconst/shared';
 import { Client, CurrentAuth, Roles } from '../common/decorators.js';
 import type { AuthContext, ClientInfo } from '../common/request-context.js';
 import { AdminResetPasswordDto, CreateUserDto, UpdateUserDto } from './dto/users.dto.js';
@@ -25,6 +25,15 @@ export class UsersController {
   @Get()
   async list(): Promise<UserDto[]> {
     return (await this.users.list()).map(toUserDto);
+  }
+
+  /** Lista scurtă a utilizatorilor activi, pentru alegerea responsabililor unui client. */
+  @Get('options')
+  async options(): Promise<UserOptionDto[]> {
+    const users = await this.users.list();
+    return users
+      .filter((user) => user.isActive)
+      .map(({ id, firstName, lastName, role }) => ({ id, firstName, lastName, role }));
   }
 
   @Get(':id')

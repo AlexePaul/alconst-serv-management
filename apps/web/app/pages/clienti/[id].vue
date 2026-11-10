@@ -1,0 +1,411 @@
+<script setup lang="ts">
+import type { DropdownMenuItem, TabsItem } from '@nuxt/ui'
+import type { ClientDto } from '@alconst/shared'
+import { FetchError } from 'ofetch'
+
+const route = useRoute()
+const api = useApi()
+const toast = useToast()
+const { isAdmin } = useAuth()
+
+const clientId = computed(() => String(route.params.id))
+
+const { data: client, error, refresh } = useLazyAsyncData(
+  () => `client:${clientId.value}`,
+  () => api<ClientDto>(`/clients/${clientId.value}`)
+)
+
+useHead({ title: computed(() => client.value?.name ?? 'Client') })
+
+const notFound = computed(() => {
+  const cause = error.value?.cause ?? error.value
+  return cause instanceof FetchError && (cause.status === 404 || cause.status === 400)
+})
+
+// --- File -------------------------------------------------------------------------------------
+
+const tab = ref('details')
+const tabs = computed<TabsItem[]>(() => [
+  { label: 'Detalii', value: 'details', icon: 'i-lucide-info', slot: 'details' },
+  { label: 'Puncte de lucru', value: 'locations', icon: 'i-lucide-map-pin', badge: client.value?.locationCount || undefined, slot: 'locations' },
+  { label: 'Angajați', value: 'employees', icon: 'i-lucide-users-round', badge: client.value?.employeeCount || undefined, slot: 'employees' },
+  { label: 'Contracte', value: 'contracts', icon: 'i-lucide-file-signature', slot: 'contracts' }
+])
+
+// --- Acțiuni ---------------------------------------------------------------------------------
+
+const editOpen = ref(false)
+const servicesOpen = ref(false)
+const responsiblesOpen = ref(false)
+const statusOpen = ref(false)
+const deleteOpen = ref(false)
+const busy = ref(false)
+
+function onSaved(saved: ClientDto) {
+  client.value = saved
+}
+
+async function toggleStatus() {
+  if (!client.value) return
+  busy.value = true
+  try {
+    const saved = await api<ClientDto>(`/clients/${client.value.id}`, {
+      method: 'PATCH',
+      body: { isActive: !client.value.isActive }
+    })
+    client.value = saved
+    toast.add({ title: saved.isActive ? 'Clientul a fost activat' : 'Clientul a fost dezactivat', color: 'success', icon: 'i-lucide-check' })
+    statusOpen.value = false
+  } catch (error) {
+    toast.add({ title: 'Operațiunea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
+  } finally {
+    busy.value = false
+  }
+}
+
+async function removeClient() {
+  if (!client.value) return
+  busy.value = true
+  try {
+    await api(`/clients/${client.value.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Clientul a fost șters', description: client.value.name, color: 'success', icon: 'i-lucide-check' })
+    await navigateTo('/clienti')
+  } catch (error) {
+    toast.add({ title: 'Ștergerea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
+  } finally {
+    busy.value = false
+  }
+}
+
+function askStatusChange() {
+  statusOpen.value = true
+}
+
+function askDelete() {
+  deleteOpen.value = true
+}
+
+const moreActions = computed<DropdownMenuItem[][]>(() => {
+  const items: DropdownMenuItem[][] = [[
+    client.value?.isActive
+      ? { label: 'Dezactivează clientul', icon: 'i-lucide-archive', onSelect: askStatusChange }
+      : { label: 'Activează clientul', icon: 'i-lucide-archive-restore', onSelect: askStatusChange }
+  ]]
+  if (isAdmin.value) {
+    items.push([{ label: 'Șterge clientul', icon: 'i-lucide-trash-2', color: 'error', onSelect: askDelete }])
+  }
+  return items
+})
+</script>
+
+<template>
+  <UDashboardPanel id="client">
+    <template #header>
+      <UDashboardNavbar :title="client?.name ?? 'Client'">
+        <template #leading>
+          <UButton
+            to="/clienti"
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-arrow-left"
+            aria-label="Înapoi la lista de clienți"
+          />
+        </template>
+        <template v-if="client" #right>
+          <UButton
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-pencil"
+            label="Modifică"
+            class="hidden sm:inline-flex"
+            @click="editOpen = true"
+          />
+          <UButton
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-pencil"
+            aria-label="Modifică clientul"
+            class="sm:hidden"
+            @click="editOpen = true"
+          />
+          <UDropdownMenu :items="moreActions" :content="{ align: 'end' }">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-ellipsis-vertical"
+              aria-label="Mai multe acțiuni"
+            />
+          </UDropdownMenu>
+        </template>
+      </UDashboardNavbar>
+    </template>
+
+    <template #body>
+      <UEmpty
+        v-if="error"
+        :icon="notFound ? 'i-lucide-building-2' : 'i-lucide-cloud-off'"
+        :title="notFound ? 'Clientul nu a fost găsit' : 'Clientul nu a putut fi încărcat'"
+        :description="notFound
+          ? 'Clientul nu există sau nu ești responsabil pentru el.'
+          : apiErrorMessage(error.cause ?? error)"
+        :actions="notFound
+          ? [{ label: 'Înapoi la clienți', to: '/clienti', icon: 'i-lucide-arrow-left' }]
+          : [{ label: 'Încearcă din nou', icon: 'i-lucide-refresh-cw', onClick: () => { refresh() } }]"
+        variant="naked"
+      />
+
+      <div v-else-if="!client" class="mx-auto w-full max-w-6xl space-y-4">
+        <USkeleton class="h-20 w-full" />
+        <USkeleton class="h-10 w-80" />
+        <USkeleton class="h-64 w-full" />
+      </div>
+
+      <div v-else class="mx-auto w-full max-w-6xl space-y-6">
+        <!-- Rezumat -->
+        <div class="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-lg border border-default bg-default px-4 py-4 sm:px-6">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-lg font-semibold text-highlighted">
+                {{ client.name }}
+              </h2>
+              <StatusBadge :active="client.isActive" />
+            </div>
+            <p class="text-sm text-muted">
+              CUI {{ client.cui }}
+            </p>
+          </div>
+          <dl class="flex flex-wrap gap-x-8 gap-y-2 text-sm sm:ml-auto">
+            <div>
+              <dt class="text-muted">
+                Angajați activi
+              </dt>
+              <dd class="font-semibold text-highlighted">
+                {{ client.employeeCount }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-muted">
+                Puncte de lucru
+              </dt>
+              <dd class="font-semibold text-highlighted">
+                {{ client.locationCount }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-muted">
+                Venit lunar estimat
+              </dt>
+              <dd class="font-semibold text-highlighted">
+                {{ client.monthlyEstimate > 0 ? formatMoney(client.monthlyEstimate) : '—' }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <UTabs
+          v-model="tab"
+          :items="tabs"
+          variant="link"
+          :unmount-on-hide="false"
+          :ui="{ list: 'overflow-x-auto', trigger: 'shrink-0', label: 'overflow-visible whitespace-nowrap', content: 'pt-4' }"
+        >
+          <template #details>
+            <div class="grid gap-6 lg:grid-cols-2">
+              <UCard>
+                <template #header>
+                  <h2 class="font-semibold text-highlighted">
+                    Date companie
+                  </h2>
+                </template>
+                <dl class="space-y-3 text-sm">
+                  <div>
+                    <dt class="text-muted">
+                      CUI
+                    </dt>
+                    <dd class="text-highlighted">
+                      {{ client.cui }}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt class="text-muted">
+                      Nr. Registrul Comerțului
+                    </dt>
+                    <dd class="text-highlighted">
+                      {{ orDash(client.tradeRegisterNumber) }}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt class="text-muted">
+                      Adresă
+                    </dt>
+                    <dd class="text-highlighted">
+                      {{ orDash(client.address) }}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt class="text-muted">
+                      Reprezentant legal
+                    </dt>
+                    <dd class="text-highlighted">
+                      {{ orDash(client.legalRepresentative) }}
+                    </dd>
+                  </div>
+                </dl>
+              </UCard>
+
+              <UCard>
+                <template #header>
+                  <h2 class="font-semibold text-highlighted">
+                    Contact
+                  </h2>
+                </template>
+                <dl class="space-y-3 text-sm">
+                  <div>
+                    <dt class="text-muted">
+                      Persoană de contact
+                    </dt>
+                    <dd class="text-highlighted">
+                      {{ orDash(client.contactPerson) }}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt class="text-muted">
+                      Telefon
+                    </dt>
+                    <dd>
+                      <ULink v-if="client.phone" :to="`tel:${client.phone.replace(/\s+/g, '')}`" class="text-primary">
+                        {{ client.phone }}
+                      </ULink>
+                      <span v-else class="text-highlighted">—</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt class="text-muted">
+                      Email
+                    </dt>
+                    <dd>
+                      <ULink v-if="client.email" :to="`mailto:${client.email}`" class="break-all text-primary">
+                        {{ client.email }}
+                      </ULink>
+                      <span v-else class="text-highlighted">—</span>
+                    </dd>
+                  </div>
+                </dl>
+              </UCard>
+
+              <UCard>
+                <template #header>
+                  <div class="flex items-center justify-between gap-3">
+                    <h2 class="font-semibold text-highlighted">
+                      Servicii prestate
+                    </h2>
+                    <UButton
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      icon="i-lucide-pencil"
+                      label="Modifică"
+                      @click="servicesOpen = true"
+                    />
+                  </div>
+                </template>
+                <div v-if="client.services.length > 0" class="flex flex-wrap gap-2">
+                  <UBadge
+                    v-for="service in client.services"
+                    :key="service.id"
+                    :label="service.name"
+                    color="primary"
+                    variant="subtle"
+                    size="lg"
+                  />
+                </div>
+                <p v-else class="text-sm text-muted">
+                  Niciun serviciu asociat încă.
+                </p>
+              </UCard>
+
+              <UCard>
+                <template #header>
+                  <div class="flex items-center justify-between gap-3">
+                    <h2 class="font-semibold text-highlighted">
+                      Responsabili
+                    </h2>
+                    <UButton
+                      v-if="isAdmin"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      icon="i-lucide-pencil"
+                      label="Modifică"
+                      @click="responsiblesOpen = true"
+                    />
+                  </div>
+                </template>
+                <ul v-if="client.responsibles.length > 0" class="space-y-2">
+                  <li v-for="user in client.responsibles" :key="user.id" class="flex items-center gap-2 text-sm">
+                    <UAvatar :text="initials(user.firstName, user.lastName)" size="sm" />
+                    <span class="text-highlighted">{{ user.firstName }} {{ user.lastName }}</span>
+                  </li>
+                </ul>
+                <p v-else class="text-sm text-muted">
+                  Niciun responsabil. Clientul este vizibil doar administratorilor.
+                </p>
+              </UCard>
+
+              <UCard v-if="client.notes" class="lg:col-span-2">
+                <template #header>
+                  <h2 class="font-semibold text-highlighted">
+                    Observații
+                  </h2>
+                </template>
+                <p class="text-sm whitespace-pre-line text-default">
+                  {{ client.notes }}
+                </p>
+              </UCard>
+            </div>
+          </template>
+
+          <template #locations>
+            <ClientsLocationsTab :client-id="client.id" @changed="refresh()" />
+          </template>
+
+          <template #employees>
+            <ClientsEmployeesTable :client-id="client.id" @changed="refresh()" />
+          </template>
+
+          <template #contracts>
+            <ClientsContractsTab :client-id="client.id" @changed="refresh()" />
+          </template>
+        </UTabs>
+
+        <ClientsClientFormModal v-model:open="editOpen" :client="client" @saved="onSaved" />
+        <ClientsClientServicesModal v-model:open="servicesOpen" :client="client" @saved="onSaved" />
+        <ClientsResponsiblesModal
+          v-if="isAdmin"
+          v-model:open="responsiblesOpen"
+          :client="client"
+          @saved="onSaved"
+        />
+        <ConfirmDialog
+          v-model:open="statusOpen"
+          :title="client.isActive ? 'Dezactivezi clientul?' : 'Activezi clientul?'"
+          :description="client.isActive
+            ? `${client.name} va fi marcat ca inactiv și nu va mai apărea în lista de clienți activi. Datele lui se păstrează și poate fi reactivat oricând.`
+            : `${client.name} va apărea din nou în lista de clienți activi.`"
+          :confirm-label="client.isActive ? 'Dezactivează' : 'Activează'"
+          :loading="busy"
+          @confirm="toggleStatus"
+        />
+        <ConfirmDialog
+          v-model:open="deleteOpen"
+          title="Ștergi definitiv clientul?"
+          :description="`${client.name} va fi șters împreună cu punctele de lucru, angajații și contractele lui. Operațiunea nu poate fi anulată. Dacă doar nu mai colaborați, dezactivează-l.`"
+          confirm-label="Șterge definitiv"
+          color="error"
+          :loading="busy"
+          @confirm="removeClient"
+        />
+      </div>
+    </template>
+  </UDashboardPanel>
+</template>

@@ -7,9 +7,8 @@ calendar și documente.
 Aplicația este **strict internă** (fără înregistrare publică, fără portal pentru clienți) și va rula
 la `https://app.alconst-serv.ro`, complet separat de website-ul public `alconst-serv.ro`.
 
-> **Stadiu:** Etapa 1 (Foundation) este implementată – monorepo, autentificare, administrare
-> utilizatori, jurnal de activitate, layout responsive, PWA, worker pentru job-uri în fundal,
-> configurare Docker. Vezi [docs/roadmap.md](docs/roadmap.md) pentru ce urmează.
+> **Stadiu:** Etapele 1 (Foundation) și 2 (Clienți și angajați) sunt implementate. Urmează
+> task-urile, obligațiile și calendarul. Vezi [docs/roadmap.md](docs/roadmap.md).
 
 ## Tehnologii
 
@@ -88,7 +87,9 @@ Aplicația este disponibilă la <http://localhost:3000>. API-ul rulează pe port
 Testele e2e folosesc o bază de date separată (`alconst_test`), creată automat de
 `docker compose up` și golită înaintea fiecărui test.
 
-## Ce este implementat (Etapa 1)
+## Ce este implementat
+
+**Etapa 1 – Foundation**
 
 - **Autentificare**: login cu email și parolă, logout, schimbare parolă, resetare prin email,
   parole temporare cu schimbare obligatorie la prima autentificare.
@@ -97,11 +98,26 @@ Testele e2e folosesc o bază de date separată (`alconst_test`), creată automat
 - **Securitate**: sesiuni revocabile în baza de date, cookie `httpOnly` + `SameSite=Strict`,
   protecție CSRF, limitare a încercărilor de autentificare, parole Argon2id, autorizare pe fiecare
   rută. Detalii în [docs/securitate.md](docs/securitate.md).
-- **Jurnal de activitate** (audit log) pentru autentificări și operațiuni asupra conturilor.
+- **Jurnal de activitate** (audit log) pentru autentificări și toate modificările de date.
 - **Interfață**: layout cu sidebar pe desktop și meniu adaptat pe mobil, temă luminoasă/întunecată,
-  interfață în limba română, stări de încărcare / eroare / listă goală.
+  interfață în limba română, logo-ul și culorile firmei.
 - **PWA**: instalabilă pe iPhone (Add to Home Screen), fără mod offline.
 - **Worker**: coadă BullMQ pentru emailuri – baza pentru generarea documentelor și notificări.
+
+**Etapa 2 – Clienți și angajați**
+
+- **Clienți**: date de identificare și contact, status, căutare fără diacritice, filtrare,
+  paginare pe server.
+- **Responsabili**: un angajat vede și modifică doar clienții la care este responsabil și devine
+  automat responsabil pentru clienții pe care îi adaugă; administratorii văd tot și stabilesc
+  responsabilii.
+- **Servicii**: catalog configurabil de administratori, asociat fiecărui client.
+- **Puncte de lucru** și **angajații clienților** (funcție, punct de lucru, data angajării, status),
+  cu o pagină generală de angajați peste toți clienții vizibili.
+- **Contracte și tarife**: perioadă, status și oricâte tarife pe contract, fiecare cu propria
+  frecvență (săptămânal, lunar, la N luni, anual, la fiecare deplasare, o singură dată); venit
+  lunar estimat; avertizare pentru contractele care expiră.
+- **Pagina principală**: clienți și angajați activi, venit lunar estimat, contracte care expiră.
 
 ## Documentație
 

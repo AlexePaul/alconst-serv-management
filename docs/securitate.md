@@ -43,6 +43,10 @@ descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
 - Un administrator nu își poate dezactiva propriul cont și nu își poate schimba rolul, deci există
   mereu cel puțin un administrator activ.
 - Conturile nu se șterg, ci se dezactivează – istoricul din audit rămâne intact.
+- **Acces la clienți pe responsabili**: un angajat vede și modifică doar clienții la care este
+  responsabil, împreună cu punctele de lucru, angajații și contractele lor. Regula este aplicată
+  pe server, la fiecare cerere; pentru clienții altora răspunsul este „nu există”. Doar
+  administratorii stabilesc responsabilii și pot șterge definitiv un client.
 
 ## Validarea datelor
 
@@ -61,7 +65,8 @@ descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
 ## Jurnal de activitate
 
 Se înregistrează: autentificări reușite și eșuate, deconectări, schimbări și resetări de parolă,
-crearea, modificarea, activarea și dezactivarea conturilor. Fiecare intrare conține autorul,
+crearea, modificarea, activarea și dezactivarea conturilor, precum și orice adăugare, modificare
+sau ștergere de clienți, responsabili, servicii, puncte de lucru, angajați și contracte. Fiecare intrare conține autorul,
 entitatea afectată, momentul și adresa IP. Jurnalul este vizibil doar administratorilor și nu poate
 fi modificat din aplicație.
 

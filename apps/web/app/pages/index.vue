@@ -23,9 +23,9 @@ const modules = [{
   available: true
 }, {
   name: 'Clienți și angajați',
-  description: 'Companii, contracte, servicii, puncte de lucru și angajații acestora.',
+  description: 'Companii, contracte și tarife, servicii, puncte de lucru și angajații acestora.',
   icon: 'i-lucide-building-2',
-  available: false
+  available: true
 }, {
   name: 'Task-uri, obligații și calendar',
   description: 'Obligații recurente, termene, responsabili și notificări.',
@@ -61,29 +61,26 @@ const modules = [{
             Acțiuni rapide
           </h2>
           <div class="flex flex-wrap gap-2">
+            <UButton to="/clienti?nou=1" icon="i-lucide-plus" label="Adaugă client" />
+            <UButton
+              to="/angajati?nou=1"
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-user-round-plus"
+              label="Adaugă angajat"
+            />
             <UButton
               v-if="isAdmin"
               to="/utilizatori?nou=1"
-              icon="i-lucide-user-plus"
-              label="Adaugă utilizator"
-            />
-            <UButton
-              v-if="isAdmin"
-              to="/utilizatori"
               color="neutral"
               variant="outline"
               icon="i-lucide-user-cog"
-              label="Gestionează utilizatorii"
-            />
-            <UButton
-              to="/cont"
-              color="neutral"
-              variant="outline"
-              icon="i-lucide-key-round"
-              label="Schimbă parola"
+              label="Adaugă utilizator"
             />
           </div>
         </section>
+
+        <DashboardClientsSummary />
 
         <div class="grid gap-6 lg:grid-cols-2">
           <DashboardRecentActivity v-if="isAdmin" />

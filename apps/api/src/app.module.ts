@@ -4,6 +4,8 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ActivityModule } from './activity/activity.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { RolesGuard } from './auth/roles.guard.js';
+import { CatalogModule } from './catalog/catalog.module.js';
+import { ClientsModule } from './clients/clients.module.js';
 import { SessionAuthGuard } from './auth/session-auth.guard.js';
 import { CsrfOriginGuard } from './common/csrf-origin.guard.js';
 import { AppConfig } from './config/app-config.js';
@@ -29,6 +31,8 @@ import { UsersModule } from './users/users.module.js';
     ActivityModule,
     AuthModule,
     UsersModule,
+    CatalogModule,
+    ClientsModule,
   ],
   controllers: [HealthController],
   providers: [
