@@ -21,7 +21,6 @@ import {
   ListClientsQuery,
   SetClientServicesDto,
   SetResponsiblesDto,
-  TransferClientDto,
   UpdateClientDto,
 } from './dto/clients.dto.js';
 
@@ -90,18 +89,6 @@ export class ClientsController {
     @Client() client: ClientInfo,
   ): Promise<ClientDto> {
     return this.clients.setResponsibles(id, dto.userIds, auth, client);
-  }
-
-  /** Predarea definitivă a clientului către alt responsabil, împreună cu munca deschisă. */
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @Post(':id/transfer')
-  transfer(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: TransferClientDto,
-    @CurrentAuth() auth: AuthContext,
-    @Client() client: ClientInfo,
-  ): Promise<void> {
-    return this.clients.transfer(id, dto.fromUserId, dto.toUserId, auth, client);
   }
 
   @Put(':id/services')

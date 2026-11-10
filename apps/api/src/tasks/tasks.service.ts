@@ -18,7 +18,7 @@ import type { AuthContext, ClientInfo } from '../common/request-context.js';
 import { AppConfig } from '../config/app-config.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateTaskDto, ListTasksQuery, UpdateTaskDto } from './dto/tasks.dto.js';
-import { NotificationsService } from './notifications.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { TaskAccessService } from './task-access.service.js';
 import { assertTimeRange } from './time-range.js';
 import { taskInclude, type TaskRow, toTaskDto } from './task.mapper.js';

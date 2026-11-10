@@ -66,7 +66,7 @@ export async function createTestApp(): Promise<TestApp> {
     async reset() {
       mail.sent.length = 0;
       await prisma.db.$executeRawUnsafe(
-        'TRUNCATE TABLE "activity_logs", "password_reset_tokens", "sessions", "notifications", "tasks", "obligations", "clients", "services", "users" CASCADE',
+        'TRUNCATE TABLE "activity_logs", "password_reset_tokens", "sessions", "client_transfer_requests", "notifications", "tasks", "obligations", "clients", "services", "users" CASCADE',
       );
     },
     async createUser(overrides = {}) {

@@ -10,7 +10,10 @@ export const taskInclude = {
       address: true,
       contactPerson: true,
       phone: true,
-      assignments: { select: { userId: true } },
+      assignments: {
+        select: { userId: true, user: { select: { id: true, firstName: true, lastName: true } } },
+        orderBy: { createdAt: 'asc' },
+      },
     },
   },
   location: { select: { id: true, name: true, address: true } },
@@ -40,6 +43,7 @@ export function toTaskDto(row: TaskRow): TaskDto {
           address: row.client.address,
           contactPerson: row.client.contactPerson,
           phone: row.client.phone,
+          responsibles: row.client.assignments.map((assignment) => assignment.user),
         }
       : null,
     location: row.location,

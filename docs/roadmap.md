@@ -50,7 +50,10 @@ Importul din Excel a fost scos din plan: nu există fișiere Excel de migrat.
 - [x] Curățarea periodică a sesiunilor și linkurilor expirate
 - [x] Interval orar estimat pe task-uri și obligații; fiecare își planifică singur calendarul
 - [x] Evidența completării fișelor la deplasări (doar confirmarea, nu fișele)
-- [x] Preluarea unei singure deplasări de către un coleg și predarea definitivă a unui client
+- [x] Preluarea unei singure deplasări de către un coleg
+- [x] Predarea definitivă a unui client: direct de către un administrator sau prin cerere,
+      inițiată de oricare dintre cei doi colegi, cu acordul celuilalt
+- [x] Emailuri imediate pentru evenimente (task atribuit, cereri de predare și răspunsul la ele)
 
 Amânat: **Web Push**. Necesită un service worker propriu, chei VAPID și stocarea abonamentelor,
 iar pe iPhone funcționează doar pentru aplicația instalată pe ecranul principal. Notificările din
@@ -103,6 +106,8 @@ aplicație și emailul acoperă nevoia de bază; Web Push se adaugă în etapa d
 - **Fișe**: aplicația ține doar evidența că au fost completate la deplasare, nu le generează.
 - **Calendar**: fiecare persoană își planifică singură deplasările, cu un interval orar estimat.
 - **Preluări**: o firmă poate fi preluată de un coleg pentru o singură deplasare sau definitiv.
+  Definitiv doar dacă mută un administrator sau cu acordul amândurora; cererea o poate porni
+  oricare dintre cei doi. Evenimentele sunt anunțate și pe email.
 - **Facturare**: facturile se emit prin SmartBill și nu sunt legate unu-la-unu de deplasări – pot
   exista facturi fără deplasare și deplasări fără factură. De aceea deplasările nu conțin nimic
   despre încasare; integrarea cu SmartBill va fi un modul separat.
@@ -119,7 +124,8 @@ aplicație și emailul acoperă nevoia de bază; Web Push se adaugă în etapa d
    aducă înapoi starea plății? Nu este în etapele curente.
 4. **Vizibilitatea sumelor** – acum un angajat vede tarifele clienților lui. Dacă sumele trebuie
    să fie vizibile doar administratorilor, este o schimbare mică.
-5. **Conținutul emailului zilnic** – acum conține doar numere, ca titlurile task-urilor și numele
+5. **Conținutul emailurilor** – rezumatul zilnic conține doar numere, iar notificările imediate
+   au text general („Un coleg vrea să îți predea un client”), ca titlurile task-urilor și numele
    clienților să nu treacă prin furnizorul de email. Dacă preferați emailuri cu detalii, se poate.
 6. **Ștergerea** – acum un angajat poate șterge puncte de lucru, angajați și contracte ale
    clienților lui, dar nu clientul. De confirmat.

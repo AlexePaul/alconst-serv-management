@@ -109,24 +109,25 @@ pentru confidențialitate și permite o politică CSP strictă (`connect-src 'se
 
 ## Modelul de date
 
-| Tabel                   | Rol                                                                      |
-| ----------------------- | ------------------------------------------------------------------------ |
-| `users`                 | Utilizatori interni, rol, stare, hash-ul parolei                         |
-| `sessions`              | Sesiuni active (hash token, expirare, IP, user agent)                    |
-| `password_reset_tokens` | Token-uri de resetare, de unică folosință                                |
-| `activity_logs`         | Jurnal de activitate (cine, ce, asupra cui, când)                        |
-| `clients`               | Companiile cliente                                                       |
-| `client_assignments`    | Responsabilii unui client (client ↔ utilizator intern)                   |
-| `services`              | Catalogul serviciilor oferite de firmă                                   |
-| `client_services`       | Serviciile prestate unui client                                          |
-| `locations`             | Punctele de lucru ale clienților                                         |
-| `employees`             | Angajații clienților (date personale)                                    |
-| `contracts`             | Contracte: perioadă, status                                              |
-| `contract_fees`         | Tarifele unui contract: sumă + frecvență, opțional legate de un serviciu |
-| `obligations`           | Activități recurente: frecvență, client, responsabil                     |
-| `tasks`                 | Execuții concrete: termen, status, responsabil, observații               |
-| `notifications`         | Notificările din aplicație, cu o cheie unică anti-duplicat               |
-| `notification_settings` | Preferințele de notificare ale fiecărui utilizator                       |
+| Tabel                      | Rol                                                                      |
+| -------------------------- | ------------------------------------------------------------------------ |
+| `users`                    | Utilizatori interni, rol, stare, hash-ul parolei                         |
+| `sessions`                 | Sesiuni active (hash token, expirare, IP, user agent)                    |
+| `password_reset_tokens`    | Token-uri de resetare, de unică folosință                                |
+| `activity_logs`            | Jurnal de activitate (cine, ce, asupra cui, când)                        |
+| `clients`                  | Companiile cliente                                                       |
+| `client_assignments`       | Responsabilii unui client (client ↔ utilizator intern)                   |
+| `services`                 | Catalogul serviciilor oferite de firmă                                   |
+| `client_services`          | Serviciile prestate unui client                                          |
+| `locations`                | Punctele de lucru ale clienților                                         |
+| `employees`                | Angajații clienților (date personale)                                    |
+| `contracts`                | Contracte: perioadă, status                                              |
+| `contract_fees`            | Tarifele unui contract: sumă + frecvență, opțional legate de un serviciu |
+| `obligations`              | Activități recurente: frecvență, client, responsabil                     |
+| `tasks`                    | Execuții concrete: termen, status, responsabil, observații               |
+| `notifications`            | Notificările din aplicație, cu o cheie unică anti-duplicat               |
+| `notification_settings`    | Preferințele de notificare ale fiecărui utilizator                       |
+| `client_transfer_requests` | Cererile de predare a unui client între colegi și răspunsul la ele       |
 
 Entitățile pentru documente se adaugă în Etapa 4, nu în avans.
 Cheile primare sunt UUID v7 (ordonabile cronologic).
@@ -196,12 +197,14 @@ este o execuție concretă, cu termen și responsabil. Un task poate exista și 
 - **Pentru o singură deplasare**: se schimbă responsabilul task-ului. Colegul vede task-ul (marcat
   „Înlocuire”) împreună cu adresa, persoana de contact și telefonul clientului – strictul necesar
   ca să ajungă acolo – dar nu primește acces la restul datelor clientului.
-- **Definitiv**: acțiunea „Predă clientul” mută responsabilitatea, obligațiile și task-urile
-  deschise la noul responsabil; task-urile încheiate rămân în istoricul celui care le-a făcut.
-  Un administrator poate transfera între oricare doi utilizatori. Un angajat își poate preda
-  propriii clienți, dar nu poate prelua singur clientul altcuiva.
-- **Istoricul** unui task este citit din jurnalul de activitate, care reține pentru fiecare
-  modificare valoarea veche și cea nouă.
+- **Definitiv**: responsabilitatea, obligațiile și task-urile deschise trec la noul responsabil;
+  task-urile încheiate rămân în istoricul celui care le-a făcut. Predarea definitivă are loc doar:
+  - **direct, de către un administrator**, între oricare doi utilizatori; sau
+  - **cu acordul amândurora**: oricare dintre cei doi colegi trimite o cerere, iar transferul are
+    loc abia după ce celălalt o acceptă. Cel care predă pornește cererea din pagina clientului;
+    cel care preia o pornește dintr-un task pe care l-a executat deja pentru acel client (altfel
+    nu are de unde ști că clientul există). Cererea poate fi refuzată sau retrasă, iar una
+    depășită de situație (clientul a ajuns între timp la altcineva) se anulează singură.
 
 ### Notificări
 
@@ -216,8 +219,13 @@ Worker-ul rulează din oră în oră o sarcină idempotentă care:
 Fiecare reamintire are o cheie care îi descrie motivul (tip, task, destinatar, termen), cu
 constrângere de unicitate în baza de date. Rulările repetate nu pot produce notificări duplicate,
 iar un task reprogramat primește reamintiri noi. Destinatarul este responsabilul task-ului sau, în
-lipsa lui, responsabilii clientului. Preluarea unui task sau a unui client este anunțată imediat
-noului responsabil.
+lipsa lui, responsabilii clientului.
+
+Evenimentele – un task atribuit de altcineva, o cerere de predare a unui client, răspunsul la ea,
+un transfer făcut de administrator – sunt anunțate imediat: în aplicație, cu toate detaliile, și
+pe email, dacă destinatarul nu a oprit emailurile. Textul emailurilor este deliberat general
+(„Un coleg vrea să îți predea un client”): titlurile task-urilor și numele clienților rămân în
+aplicație și nu trec prin furnizorul de email.
 
 „Azi” se stabilește în fusul orar al firmei (`APP_TIMEZONE`, implicit `Europe/Bucharest`), atât în
 API, cât și în worker și în interfață.

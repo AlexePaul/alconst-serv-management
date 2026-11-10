@@ -12,6 +12,7 @@ import { AppConfig } from './config/app-config.js';
 import { ConfigModule } from './config/config.module.js';
 import { HealthController } from './health/health.controller.js';
 import { MailQueueModule } from './mail/mail-queue.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { TasksModule } from './tasks/tasks.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -29,6 +30,7 @@ import { UsersModule } from './users/users.module.js';
       }),
     }),
     MailQueueModule,
+    NotificationsModule,
     ActivityModule,
     AuthModule,
     UsersModule,

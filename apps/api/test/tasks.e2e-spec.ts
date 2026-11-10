@@ -509,6 +509,7 @@ describe('Obligații, task-uri și notificări (e2e)', () => {
         address: 'Str. Fabricii 10',
         contactPerson: 'Ion Pop',
         phone: '0721 000 000',
+        responsibles: [{ id: ana.id, firstName: 'Ana', lastName: 'Pop' }],
       });
       await patch(`/api/tasks/${visit.id}`, dan.cookie, {
         status: 'DONE',
@@ -527,84 +528,6 @@ describe('Obligații, task-uri și notificări (e2e)', () => {
           taskId: visit.id,
         },
       );
-    });
-
-    it('preluare definitivă: clientul, obligațiile și task-urile deschise trec la noul responsabil', async () => {
-      const obligation = await createObligation();
-      const [first] = await tasksOf(obligation.id);
-      await patch(`/api/tasks/${first!.id}`, ana.cookie, { status: 'DONE' }).expect(200);
-      const adminsTask = await createVisit(admin.cookie, {
-        title: 'Al administratorului',
-        assigneeId: admin.id,
-      });
-
-      // Un angajat nu poate prelua singur clientul altcuiva și nu poate preda în numele altuia.
-      await post(`/api/clients/${clientId}/transfer`, dan.cookie, {
-        fromUserId: ana.id,
-        toUserId: dan.id,
-      }).expect(404);
-      await post(`/api/clients/${clientId}/transfer`, ana.cookie, {
-        fromUserId: admin.id,
-        toUserId: dan.id,
-      }).expect(403);
-      await post(`/api/clients/${clientId}/transfer`, ana.cookie, {
-        fromUserId: ana.id,
-        toUserId: ana.id,
-      }).expect(400);
-
-      await post(`/api/clients/${clientId}/transfer`, ana.cookie, {
-        fromUserId: ana.id,
-        toUserId: dan.id,
-      }).expect(204);
-
-      // Dan are acum clientul; Ana nu mai are acces.
-      const client = (await get(`/api/clients/${clientId}`, dan.cookie).expect(200)).body;
-      expect(client.responsibles.map((user: { id: string }) => user.id)).toEqual([dan.id]);
-      await get(`/api/clients/${clientId}`, ana.cookie).expect(404);
-
-      const tasks = await tasksOf(obligation.id);
-      // Task-ul finalizat rămâne pe numele Anei; cele deschise trec la Dan.
-      expect(tasks.find((task) => task.id === first!.id)?.assignee?.id).toBe(ana.id);
-      expect(
-        tasks
-          .filter((task) => task.status === 'TODO')
-          .every((task) => task.assignee?.id === dan.id),
-      ).toBe(true);
-      // Task-urile altor responsabili nu sunt atinse.
-      expect(
-        (await get(`/api/tasks/${adminsTask.id}`, admin.cookie).expect(200)).body.assignee.id,
-      ).toBe(admin.id);
-      const obligations = (
-        await get(`/api/obligations?clientId=${clientId}`, dan.cookie).expect(200)
-      ).body;
-      expect(obligations.items[0].assignee.id).toBe(dan.id);
-
-      const notification = (await get('/api/notifications', dan.cookie).expect(200)).body.items[0];
-      expect(notification).toMatchObject({
-        type: 'CLIENT_TRANSFERRED',
-        body: 'SC Ștefănescu SRL · 4 task-uri deschise',
-      });
-      const log = await t.prisma.db.activityLog.findFirst({
-        where: { action: 'client.transferred' },
-      });
-      expect(log?.metadata).toMatchObject({
-        fromUserId: ana.id,
-        toUserId: dan.id,
-        tasks: 4,
-        obligations: 1,
-      });
-    });
-
-    it('administratorul poate transfera între oricare doi utilizatori', async () => {
-      await post(`/api/clients/${clientId}/transfer`, admin.cookie, {
-        fromUserId: dan.id,
-        toUserId: ana.id,
-      }).expect(400);
-      await post(`/api/clients/${clientId}/transfer`, admin.cookie, {
-        fromUserId: ana.id,
-        toUserId: dan.id,
-      }).expect(204);
-      await get(`/api/clients/${clientId}`, dan.cookie).expect(200);
     });
   });
 
@@ -627,6 +550,14 @@ describe('Obligații, task-uri și notificări (e2e)', () => {
       expect((await get('/api/notifications/unread-count', ana.cookie).expect(200)).body).toEqual({
         count: 1,
       });
+      // Atribuirea este anunțată și pe email, fără titlul task-ului.
+      const mail = t.mail.sent.find((item) => item.kind === 'notification');
+      expect(mail).toMatchObject({
+        to: 'ana@test.ro',
+        headline: 'Ți-a fost atribuit un task',
+        actionUrl: `http://localhost:3000/task-uri?task=${task.id}`,
+      });
+      expect(JSON.stringify(mail)).not.toContain('Verificare');
       const list = (await get('/api/notifications', ana.cookie).expect(200)).body;
       expect(list.items[0]).toMatchObject({
         type: 'TASK_ASSIGNED',

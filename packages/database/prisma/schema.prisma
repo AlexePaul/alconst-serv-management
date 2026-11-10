@@ -39,14 +39,17 @@ model User {
   passwordResetTokens  PasswordResetToken[]
   activityLogs         ActivityLog[]
   clientAssignments    ClientAssignment[]
-  createdClients       Client[]              @relation("ClientCreatedBy")
-  assignedObligations  Obligation[]          @relation("ObligationAssignee")
-  createdObligations   Obligation[]          @relation("ObligationCreatedBy")
-  assignedTasks        Task[]                @relation("TaskAssignee")
-  createdTasks         Task[]                @relation("TaskCreatedBy")
-  completedTasks       Task[]                @relation("TaskCompletedBy")
-  sheetsCompletedTasks Task[]                @relation("TaskSheetsCompletedBy")
+  createdClients       Client[]                @relation("ClientCreatedBy")
+  assignedObligations  Obligation[]            @relation("ObligationAssignee")
+  createdObligations   Obligation[]            @relation("ObligationCreatedBy")
+  assignedTasks        Task[]                  @relation("TaskAssignee")
+  createdTasks         Task[]                  @relation("TaskCreatedBy")
+  completedTasks       Task[]                  @relation("TaskCompletedBy")
+  sheetsCompletedTasks Task[]                  @relation("TaskSheetsCompletedBy")
   notifications        Notification[]
+  transfersFrom        ClientTransferRequest[] @relation("TransferFrom")
+  transfersTo          ClientTransferRequest[] @relation("TransferTo")
+  transfersInitiated   ClientTransferRequest[] @relation("TransferInitiatedBy")
   notificationSettings NotificationSettings?
 
   @@map("users")
@@ -131,14 +134,15 @@ model Client {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  createdBy   User?              @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  assignments ClientAssignment[]
-  services    ClientService[]
-  locations   Location[]
-  employees   Employee[]
-  contracts   Contract[]
-  obligations Obligation[]
-  tasks       Task[]
+  createdBy        User?                   @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  assignments      ClientAssignment[]
+  services         ClientService[]
+  locations        Location[]
+  employees        Employee[]
+  contracts        Contract[]
+  obligations      Obligation[]
+  tasks            Task[]
+  transferRequests ClientTransferRequest[]
 
   @@index([name])
   @@map("clients")
@@ -422,6 +426,8 @@ model Notification {
   title     String
   body      String?
   taskId    String?   @db.Uuid
+  /// Pagina din aplicație la care trimite notificarea, atunci când nu se referă la un task.
+  link      String?
   /// Cheie care identifică unic motivul notificării (ex. „due-today:<task>:<user>”).
   /// Constrângerea de unicitate garantează că aceeași notificare nu este creată de două ori.
   dedupeKey String    @unique
@@ -448,4 +454,41 @@ model NotificationSettings {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_settings")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Predarea clienților între colegi
+// ---------------------------------------------------------------------------------------------
+
+enum TransferRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+/// Cerere de predare definitivă a unui client de la un responsabil la altul.
+/// Poate fi inițiată de oricare dintre cei doi și are efect doar după acordul celuilalt.
+/// (Administratorii pot transfera direct, fără cerere.)
+model ClientTransferRequest {
+  id            String                @id @default(uuid(7)) @db.Uuid
+  clientId      String                @db.Uuid
+  /// Responsabilul actual, care predă clientul.
+  fromUserId    String                @db.Uuid
+  /// Colegul care preia clientul.
+  toUserId      String                @db.Uuid
+  initiatedById String                @db.Uuid
+  status        TransferRequestStatus @default(PENDING)
+  createdAt     DateTime              @default(now())
+  resolvedAt    DateTime?
+  resolvedById  String?               @db.Uuid
+
+  client      Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  from        User   @relation("TransferFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  to          User   @relation("TransferTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  initiatedBy User   @relation("TransferInitiatedBy", fields: [initiatedById], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([clientId, status])
+  @@map("client_transfer_requests")
 }

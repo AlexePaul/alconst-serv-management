@@ -42,4 +42,19 @@ describe('renderMail', () => {
     expect(mail.text).toContain('https://app.alconst-serv.ro/task-uri');
     expect(mail.html).toContain('href="https://app.alconst-serv.ro/task-uri"');
   });
+
+  it('notificarea imediată folosește textul general primit și escapează conținutul', () => {
+    const mail = renderMail({
+      kind: 'notification',
+      to: 'dan@test.ro',
+      firstName: 'Dan',
+      headline: 'Cerere de predare a unui client',
+      message: 'Un coleg vrea să îți predea <definitiv> un client.',
+      actionUrl: 'https://app.alconst-serv.ro/',
+    });
+    expect(mail.subject).toBe('Cerere de predare a unui client – Alconst Serv');
+    expect(mail.text).toContain('Un coleg vrea să îți predea <definitiv> un client.');
+    expect(mail.html).toContain('&lt;definitiv&gt;');
+    expect(mail.html).toContain('href="https://app.alconst-serv.ro/"');
+  });
 });

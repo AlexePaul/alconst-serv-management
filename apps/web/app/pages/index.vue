@@ -94,6 +94,8 @@ const modules = [{
           </div>
         </section>
 
+        <DashboardTransferRequests @changed="refreshNuxtData(['dashboard:clients-summary', 'dashboard:tasks-overview'])" />
+
         <DashboardTasksOverview />
 
         <DashboardClientsSummary />

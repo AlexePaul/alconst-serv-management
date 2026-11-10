@@ -155,6 +155,8 @@ export interface TaskClientDto extends ClientRefDto {
   address: string | null;
   contactPerson: string | null;
   phone: string | null;
+  /** Responsabilii clientului – colegii de la care a fost preluat task-ul, dacă este o înlocuire. */
+  responsibles: UserRefDto[];
 }
 
 export interface TaskDto {
@@ -237,6 +239,9 @@ export const NOTIFICATION_TYPES = [
   'TASK_DUE_TODAY',
   'TASK_OVERDUE',
   'CLIENT_TRANSFERRED',
+  'TRANSFER_REQUESTED',
+  'TRANSFER_ACCEPTED',
+  'TRANSFER_DECLINED',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -246,12 +251,17 @@ export interface NotificationDto {
   title: string;
   body: string | null;
   taskId: string | null;
+  /** Pagina din aplicație la care trimite notificarea, când nu se referă la un task. */
+  link: string | null;
   readAt: string | null;
   createdAt: string;
 }
 
 export interface NotificationSettingsDto {
-  /** Trimite pe email un rezumat zilnic al notificărilor noi. */
+  /**
+   * Notificări pe email: imediat pentru evenimente (task atribuit, cereri de preluare)
+   * și cel mult un rezumat pe zi pentru termene.
+   */
   emailEnabled: boolean;
   /** Cu câte zile înainte de termen se trimite reamintirea (0 = fără reamintire în avans). */
   remindDaysBefore: number;

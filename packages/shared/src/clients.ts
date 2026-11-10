@@ -212,3 +212,32 @@ export interface ClientsSummaryDto {
   /** Contracte active care expiră în următoarele 30 de zile sau au expirat deja. */
   expiringContracts: ExpiringContractDto[];
 }
+
+// --- Predarea clienților între colegi ----------------------------------------------------------
+
+export const TRANSFER_REQUEST_STATUSES = ['PENDING', 'ACCEPTED', 'DECLINED', 'CANCELLED'] as const;
+export type TransferRequestStatus = (typeof TRANSFER_REQUEST_STATUSES)[number];
+
+/**
+ * Cerere de predare definitivă a unui client. O poate iniția oricare dintre cei doi colegi
+ * și are efect doar după acordul celuilalt; administratorii transferă direct.
+ */
+export interface ClientTransferRequestDto {
+  id: string;
+  client: { id: string; name: string };
+  /** Responsabilul actual, care predă. */
+  from: UserRefDto;
+  /** Colegul care preia. */
+  to: UserRefDto;
+  initiatedBy: UserRefDto;
+  createdAt: string;
+  /** Utilizatorul curent este cel al cărui acord se așteaptă (sau este administrator). */
+  canRespond: boolean;
+  /** Utilizatorul curent a inițiat cererea și o poate retrage. */
+  canCancel: boolean;
+}
+
+/** Rezultatul unei solicitări de transfer: efectuat pe loc (administrator) sau în așteptare. */
+export interface TransferResultDto {
+  status: 'COMPLETED' | 'PENDING';
+}

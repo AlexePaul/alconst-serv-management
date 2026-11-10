@@ -1,4 +1,4 @@
-import type { ServiceDto, UserOptionDto } from '@alconst/shared'
+import type { ClientTransferRequestDto, ServiceDto, UserOptionDto } from '@alconst/shared'
 
 /**
  * Date de referință folosite în mai multe componente. Fiecare listă are o singură definiție,
@@ -15,4 +15,14 @@ export function useServices() {
 export function useUserOptions() {
   const api = useApi()
   return useLazyAsyncData('users:options', () => api<UserOptionDto[]>('/users/options'), { default: () => [] })
+}
+
+/** Cererile de predare a clienților aflate în așteptare, în care este implicat utilizatorul. */
+export function useClientTransfers() {
+  const api = useApi()
+  return useLazyAsyncData(
+    'client-transfers',
+    () => api<ClientTransferRequestDto[]>('/client-transfers'),
+    { default: () => [] }
+  )
 }

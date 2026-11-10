@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ClientDto } from '@alconst/shared'
+import type { ClientDto, TransferResultDto } from '@alconst/shared'
 
 /**
  * Predarea definitivă a unui client către alt responsabil, împreună cu obligațiile și
@@ -8,7 +8,7 @@ import type { ClientDto } from '@alconst/shared'
 const open = defineModel<boolean>('open', { default: false })
 
 const props = defineProps<{ client: ClientDto }>()
-const emit = defineEmits<{ transferred: [] }>()
+const emit = defineEmits<{ transferred: [], requested: [] }>()
 
 const api = useApi()
 const toast = useToast()
@@ -44,14 +44,24 @@ async function transfer() {
   loading.value = true
   errorMessage.value = null
   try {
-    await api(`/clients/${props.client.id}/transfer`, {
+    const result = await api<TransferResultDto>(`/clients/${props.client.id}/transfer`, {
       method: 'POST',
       body: { fromUserId: fromUserId.value, toUserId: toUserId.value }
     })
     const target = toItems.value.find(item => item.value === toUserId.value)?.label
-    toast.add({ title: 'Clientul a fost predat', description: target ? `Noul responsabil: ${target}` : undefined, color: 'success', icon: 'i-lucide-check' })
     open.value = false
-    emit('transferred')
+    if (result.status === 'COMPLETED') {
+      toast.add({ title: 'Clientul a fost predat', description: target ? `Noul responsabil: ${target}` : undefined, color: 'success', icon: 'i-lucide-check' })
+      emit('transferred')
+    } else {
+      toast.add({
+        title: 'Cererea a fost trimisă',
+        description: target ? `Clientul va fi predat după ce ${target} acceptă.` : undefined,
+        color: 'success',
+        icon: 'i-lucide-send'
+      })
+      emit('requested')
+    }
   } catch (error) {
     errorMessage.value = apiErrorMessage(error)
   } finally {
@@ -76,7 +86,7 @@ async function transfer() {
           color="neutral"
           variant="subtle"
           icon="i-lucide-info"
-          description="Noul responsabil preia clientul, obligațiile lui și task-urile deschise ale celui care predă. Task-urile deja încheiate rămân în istoricul celui care le-a făcut. Pentru o singură deplasare, schimbă doar responsabilul pe acel task."
+          :description="`${isAdmin ? 'Ca administrator, predarea are loc imediat.' : 'Predarea are loc doar după ce colegul acceptă cererea.'} Noul responsabil preia clientul, obligațiile lui și task-urile deschise ale celui care predă; task-urile deja încheiate rămân în istoricul celui care le-a făcut. Pentru o singură deplasare, schimbă doar responsabilul pe acel task.`"
         />
 
         <UFormField label="De la">
@@ -103,7 +113,7 @@ async function transfer() {
           color="warning"
           variant="subtle"
           icon="i-lucide-triangle-alert"
-          description="După predare nu vei mai avea acces la acest client."
+          description="După ce colegul acceptă, nu vei mai avea acces la acest client."
         />
       </div>
     </template>
@@ -117,7 +127,7 @@ async function transfer() {
         @click="open = false"
       />
       <UButton
-        label="Predă clientul"
+        :label="isAdmin ? 'Predă clientul' : 'Trimite cererea'"
         :loading="loading"
         :disabled="!fromUserId || !toUserId"
         @click="transfer"

@@ -50,8 +50,10 @@ descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
 - **Task-uri și obligații**: un angajat vede ce îi este atribuit, ce a creat el și tot ce ține de
   clienții lui. Un task atribuit unui coleg îi dă acces la task și la datele de contact ale
   clientului (adresă, persoană de contact, telefon), nu și la restul datelor clientului.
-- **Predarea unui client**: un angajat își poate preda propriii clienți unui coleg, dar nu poate
-  prelua singur clientul altcuiva; administratorii pot transfera între oricare doi utilizatori.
+- **Predarea definitivă a unui client** are loc doar prin acțiunea unui administrator sau cu
+  acordul ambilor colegi. Nimeni nu își poate aproba singur cererea, iar cererile sunt vizibile
+  doar celor doi implicați și administratorilor. Un angajat poate cere preluarea unui client doar
+  dacă a executat deja un task pentru el.
 - **Notificări**: fiecare utilizator își vede doar propriile notificări.
 
 ## Validarea datelor
@@ -82,6 +84,8 @@ fi modificat din aplicație.
 Singurul serviciu extern folosit este cel de email (SMTP). Prin el trec:
 
 - emailul de resetare a parolei (prenumele și linkul de resetare);
+- notificările imediate (task atribuit, cereri de predare a unui client), cu text general: fără
+  titluri de task-uri, nume de clienți sau nume de colegi;
 - rezumatul zilnic de notificări, care conține **doar numere** (câte task-uri restante, cu termen
   azi sau în zilele următoare). Titlurile task-urilor, numele clienților și orice date despre
   angajați rămân în aplicație.

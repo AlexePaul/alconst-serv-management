@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { LocationDto, TaskDto, TaskKind } from '@alconst/shared'
+import type { LocationDto, TaskDto, TaskKind, TransferResultDto } from '@alconst/shared'
 import { z } from 'zod'
 
 /** Fereastră pentru crearea unui task sau pentru vizualizarea și modificarea unuia existent. */
@@ -17,7 +17,7 @@ const emit = defineEmits<{ saved: [task: TaskDto], deleted: [id: string] }>()
 
 const api = useApi()
 const toast = useToast()
-const { user } = useAuth()
+const { user, isAdmin } = useAuth()
 
 const isEdit = computed(() => props.task !== null)
 const NONE = 'none'
@@ -125,6 +125,43 @@ const contactLines = computed(() => {
     task.client.phone ? { label: 'Telefon', value: task.client.phone, href: `tel:${task.client.phone.replace(/\s+/g, '')}` } : null
   ].filter(line => line !== null)
 })
+
+// --- Preluarea definitivă a clientului, cerută de cel care a înlocuit un coleg ----------------
+
+/** Cel care execută task-ul unui client al altcuiva poate cere să preia definitiv clientul. */
+const canRequestTakeover = computed(() => {
+  const task = props.task
+  return Boolean(task?.isCover && task.client?.responsibles.length && task.assignee?.id === user.value?.id && !isAdmin.value)
+})
+const takeoverFrom = ref<string>()
+const takeoverLoading = ref(false)
+const takeoverItems = computed(() =>
+  (props.task?.client?.responsibles ?? []).map(person => ({ label: `${person.firstName} ${person.lastName}`, value: person.id }))
+)
+
+async function requestTakeover() {
+  const client = props.task?.client
+  const fromUserId = takeoverFrom.value ?? client?.responsibles[0]?.id
+  if (!client || !fromUserId || !user.value) return
+  takeoverLoading.value = true
+  try {
+    await api<TransferResultDto>(`/clients/${client.id}/transfer`, {
+      method: 'POST',
+      body: { fromUserId, toUserId: user.value.id }
+    })
+    const colleague = takeoverItems.value.find(item => item.value === fromUserId)?.label
+    toast.add({
+      title: 'Cererea a fost trimisă',
+      description: colleague ? `Vei prelua clientul după ce ${colleague} acceptă.` : undefined,
+      color: 'success',
+      icon: 'i-lucide-send'
+    })
+  } catch (error) {
+    toast.add({ title: 'Cererea nu a putut fi trimisă', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
+  } finally {
+    takeoverLoading.value = false
+  }
+}
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   const { clientId, locationId, assigneeId, sheetsCompleted, ...fields } = event.data
@@ -266,6 +303,30 @@ async function confirmDelete() {
             </ULink>
             <span v-else class="text-default">{{ line.value }}</span>
           </p>
+        </div>
+
+        <div v-if="canRequestTakeover" class="rounded-lg border border-default px-4 py-3 text-sm">
+          <p class="text-default">
+            Ai preluat acest task de la un coleg. Dacă urmează să te ocupi definitiv de acest client, poți cere preluarea lui; are loc doar după ce colegul acceptă.
+          </p>
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <USelect
+              v-if="takeoverItems.length > 1"
+              v-model="takeoverFrom"
+              :items="takeoverItems"
+              placeholder="De la cine"
+              class="w-56"
+            />
+            <UButton
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-arrow-left-right"
+              label="Cere preluarea definitivă a clientului"
+              :loading="takeoverLoading"
+              :disabled="takeoverItems.length > 1 && !takeoverFrom"
+              @click="requestTakeover"
+            />
+          </div>
         </div>
 
         <UFormField

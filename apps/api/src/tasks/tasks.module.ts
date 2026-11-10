@@ -1,17 +1,15 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule } from '../clients/clients.module.js';
-import { NotificationsController } from './notifications.controller.js';
-import { NotificationsService } from './notifications.service.js';
 import { ObligationsController } from './obligations.controller.js';
 import { ObligationsService } from './obligations.service.js';
 import { TaskAccessService } from './task-access.service.js';
 import { TasksController } from './tasks.controller.js';
 import { TasksService } from './tasks.service.js';
 
-/** Obligații recurente, task-uri și notificări. */
+/** Obligații recurente și task-uri. */
 @Module({
   imports: [ClientsModule],
-  controllers: [ObligationsController, TasksController, NotificationsController],
-  providers: [TaskAccessService, ObligationsService, TasksService, NotificationsService],
+  controllers: [ObligationsController, TasksController],
+  providers: [TaskAccessService, ObligationsService, TasksService],
 })
 export class TasksModule {}

@@ -74,8 +74,8 @@ async function save(changes: Partial<NotificationSettingsDto>) {
       <USwitch
         :model-value="settings.emailEnabled"
         :disabled="saving"
-        label="Rezumat zilnic pe email"
-        description="Cel mult un email pe zi, doar când există reamintiri noi. Emailul conține numai numărul de task-uri, fără titluri sau nume de clienți."
+        label="Notificări pe email"
+        description="Primești imediat un email când ți se atribuie un task sau apare o cerere de predare a unui client, și cel mult un rezumat pe zi cu termenele. Emailurile nu conțin titluri de task-uri sau nume de clienți."
         @update:model-value="save({ emailEnabled: $event })"
       />
     </div>

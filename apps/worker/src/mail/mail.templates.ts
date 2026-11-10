@@ -99,6 +99,31 @@ function taskDigest(data: Extract<MailJobData, { kind: 'task-digest' }>): Render
   return { subject, text, html };
 }
 
+/**
+ * Notificare trimisă imediat. Textul vine gata pregătit de API și este deliberat general
+ * (fără titluri de task-uri sau nume de clienți); detaliile se văd în aplicație.
+ */
+function notification(data: Extract<MailJobData, { kind: 'notification' }>): RenderedMail {
+  const subject = `${data.headline} – Alconst Serv`;
+  const text = [
+    `Bună, ${data.firstName},`,
+    '',
+    data.message,
+    '',
+    `Deschide aplicația pentru detalii: ${data.actionUrl}`,
+    '',
+    'Poți opri aceste emailuri din Contul meu → Notificări.',
+  ].join('\n');
+  const html = layout(
+    data.headline,
+    `<p style="margin:0 0 12px;line-height:1.5;">Bună, ${escapeHtml(data.firstName)},</p>
+      <p style="margin:0 0 20px;line-height:1.5;">${escapeHtml(data.message)}</p>
+      <p style="margin:0 0 20px;"><a href="${escapeHtml(data.actionUrl)}" style="display:inline-block;background:#344881;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;">Deschide aplicația</a></p>
+      <p style="margin:0;line-height:1.5;font-size:14px;color:#4b5563;">Poți opri aceste emailuri din Contul meu → Notificări.</p>`,
+  );
+  return { subject, text, html };
+}
+
 /** Construiește conținutul emailului pentru un job din coada `mail`. */
 export function renderMail(data: MailJobData): RenderedMail {
   switch (data.kind) {
@@ -106,5 +131,7 @@ export function renderMail(data: MailJobData): RenderedMail {
       return passwordReset(data);
     case 'task-digest':
       return taskDigest(data);
+    case 'notification':
+      return notification(data);
   }
 }

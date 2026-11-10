@@ -101,10 +101,12 @@ function askTransfer() {
   transferOpen.value = true
 }
 
-/** După predare, un angajat nu mai are acces la client; un administrator rămâne pe pagină. */
+/** Cererile de predare în așteptare pentru acest client. */
+const { data: transferRequests, refresh: refreshTransfers } = useClientTransfers()
+const pendingTransfers = computed(() => transferRequests.value.filter(request => request.client.id === clientId.value))
+
 async function onTransferred() {
-  if (isAdmin.value) await refresh()
-  else await navigateTo('/clienti')
+  await Promise.all([refresh(), refreshTransfers()])
 }
 
 const moreActions = computed<DropdownMenuItem[][]>(() => {
@@ -224,6 +226,17 @@ const moreActions = computed<DropdownMenuItem[][]>(() => {
             </div>
           </dl>
         </div>
+
+        <UAlert
+          v-for="request in pendingTransfers"
+          :key="request.id"
+          color="info"
+          variant="subtle"
+          icon="i-lucide-arrow-left-right"
+          title="Cerere de predare în așteptare"
+          :description="`${request.from.firstName} ${request.from.lastName} → ${request.to.firstName} ${request.to.lastName}. Predarea are loc după acordul amândurora.`"
+          :actions="[{ label: 'Vezi cererile', to: '/', color: 'info', variant: 'outline' }]"
+        />
 
         <UTabs
           v-model="tab"
@@ -426,7 +439,12 @@ const moreActions = computed<DropdownMenuItem[][]>(() => {
           :client="client"
           @saved="onSaved"
         />
-        <ClientsTransferClientModal v-model:open="transferOpen" :client="client" @transferred="onTransferred" />
+        <ClientsTransferClientModal
+          v-model:open="transferOpen"
+          :client="client"
+          @transferred="onTransferred"
+          @requested="refreshTransfers()"
+        />
         <ConfirmDialog
           v-model:open="statusOpen"
           :title="client.isActive ? 'Dezactivezi clientul?' : 'Activezi clientul?'"
