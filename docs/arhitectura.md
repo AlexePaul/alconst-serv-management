@@ -184,6 +184,22 @@ este o execuție concretă, cu termen și responsabil. Un task poate exista și 
   activității sunt operațiuni distincte.
 - **Deplasarea** este un tip de task (`VISIT`): mers la client și completarea fișelor. Nu conține
   nimic despre facturare – facturile se emit separat și nu corespund unu-la-unu cu deplasările.
+- **Fișele**: aplicația ține doar evidența faptului că au fost completate (cine a confirmat și
+  când), nu fișele propriu-zise. O deplasare poate fi finalizată și fără confirmare; rămâne atunci
+  semnalată pe pagina principală și în filtrul „Deplasări fără fișe”.
+- **Intervalul orar** (`startTime`–`endTime`, opțional) este o estimare a responsabilului, nu o
+  programare fixă. Fiecare își organizează singur calendarul: mută deplasările pe altă zi sau la
+  alte ore, iar aceste ajustări se păstrează când obligația este modificată fără legătură cu ele.
+
+### Preluarea unui client de către alt coleg
+
+- **Pentru o singură deplasare**: se schimbă responsabilul task-ului. Colegul vede task-ul (marcat
+  „Înlocuire”) împreună cu adresa, persoana de contact și telefonul clientului – strictul necesar
+  ca să ajungă acolo – dar nu primește acces la restul datelor clientului.
+- **Definitiv**: acțiunea „Predă clientul” mută responsabilitatea, obligațiile și task-urile
+  deschise la noul responsabil; task-urile încheiate rămân în istoricul celui care le-a făcut.
+  Un administrator poate transfera între oricare doi utilizatori. Un angajat își poate preda
+  propriii clienți, dar nu poate prelua singur clientul altcuiva.
 - **Istoricul** unui task este citit din jurnalul de activitate, care reține pentru fiecare
   modificare valoarea veche și cea nouă.
 
@@ -200,7 +216,8 @@ Worker-ul rulează din oră în oră o sarcină idempotentă care:
 Fiecare reamintire are o cheie care îi descrie motivul (tip, task, destinatar, termen), cu
 constrângere de unicitate în baza de date. Rulările repetate nu pot produce notificări duplicate,
 iar un task reprogramat primește reamintiri noi. Destinatarul este responsabilul task-ului sau, în
-lipsa lui, responsabilii clientului.
+lipsa lui, responsabilii clientului. Preluarea unui task sau a unui client este anunțată imediat
+noului responsabil.
 
 „Azi” se stabilește în fusul orar al firmei (`APP_TIMEZONE`, implicit `Europe/Bucharest`), atât în
 API, cât și în worker și în interfață.

@@ -129,6 +129,8 @@ Testele e2e folosesc o bază de date separată (`alconst_test`), creată automat
   pe lună, săptămână și zi.
 - **Notificări** în aplicație și rezumat zilnic pe email, fără duplicate, cu preferințe per
   utilizator.
+- **Deplasări**: interval orar estimat, evidența completării fișelor, preluarea unei deplasări de
+  către un coleg și predarea definitivă a unui client.
 - **Pagina principală**: restanțe, termenele de azi și din următoarele 7 zile.
 - **Mobil**: bară de navigare rapidă către task-uri, calendar, clienți și notificări.
 

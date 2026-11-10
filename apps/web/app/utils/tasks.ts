@@ -95,6 +95,8 @@ const HISTORY_FIELD_LABELS: Record<string, string> = {
   kind: 'tipul',
   client: 'clientul',
   location: 'punctul de lucru',
+  time: 'intervalul orar',
+  sheets: 'fișele completate',
   description: 'descrierea',
   notes: 'observațiile'
 }

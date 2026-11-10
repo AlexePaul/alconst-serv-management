@@ -48,7 +48,10 @@ descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
   pe server, la fiecare cerere; pentru clienții altora răspunsul este „nu există”. Doar
   administratorii stabilesc responsabilii și pot șterge definitiv un client.
 - **Task-uri și obligații**: un angajat vede ce îi este atribuit, ce a creat el și tot ce ține de
-  clienții lui. Un task atribuit unui coleg îi dă acces la task, nu și la client.
+  clienții lui. Un task atribuit unui coleg îi dă acces la task și la datele de contact ale
+  clientului (adresă, persoană de contact, telefon), nu și la restul datelor clientului.
+- **Predarea unui client**: un angajat își poate preda propriii clienți unui coleg, dar nu poate
+  prelua singur clientul altcuiva; administratorii pot transfera între oricare doi utilizatori.
 - **Notificări**: fiecare utilizator își vede doar propriile notificări.
 
 ## Validarea datelor

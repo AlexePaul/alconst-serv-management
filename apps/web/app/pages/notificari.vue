@@ -31,7 +31,8 @@ const ICONS: Record<string, string> = {
   TASK_ASSIGNED: 'i-lucide-user-round-check',
   TASK_DUE_SOON: 'i-lucide-calendar-clock',
   TASK_DUE_TODAY: 'i-lucide-calendar-check',
-  TASK_OVERDUE: 'i-lucide-triangle-alert'
+  TASK_OVERDUE: 'i-lucide-triangle-alert',
+  CLIENT_TRANSFERRED: 'i-lucide-building-2'
 }
 
 /** Deschide task-ul la care se referă notificarea și o marchează ca citită. */
@@ -45,6 +46,7 @@ async function openNotification(notification: NotificationDto) {
     }
   }
   if (notification.taskId) await navigateTo({ path: '/task-uri', query: { task: notification.taskId } })
+  else if (notification.type === 'CLIENT_TRANSFERRED') await navigateTo('/clienti')
   else await refresh()
 }
 

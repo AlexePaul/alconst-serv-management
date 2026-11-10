@@ -29,11 +29,22 @@ const schema = z.object({
   locationId: z.string(),
   assigneeId: z.string(),
   dueDate: z.string('Alege termenul.').min(1, 'Alege termenul.'),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  sheetsCompleted: z.boolean().optional(),
   priority: z.enum(TASK_PRIORITIES),
   status: z.enum(TASK_STATUSES),
   description: z.string().trim().max(5000).optional(),
   notes: z.string().trim().max(5000).optional()
 })
+  .refine(data => !data.endTime || Boolean(data.startTime), {
+    path: ['startTime'],
+    message: 'Completează și ora de început.'
+  })
+  .refine(data => !data.startTime || !data.endTime || data.endTime > data.startTime, {
+    path: ['endTime'],
+    message: 'Trebuie să fie după ora de început.'
+  })
 type Schema = z.output<typeof schema>
 
 const state = reactive<Partial<Schema>>({})
@@ -89,6 +100,9 @@ watch(open, (isOpen) => {
     clientId: task?.client?.id ?? props.defaults?.clientId,
     assigneeId: task ? (task.assignee?.id ?? NONE) : (user.value?.id ?? NONE),
     dueDate: task?.dueDate ?? props.defaults?.dueDate ?? todayLocal(),
+    startTime: task?.startTime ?? '',
+    endTime: task?.endTime ?? '',
+    sheetsCompleted: task?.sheetsCompleted ?? false,
     priority: task?.priority ?? 'NORMAL',
     status: task?.status ?? 'TODO',
     description: task?.description ?? '',
@@ -101,10 +115,23 @@ watch(open, (isOpen) => {
   state.locationId = task?.location?.id ?? NONE
 })
 
+const contactLines = computed(() => {
+  const task = props.task
+  if (!task?.client) return []
+  const address = task.location?.address ?? task.client.address
+  return [
+    address ? { label: task.location ? `Adresă (${task.location.name})` : 'Adresă', value: address, href: undefined } : null,
+    task.client.contactPerson ? { label: 'Contact', value: task.client.contactPerson, href: undefined } : null,
+    task.client.phone ? { label: 'Telefon', value: task.client.phone, href: `tel:${task.client.phone.replace(/\s+/g, '')}` } : null
+  ].filter(line => line !== null)
+})
+
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  const { clientId, locationId, assigneeId, ...fields } = event.data
+  const { clientId, locationId, assigneeId, sheetsCompleted, ...fields } = event.data
   const body = {
     ...fields,
+    // Confirmarea fișelor se trimite doar la editarea unei deplasări.
+    ...(isEdit.value && fields.kind === 'VISIT' ? { sheetsCompleted } : {}),
     clientId: clientId ?? null,
     locationId: locationId === NONE ? null : locationId,
     assigneeId: assigneeId === NONE ? null : assigneeId
@@ -177,6 +204,15 @@ async function confirmDelete() {
           </UFormField>
         </div>
 
+        <div class="grid grid-cols-2 gap-5">
+          <UFormField label="De la ora" name="startTime" help="Opțional: intervalul în care estimezi că are loc.">
+            <UInput v-model="state.startTime" type="time" class="w-full" />
+          </UFormField>
+          <UFormField label="Până la ora" name="endTime">
+            <UInput v-model="state.endTime" type="time" class="w-full" />
+          </UFormField>
+        </div>
+
         <div class="grid gap-5 sm:grid-cols-2">
           <UFormField label="Client" name="clientId">
             <ClientsClientSelect
@@ -197,7 +233,11 @@ async function confirmDelete() {
         </div>
 
         <div class="grid gap-5 sm:grid-cols-2">
-          <UFormField label="Responsabil" name="assigneeId">
+          <UFormField
+            label="Responsabil"
+            name="assigneeId"
+            :help="task?.client ? 'Schimbă-l pentru a preda doar acest task unui coleg.' : undefined"
+          >
             <USelect v-model="state.assigneeId" :items="assigneeItems" class="w-full" />
           </UFormField>
           <UFormField label="Prioritate" name="priority">
@@ -212,6 +252,28 @@ async function confirmDelete() {
           help="Generarea unui document nu finalizează task-ul; statusul se schimbă doar de aici."
         >
           <USelect v-model="state.status" :items="statusItems" class="w-full sm:w-64" />
+        </UFormField>
+
+        <!-- Unde merge și pe cine caută – util mai ales celui care preia o deplasare de la un coleg. -->
+        <div v-if="task?.client && contactLines.length" class="rounded-lg bg-elevated/60 px-4 py-3 text-sm">
+          <p class="font-medium text-highlighted">
+            {{ task.client.name }}
+          </p>
+          <p v-for="line in contactLines" :key="line.label" class="text-muted">
+            {{ line.label }}:
+            <ULink v-if="line.href" :to="line.href" class="text-primary">
+              {{ line.value }}
+            </ULink>
+            <span v-else class="text-default">{{ line.value }}</span>
+          </p>
+        </div>
+
+        <UFormField
+          v-if="isEdit && state.kind === 'VISIT'"
+          name="sheetsCompleted"
+          help="Aplicația ține doar evidența; fișele propriu-zise nu se încarcă aici."
+        >
+          <USwitch v-model="state.sheetsCompleted" label="Fișele au fost completate" />
         </UFormField>
 
         <UFormField label="Descriere" name="description">

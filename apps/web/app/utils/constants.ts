@@ -4,6 +4,7 @@ export {
   CONTRACT_STATUSES,
   formatFeeFrequency,
   formatRecurrence,
+  formatTimeRange,
   PASSWORD_MIN_LENGTH,
   TASK_KIND_LABELS,
   TASK_KINDS,

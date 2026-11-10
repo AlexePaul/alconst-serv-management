@@ -23,6 +23,7 @@ import {
   IsDateOnly,
   IsOptionalDateOnly,
   IsOptionalText,
+  IsOptionalTime,
   IsTrimmedText,
 } from '../../common/dto-decorators.js';
 import { PaginationQuery, STATUS_FILTERS, type StatusFilter } from '../../common/pagination.js';
@@ -73,6 +74,12 @@ export class CreateObligationDto {
 
   @IsOptionalDateOnly('Data de sfârșit')
   endDate?: string | null;
+
+  @IsOptionalTime('Ora de început')
+  startTime?: string | null;
+
+  @IsOptionalTime('Ora de sfârșit')
+  endTime?: string | null;
 
   @IsOptional()
   @IsBoolean({ message: 'Statusul nu este valid.' })

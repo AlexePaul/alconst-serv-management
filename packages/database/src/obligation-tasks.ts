@@ -66,6 +66,8 @@ export async function generateObligationTasks(
         kind: obligation.kind,
         priority: obligation.priority,
         dueDate: toDate(date),
+        startTime: obligation.startTime,
+        endTime: obligation.endTime,
         occurrenceDate: toDate(date),
         obligationId: obligation.id,
         clientId: obligation.clientId,

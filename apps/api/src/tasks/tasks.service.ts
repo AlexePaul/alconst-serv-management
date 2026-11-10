@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@alconst/database';
 import {
   addDays,
+  formatTimeRange,
   normalizeSearch,
   OPEN_TASK_STATUSES,
   type Paginated,
@@ -19,10 +20,21 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateTaskDto, ListTasksQuery, UpdateTaskDto } from './dto/tasks.dto.js';
 import { NotificationsService } from './notifications.service.js';
 import { TaskAccessService } from './task-access.service.js';
+import { assertTimeRange } from './time-range.js';
 import { taskInclude, type TaskRow, toTaskDto } from './task.mapper.js';
 
 const OPEN = [...OPEN_TASK_STATUSES];
 const OVERVIEW_LIMIT = 50;
+/** Deplasări finalizate pentru care nu s-a confirmat completarea fișelor. */
+const MISSING_SHEETS = {
+  kind: 'VISIT',
+  status: 'DONE',
+  sheetsCompletedAt: null,
+} satisfies Prisma.TaskWhereInput;
+/** În cadrul unei zile, task-urile cu oră apar primele, în ordine; cele fără oră la sfârșit. */
+const BY_TIME = {
+  startTime: { sort: 'asc', nulls: 'last' },
+} satisfies Prisma.TaskOrderByWithRelationInput;
 
 interface FieldChange {
   field: string;
@@ -42,6 +54,16 @@ function describeChanges(before: TaskRow, after: TaskRow): FieldChange[] {
   compare('status', before.status, after.status);
   compare('title', before.title, after.title);
   compare('dueDate', formatDateOnly(before.dueDate), formatDateOnly(after.dueDate));
+  compare(
+    'time',
+    formatTimeRange(before.startTime, before.endTime),
+    formatTimeRange(after.startTime, after.endTime),
+  );
+  compare(
+    'sheets',
+    before.sheetsCompletedAt ? 'YES' : 'NO',
+    after.sheetsCompletedAt ? 'YES' : 'NO',
+  );
   compare('assignee', fullName(before.assignee), fullName(after.assignee));
   compare('priority', before.priority, after.priority);
   compare('kind', before.kind, after.kind);
@@ -78,6 +100,7 @@ export class TasksService {
         status === 'open' ? { status: { in: OPEN } } : {},
         status === 'done' ? { status: 'DONE' } : {},
         status === 'cancelled' ? { status: 'CANCELLED' } : {},
+        status === 'missing-sheets' ? MISSING_SHEETS : {},
         query.assignee === 'me' ? { assigneeId: auth.user.id } : {},
         query.assignee === 'none' ? { assigneeId: null } : {},
         query.assignee && !['me', 'none'].includes(query.assignee)
@@ -105,9 +128,9 @@ export class TasksService {
         include: taskInclude,
         // Cele finalizate: cele mai recente primele; restul: în ordinea termenelor.
         orderBy:
-          status === 'done'
+          status === 'done' || status === 'missing-sheets'
             ? [{ completedAt: 'desc' }]
-            : [{ dueDate: 'asc' }, { priority: 'desc' }, { createdAt: 'asc' }],
+            : [{ dueDate: 'asc' }, BY_TIME, { priority: 'desc' }, { createdAt: 'asc' }],
         skip: ((query.page ?? 1) - 1) * pageSize,
         take: pageSize,
       }),
@@ -122,17 +145,24 @@ export class TasksService {
 
   async create(dto: CreateTaskDto, auth: AuthContext, client: ClientInfo): Promise<TaskDto> {
     await this.access.assertLinks(dto, auth.user);
+    assertTimeRange(dto.startTime ?? null, dto.endTime ?? null);
     const status = dto.status ?? 'TODO';
+    const kind = dto.kind ?? 'GENERAL';
 
     const row = await this.prisma.db.task.create({
       data: {
         title: dto.title,
         description: dto.description ?? null,
         notes: dto.notes ?? null,
-        kind: dto.kind ?? 'GENERAL',
+        kind,
         priority: dto.priority ?? 'NORMAL',
         status,
         dueDate: parseDateOnly(dto.dueDate),
+        startTime: dto.startTime ?? null,
+        endTime: dto.endTime ?? null,
+        ...(kind === 'VISIT' && dto.sheetsCompleted
+          ? { sheetsCompletedAt: new Date(), sheetsCompletedById: auth.user.id }
+          : {}),
         clientId: dto.clientId ?? null,
         locationId: dto.locationId ?? null,
         assigneeId: dto.assigneeId ?? null,
@@ -176,6 +206,21 @@ export class TasksService {
     const assigneeId = dto.assigneeId !== undefined ? dto.assigneeId : before.assigneeId;
     await this.access.assertChangedLinks(before, { clientId, locationId, assigneeId }, auth.user);
 
+    const startTime = dto.startTime !== undefined ? dto.startTime : before.startTime;
+    const endTime = dto.endTime !== undefined ? dto.endTime : before.endTime;
+    assertTimeRange(startTime, endTime);
+
+    // Confirmarea fișelor există doar pentru deplasări și se șterge dacă task-ul își schimbă tipul.
+    const kind = dto.kind ?? before.kind;
+    const hadSheets = before.sheetsCompletedAt !== null;
+    const wantsSheets = kind === 'VISIT' && (dto.sheetsCompleted ?? hadSheets);
+    const sheets =
+      wantsSheets === hadSheets
+        ? {}
+        : wantsSheets
+          ? { sheetsCompletedAt: new Date(), sheetsCompletedById: auth.user.id }
+          : { sheetsCompletedAt: null, sheetsCompletedById: null };
+
     const status: TaskStatus = dto.status ?? before.status;
     const after = await this.prisma.db.task.update({
       where: { id },
@@ -188,6 +233,9 @@ export class TasksService {
         ...(dto.kind !== undefined ? { kind: dto.kind } : {}),
         ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
         ...(dto.dueDate !== undefined ? { dueDate: parseDateOnly(dto.dueDate) } : {}),
+        startTime,
+        endTime,
+        ...sheets,
         clientId,
         locationId,
         assigneeId,
@@ -286,18 +334,33 @@ export class TasksService {
       this.prisma.db.task.findMany({
         where,
         include: taskInclude,
-        orderBy: [{ dueDate: 'asc' }, { priority: 'desc' }],
+        orderBy: [{ dueDate: 'asc' }, BY_TIME, { priority: 'desc' }],
         take: OVERVIEW_LIMIT,
       });
-    const [overdue, dueToday, upcoming, overdueCount, dueTodayCount, upcomingCount] =
-      await Promise.all([
-        fetch(buckets.overdue),
-        fetch(buckets.dueToday),
-        fetch(buckets.upcoming),
-        this.prisma.db.task.count({ where: buckets.overdue }),
-        this.prisma.db.task.count({ where: buckets.dueToday }),
-        this.prisma.db.task.count({ where: buckets.upcoming }),
-      ]);
+    const missingSheets: Prisma.TaskWhereInput = {
+      AND: [
+        this.access.taskScope(auth.user),
+        MISSING_SHEETS,
+        scope === 'mine' ? { assigneeId: auth.user.id } : {},
+      ],
+    };
+    const [
+      overdue,
+      dueToday,
+      upcoming,
+      overdueCount,
+      dueTodayCount,
+      upcomingCount,
+      visitsMissingSheets,
+    ] = await Promise.all([
+      fetch(buckets.overdue),
+      fetch(buckets.dueToday),
+      fetch(buckets.upcoming),
+      this.prisma.db.task.count({ where: buckets.overdue }),
+      this.prisma.db.task.count({ where: buckets.dueToday }),
+      this.prisma.db.task.count({ where: buckets.upcoming }),
+      this.prisma.db.task.count({ where: missingSheets }),
+    ]);
 
     return {
       today,
@@ -305,6 +368,7 @@ export class TasksService {
       dueToday: dueToday.map(toTaskDto),
       upcoming: upcoming.map(toTaskDto),
       counts: { overdue: overdueCount, dueToday: dueTodayCount, upcoming: upcomingCount },
+      visitsMissingSheets,
     };
   }
 

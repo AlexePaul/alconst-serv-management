@@ -1,6 +1,7 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsOptional,
@@ -19,7 +20,12 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from '@alconst/shared';
-import { IsDateOnly, IsOptionalText, IsTrimmedText } from '../../common/dto-decorators.js';
+import {
+  IsDateOnly,
+  IsOptionalText,
+  IsOptionalTime,
+  IsTrimmedText,
+} from '../../common/dto-decorators.js';
 
 const emptyToNull = ({ value }: { value: unknown }) => (value === '' ? null : value);
 
@@ -48,6 +54,17 @@ export class CreateTaskDto {
   @IsDateOnly('Termenul')
   dueDate: string;
 
+  @IsOptionalTime('Ora de început')
+  startTime?: string | null;
+
+  @IsOptionalTime('Ora de sfârșit')
+  endTime?: string | null;
+
+  /** Doar pentru deplasări: confirmă că fișele au fost completate. */
+  @IsOptional()
+  @IsBoolean({ message: 'Valoare invalidă.' })
+  sheetsCompleted?: boolean;
+
   @Transform(emptyToNull)
   @IsOptional()
   @IsUUID('all', { message: 'Client invalid.' })
@@ -66,7 +83,8 @@ export class CreateTaskDto {
 
 export class UpdateTaskDto extends PartialType(CreateTaskDto) {}
 
-export const TASK_STATUS_FILTERS = ['open', 'done', 'cancelled', 'all'] as const;
+/** `missing-sheets` = deplasări finalizate fără confirmarea completării fișelor. */
+export const TASK_STATUS_FILTERS = ['open', 'done', 'cancelled', 'missing-sheets', 'all'] as const;
 export type TaskStatusFilter = (typeof TASK_STATUS_FILTERS)[number];
 
 export class ListTasksQuery {

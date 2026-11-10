@@ -20,6 +20,7 @@ import type {
   UpdateObligationDto,
 } from './dto/obligations.dto.js';
 import { TaskAccessService } from './task-access.service.js';
+import { assertTimeRange } from './time-range.js';
 
 const OPEN = [...OPEN_TASK_STATUSES];
 
@@ -84,6 +85,7 @@ export class ObligationsService {
   ): Promise<ObligationDto> {
     await this.access.assertLinks(dto, auth.user);
     this.assertPeriod(dto.startDate, dto.endDate ?? null);
+    assertTimeRange(dto.startTime ?? null, dto.endTime ?? null);
 
     const created = await this.prisma.db.obligation.create({
       data: {
@@ -98,6 +100,8 @@ export class ObligationsService {
         recurrenceInterval: dto.recurrenceInterval ?? 1,
         startDate: parseDateOnly(dto.startDate),
         endDate: dto.endDate ? parseDateOnly(dto.endDate) : null,
+        startTime: dto.startTime ?? null,
+        endTime: dto.endTime ?? null,
         isActive: dto.isActive ?? true,
         searchText: normalizeSearch(dto.title),
         createdById: auth.user.id,
@@ -151,6 +155,12 @@ export class ObligationsService {
           ? formatDateOnly(before.endDate)
           : null;
     this.assertPeriod(startDate, endDate);
+    const startTime = dto.startTime !== undefined ? dto.startTime : before.startTime;
+    const endTime = dto.endTime !== undefined ? dto.endTime : before.endTime;
+    assertTimeRange(startTime, endTime);
+    // Intervalul orar se propagă doar dacă s-a schimbat, ca să nu suprascrie orele ajustate
+    // manual pe task-uri la o modificare fără legătură (ex. titlul).
+    const timeChanged = startTime !== before.startTime || endTime !== before.endTime;
 
     const next = {
       title: dto.title ?? before.title,
@@ -164,6 +174,8 @@ export class ObligationsService {
       recurrenceInterval: dto.recurrenceInterval ?? before.recurrenceInterval,
       startDate: parseDateOnly(startDate),
       endDate: endDate ? parseDateOnly(endDate) : null,
+      startTime,
+      endTime,
       isActive: dto.isActive ?? before.isActive,
     };
 
@@ -194,6 +206,7 @@ export class ObligationsService {
             locationId: next.locationId,
             assigneeId: next.assigneeId,
             searchText: normalizeSearch(next.title),
+            ...(timeChanged ? { startTime, endTime } : {}),
           },
         });
       }
@@ -285,6 +298,8 @@ export class ObligationsService {
       recurrenceInterval: row.recurrenceInterval,
       startDate,
       endDate,
+      startTime: row.startTime,
+      endTime: row.endTime,
       isActive: row.isActive,
       nextDueDate: openTask ? formatDateOnly(openTask.dueDate) : computed,
       openTaskCount: row._count.tasks,

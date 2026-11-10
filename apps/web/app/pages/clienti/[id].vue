@@ -6,7 +6,7 @@ import { FetchError } from 'ofetch'
 const route = useRoute()
 const api = useApi()
 const toast = useToast()
-const { isAdmin } = useAuth()
+const { user: currentUser, isAdmin } = useAuth()
 
 const clientId = computed(() => String(route.params.id))
 
@@ -88,8 +88,28 @@ function askDelete() {
   deleteOpen.value = true
 }
 
+// --- Predare către alt responsabil ------------------------------------------------------------
+
+const transferOpen = ref(false)
+/** Administratorii pot transfera orice client care are un responsabil; angajații, doar pe ai lor. */
+const canTransfer = computed(() => {
+  const responsibles = client.value?.responsibles ?? []
+  return isAdmin.value ? responsibles.length > 0 : responsibles.some(user => user.id === currentUser.value?.id)
+})
+
+function askTransfer() {
+  transferOpen.value = true
+}
+
+/** După predare, un angajat nu mai are acces la client; un administrator rămâne pe pagină. */
+async function onTransferred() {
+  if (isAdmin.value) await refresh()
+  else await navigateTo('/clienti')
+}
+
 const moreActions = computed<DropdownMenuItem[][]>(() => {
   const items: DropdownMenuItem[][] = [[
+    ...(canTransfer.value ? [{ label: 'Predă clientul altui coleg', icon: 'i-lucide-arrow-left-right', onSelect: askTransfer }] : []),
     client.value?.isActive
       ? { label: 'Dezactivează clientul', icon: 'i-lucide-archive', onSelect: askStatusChange }
       : { label: 'Activează clientul', icon: 'i-lucide-archive-restore', onSelect: askStatusChange }
@@ -406,6 +426,7 @@ const moreActions = computed<DropdownMenuItem[][]>(() => {
           :client="client"
           @saved="onSaved"
         />
+        <ClientsTransferClientModal v-model:open="transferOpen" :client="client" @transferred="onTransferred" />
         <ConfirmDialog
           v-model:open="statusOpen"
           :title="client.isActive ? 'Dezactivezi clientul?' : 'Activezi clientul?'"

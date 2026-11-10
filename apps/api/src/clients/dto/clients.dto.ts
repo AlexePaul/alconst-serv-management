@@ -95,3 +95,12 @@ export class SetClientServicesDto {
   @IsUUID('all', { each: true, message: 'Serviciu invalid.' })
   serviceIds: string[];
 }
+
+/** Predarea definitivă a unui client de la un responsabil la altul. */
+export class TransferClientDto {
+  @IsUUID('all', { message: 'Responsabil invalid.' })
+  fromUserId: string;
+
+  @IsUUID('all', { message: 'Responsabil invalid.' })
+  toUserId: string;
+}

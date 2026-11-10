@@ -361,6 +361,253 @@ describe('Obligații, task-uri și notificări (e2e)', () => {
     });
   });
 
+  describe('interval orar, fișe și preluări', () => {
+    const createVisit = async (cookie: string, overrides: object = {}) =>
+      (
+        await post('/api/tasks', cookie, {
+          title: 'Deplasare',
+          kind: 'VISIT',
+          dueDate: today,
+          clientId,
+          assigneeId: ana.id,
+          ...overrides,
+        }).expect(201)
+      ).body as Task & { startTime: string | null; sheetsCompleted: boolean; isCover: boolean };
+
+    it('task-urile pot avea un interval orar și sunt ordonate după el în cadrul zilei', async () => {
+      await createVisit(ana.cookie, { title: 'Fără oră' });
+      await createVisit(ana.cookie, { title: 'După-amiază', startTime: '14:00', endTime: '16:00' });
+      await createVisit(ana.cookie, { title: 'Dimineață', startTime: '09:30' });
+
+      const list = (await get('/api/tasks', ana.cookie).expect(200)).body.items as {
+        title: string;
+      }[];
+      expect(list.map((task) => task.title)).toEqual(['Dimineață', 'După-amiază', 'Fără oră']);
+    });
+
+    it('validează intervalul orar', async () => {
+      const invalid = await post('/api/tasks', ana.cookie, {
+        title: 'X',
+        dueDate: today,
+        startTime: '25:00',
+      }).expect(400);
+      expect(invalid.body.fieldErrors).toHaveProperty('startTime');
+      const onlyEnd = await post('/api/tasks', ana.cookie, {
+        title: 'X',
+        dueDate: today,
+        endTime: '12:00',
+      }).expect(400);
+      expect(onlyEnd.body.fieldErrors).toHaveProperty('startTime');
+      const reversed = await post('/api/tasks', ana.cookie, {
+        title: 'X',
+        dueDate: today,
+        startTime: '12:00',
+        endTime: '10:00',
+      }).expect(400);
+      expect(reversed.body.fieldErrors).toHaveProperty('endTime');
+
+      const task = await createVisit(ana.cookie, { startTime: '10:00', endTime: '12:00' });
+      // Ștergerea începutului lasă un sfârșit fără început, ceea ce nu este permis.
+      await patch(`/api/tasks/${task.id}`, ana.cookie, { startTime: '' }).expect(400);
+      const cleared = await patch(`/api/tasks/${task.id}`, ana.cookie, {
+        startTime: '',
+        endTime: '',
+      }).expect(200);
+      expect(cleared.body).toMatchObject({ startTime: null, endTime: null });
+    });
+
+    it('obligațiile dau intervalul orar task-urilor, fără a suprascrie orele ajustate manual', async () => {
+      const obligation = await createObligation({ startTime: '10:00', endTime: '12:00' });
+      const [first, second] = await tasksOf(obligation.id);
+      expect(first).toMatchObject({ startTime: '10:00', endTime: '12:00' });
+
+      // Responsabilul își mută singur a doua deplasare la altă oră.
+      await patch(`/api/tasks/${second!.id}`, ana.cookie, {
+        startTime: '15:00',
+        endTime: '17:00',
+      }).expect(200);
+      await patch(`/api/obligations/${obligation.id}`, ana.cookie, { title: 'Titlu nou' }).expect(
+        200,
+      );
+      expect((await get(`/api/tasks/${second!.id}`, ana.cookie).expect(200)).body).toMatchObject({
+        title: 'Titlu nou',
+        startTime: '15:00',
+        endTime: '17:00',
+      });
+
+      // Schimbarea intervalului pe obligație se aplică tuturor task-urilor neîncepute.
+      await patch(`/api/obligations/${obligation.id}`, ana.cookie, {
+        startTime: '08:00',
+        endTime: '09:00',
+      }).expect(200);
+      expect((await get(`/api/tasks/${second!.id}`, ana.cookie).expect(200)).body.startTime).toBe(
+        '08:00',
+      );
+    });
+
+    it('ține evidența completării fișelor, doar pentru deplasări', async () => {
+      const visit = await createVisit(ana.cookie);
+      expect(visit.sheetsCompleted).toBe(false);
+
+      // O deplasare poate fi finalizată fără fișe; rămâne semnalată până sunt confirmate.
+      await patch(`/api/tasks/${visit.id}`, ana.cookie, { status: 'DONE' }).expect(200);
+      const missing = (await get('/api/tasks?status=missing-sheets', ana.cookie).expect(200)).body;
+      expect(missing.items.map((task: Task) => task.id)).toEqual([visit.id]);
+      expect(
+        (await get('/api/tasks/overview', ana.cookie).expect(200)).body.visitsMissingSheets,
+      ).toBe(1);
+
+      const confirmed = await patch(`/api/tasks/${visit.id}`, ana.cookie, {
+        sheetsCompleted: true,
+      }).expect(200);
+      expect(confirmed.body.sheetsCompleted).toBe(true);
+      expect(confirmed.body.sheetsCompletedAt).not.toBeNull();
+      expect(
+        (await get('/api/tasks?status=missing-sheets', ana.cookie).expect(200)).body.total,
+      ).toBe(0);
+      expect(
+        (await get('/api/tasks/overview', ana.cookie).expect(200)).body.visitsMissingSheets,
+      ).toBe(0);
+
+      const history = (await get(`/api/tasks/${visit.id}/history`, ana.cookie).expect(200)).body;
+      expect(history[0].changes).toEqual([{ field: 'sheets', from: 'NO', to: 'YES' }]);
+
+      // Pentru o activitate obișnuită confirmarea nu are sens și este ignorată.
+      const general = (
+        await post('/api/tasks', ana.cookie, {
+          title: 'Raport',
+          dueDate: today,
+          sheetsCompleted: true,
+        }).expect(201)
+      ).body;
+      expect(general.sheetsCompleted).toBe(false);
+      // Schimbarea tipului șterge confirmarea.
+      const changed = await patch(`/api/tasks/${visit.id}`, ana.cookie, { kind: 'GENERAL' }).expect(
+        200,
+      );
+      expect(changed.body.sheetsCompleted).toBe(false);
+    });
+
+    it('preluare pentru o singură deplasare: colegul vede task-ul și datele de contact, nu și clientul', async () => {
+      await patch(`/api/clients/${clientId}`, ana.cookie, {
+        address: 'Str. Fabricii 10',
+        contactPerson: 'Ion Pop',
+        phone: '0721 000 000',
+      }).expect(200);
+      const visit = await createVisit(ana.cookie);
+      expect(visit.isCover).toBe(false);
+
+      const handed = await patch(`/api/tasks/${visit.id}`, ana.cookie, {
+        assigneeId: dan.id,
+      }).expect(200);
+      expect(handed.body.isCover).toBe(true);
+
+      const seenByDan = (await get(`/api/tasks/${visit.id}`, dan.cookie).expect(200)).body;
+      expect(seenByDan.client).toEqual({
+        id: clientId,
+        name: 'SC Ștefănescu SRL',
+        address: 'Str. Fabricii 10',
+        contactPerson: 'Ion Pop',
+        phone: '0721 000 000',
+      });
+      await patch(`/api/tasks/${visit.id}`, dan.cookie, {
+        status: 'DONE',
+        sheetsCompleted: true,
+      }).expect(200);
+      // Restul datelor clientului și celelalte task-uri ale lui rămân inaccesibile.
+      await get(`/api/clients/${clientId}`, dan.cookie).expect(404);
+      await get(`/api/employees?clientId=${clientId}`, dan.cookie)
+        .expect(200)
+        .expect((r) => expect(r.body.total).toBe(0));
+      const other = await createVisit(ana.cookie, { title: 'Altă deplasare' });
+      await get(`/api/tasks/${other.id}`, dan.cookie).expect(404);
+      expect((await get('/api/notifications', dan.cookie).expect(200)).body.items[0]).toMatchObject(
+        {
+          type: 'TASK_ASSIGNED',
+          taskId: visit.id,
+        },
+      );
+    });
+
+    it('preluare definitivă: clientul, obligațiile și task-urile deschise trec la noul responsabil', async () => {
+      const obligation = await createObligation();
+      const [first] = await tasksOf(obligation.id);
+      await patch(`/api/tasks/${first!.id}`, ana.cookie, { status: 'DONE' }).expect(200);
+      const adminsTask = await createVisit(admin.cookie, {
+        title: 'Al administratorului',
+        assigneeId: admin.id,
+      });
+
+      // Un angajat nu poate prelua singur clientul altcuiva și nu poate preda în numele altuia.
+      await post(`/api/clients/${clientId}/transfer`, dan.cookie, {
+        fromUserId: ana.id,
+        toUserId: dan.id,
+      }).expect(404);
+      await post(`/api/clients/${clientId}/transfer`, ana.cookie, {
+        fromUserId: admin.id,
+        toUserId: dan.id,
+      }).expect(403);
+      await post(`/api/clients/${clientId}/transfer`, ana.cookie, {
+        fromUserId: ana.id,
+        toUserId: ana.id,
+      }).expect(400);
+
+      await post(`/api/clients/${clientId}/transfer`, ana.cookie, {
+        fromUserId: ana.id,
+        toUserId: dan.id,
+      }).expect(204);
+
+      // Dan are acum clientul; Ana nu mai are acces.
+      const client = (await get(`/api/clients/${clientId}`, dan.cookie).expect(200)).body;
+      expect(client.responsibles.map((user: { id: string }) => user.id)).toEqual([dan.id]);
+      await get(`/api/clients/${clientId}`, ana.cookie).expect(404);
+
+      const tasks = await tasksOf(obligation.id);
+      // Task-ul finalizat rămâne pe numele Anei; cele deschise trec la Dan.
+      expect(tasks.find((task) => task.id === first!.id)?.assignee?.id).toBe(ana.id);
+      expect(
+        tasks
+          .filter((task) => task.status === 'TODO')
+          .every((task) => task.assignee?.id === dan.id),
+      ).toBe(true);
+      // Task-urile altor responsabili nu sunt atinse.
+      expect(
+        (await get(`/api/tasks/${adminsTask.id}`, admin.cookie).expect(200)).body.assignee.id,
+      ).toBe(admin.id);
+      const obligations = (
+        await get(`/api/obligations?clientId=${clientId}`, dan.cookie).expect(200)
+      ).body;
+      expect(obligations.items[0].assignee.id).toBe(dan.id);
+
+      const notification = (await get('/api/notifications', dan.cookie).expect(200)).body.items[0];
+      expect(notification).toMatchObject({
+        type: 'CLIENT_TRANSFERRED',
+        body: 'SC Ștefănescu SRL · 4 task-uri deschise',
+      });
+      const log = await t.prisma.db.activityLog.findFirst({
+        where: { action: 'client.transferred' },
+      });
+      expect(log?.metadata).toMatchObject({
+        fromUserId: ana.id,
+        toUserId: dan.id,
+        tasks: 4,
+        obligations: 1,
+      });
+    });
+
+    it('administratorul poate transfera între oricare doi utilizatori', async () => {
+      await post(`/api/clients/${clientId}/transfer`, admin.cookie, {
+        fromUserId: dan.id,
+        toUserId: ana.id,
+      }).expect(400);
+      await post(`/api/clients/${clientId}/transfer`, admin.cookie, {
+        fromUserId: ana.id,
+        toUserId: dan.id,
+      }).expect(204);
+      await get(`/api/clients/${clientId}`, dan.cookie).expect(200);
+    });
+  });
+
   describe('notificări', () => {
     it('anunță utilizatorul căruia i se atribuie un task de către altcineva', async () => {
       const task = (

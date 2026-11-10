@@ -21,7 +21,7 @@ const today = todayLocal()
 
 const search = ref('')
 const debouncedSearch = useDebounced(search)
-const status = ref<'open' | 'done' | 'cancelled' | 'all'>('open')
+const status = ref<'open' | 'done' | 'cancelled' | 'missing-sheets' | 'all'>('open')
 // În pagina unui client se văd task-urile tuturor; în lista generală, implicit cele proprii.
 const assignee = ref(props.clientId ? 'all' : 'me')
 const page = ref(1)
@@ -30,6 +30,7 @@ const statusItems = [
   { label: 'Deschise', value: 'open' },
   { label: 'Finalizate', value: 'done' },
   { label: 'Anulate', value: 'cancelled' },
+  { label: 'Deplasări fără fișe', value: 'missing-sheets' },
   { label: 'Toate', value: 'all' }
 ]
 
@@ -113,8 +114,23 @@ async function onChanged() {
   emit('changed')
 }
 
+const visitOpen = ref(false)
+const visitTask = ref<TaskDto | null>(null)
+
+/** Arată deplasările finalizate pentru care fișele nu au fost confirmate (ex. din pagina principală). */
+function showMissingSheets() {
+  status.value = 'missing-sheets'
+  assignee.value = 'all'
+}
+
 /** Bifa rapidă: finalizează un task deschis sau redeschide unul finalizat. */
 async function toggle(task: TaskDto) {
+  // La o deplasare se întreabă mai întâi dacă fișele au fost completate.
+  if (task.kind === 'VISIT' && isOpenTask(task.status)) {
+    visitTask.value = task
+    visitOpen.value = true
+    return
+  }
   busyId.value = task.id
   try {
     const next = isOpenTask(task.status) ? 'DONE' : 'TODO'
@@ -133,7 +149,7 @@ async function toggle(task: TaskDto) {
   }
 }
 
-defineExpose({ openCreate, openById, refresh })
+defineExpose({ openCreate, openById, refresh, showMissingSheets })
 </script>
 
 <template>
@@ -150,7 +166,7 @@ defineExpose({ openCreate, openById, refresh })
         v-model="status"
         :items="statusItems"
         aria-label="Filtrează după status"
-        class="w-36 shrink-0"
+        class="w-44 shrink-0"
       />
       <USelect
         v-model="assignee"
@@ -183,7 +199,7 @@ defineExpose({ openCreate, openById, refresh })
     <UEmpty
       v-else-if="tasks.length === 0"
       :icon="hasFilters ? 'i-lucide-search-x' : 'i-lucide-circle-check-big'"
-      :title="hasFilters ? 'Niciun task găsit' : 'Niciun task deschis'"
+      :title="status === 'missing-sheets' ? 'Toate fișele sunt confirmate' : hasFilters ? 'Niciun task găsit' : 'Niciun task deschis'"
       :description="hasFilters
         ? 'Niciun task nu corespunde căutării sau filtrelor alese.'
         : clientId
@@ -236,6 +252,7 @@ defineExpose({ openCreate, openById, refresh })
       </div>
     </template>
 
+    <TasksVisitCompleteDialog v-model:open="visitOpen" :task="visitTask" @done="onChanged" />
     <TasksTaskFormModal
       v-model:open="formOpen"
       :task="selected"

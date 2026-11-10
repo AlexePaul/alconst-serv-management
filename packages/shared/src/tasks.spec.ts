@@ -137,3 +137,15 @@ describe('recurență', () => {
     expect(nextOccurrence({ ...quarterly, endDate: '2026-12-01' }, '2026-11-11')).toBeNull();
   });
 });
+
+describe('formatTimeRange', () => {
+  it('afișează intervalul complet, doar începutul sau nimic', async () => {
+    const { formatTimeRange, TIME_PATTERN } = await import('./tasks.js');
+    expect(formatTimeRange('10:00', '12:30')).toBe('10:00–12:30');
+    expect(formatTimeRange('10:00', null)).toBe('de la 10:00');
+    expect(formatTimeRange(null, '12:00')).toBeNull();
+    expect(TIME_PATTERN.test('09:05')).toBe(true);
+    expect(TIME_PATTERN.test('24:00')).toBe(false);
+    expect(TIME_PATTERN.test('9:5')).toBe(false);
+  });
+});

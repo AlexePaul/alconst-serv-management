@@ -34,12 +34,22 @@ const schema = z
     customInterval: z.number('Introdu intervalul.').int('Număr întreg.').min(1, 'Cel puțin 1.').max(120, 'Cel mult 120.'),
     startDate: z.string('Alege primul termen.').min(1, 'Alege primul termen.'),
     endDate: z.string().optional(),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
     description: z.string().trim().max(5000).optional(),
     isActive: z.boolean()
   })
   .refine(data => !data.endDate || data.endDate >= data.startDate, {
     path: ['endDate'],
     message: 'Data de sfârșit nu poate fi înaintea primului termen.'
+  })
+  .refine(data => !data.endTime || Boolean(data.startTime), {
+    path: ['startTime'],
+    message: 'Completează și ora de început.'
+  })
+  .refine(data => !data.startTime || !data.endTime || data.endTime > data.startTime, {
+    path: ['endTime'],
+    message: 'Trebuie să fie după ora de început.'
   })
 type Schema = z.output<typeof schema>
 
@@ -129,6 +139,8 @@ watch(open, (isOpen) => {
     customInterval: isCustom && obligation ? obligation.recurrenceInterval : 2,
     startDate: obligation?.startDate ?? todayLocal(),
     endDate: obligation?.endDate ?? '',
+    startTime: obligation?.startTime ?? '',
+    endTime: obligation?.endTime ?? '',
     description: obligation?.description ?? '',
     isActive: obligation?.isActive ?? true
   })
@@ -250,6 +262,15 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </UFormField>
           <UFormField label="Se încheie la" name="endDate" help="Lasă gol dacă nu are sfârșit.">
             <UInput v-model="state.endDate" type="date" class="w-full" />
+          </UFormField>
+        </div>
+
+        <div class="grid grid-cols-2 gap-5">
+          <UFormField label="De la ora" name="startTime" help="Opțional. Fiecare deplasare poate fi mutată apoi separat.">
+            <UInput v-model="state.startTime" type="time" class="w-full" />
+          </UFormField>
+          <UFormField label="Până la ora" name="endTime">
+            <UInput v-model="state.endTime" type="time" class="w-full" />
           </UFormField>
         </div>
 

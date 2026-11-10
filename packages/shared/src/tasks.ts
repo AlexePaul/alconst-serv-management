@@ -126,11 +126,35 @@ export function nextOccurrence(recurrence: Recurrence, onOrAfter: string): strin
   return occurrencesBetween(recurrence, from, '9999-12-31', 1)[0] ?? null;
 }
 
+// --- Interval orar -----------------------------------------------------------------------------
+
+/** Ora în format `HH:mm` (24 de ore). */
+export const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** Ex.: „10:00–12:00”, „de la 10:00”; null dacă nu este stabilit niciun interval. */
+export function formatTimeRange(
+  startTime: string | null | undefined,
+  endTime: string | null | undefined,
+): string | null {
+  if (!startTime) return null;
+  return endTime ? `${startTime}–${endTime}` : `de la ${startTime}`;
+}
+
 // --- DTO-uri -----------------------------------------------------------------------------------
 
 export interface ClientRefDto {
   id: string;
   name: string;
+}
+
+/**
+ * Datele clientului de care are nevoie cel care execută task-ul (unde merge, pe cine caută).
+ * Sunt vizibile și unui coleg care preia task-ul fără a avea acces la restul datelor clientului.
+ */
+export interface TaskClientDto extends ClientRefDto {
+  address: string | null;
+  contactPerson: string | null;
+  phone: string | null;
 }
 
 export interface TaskDto {
@@ -143,9 +167,17 @@ export interface TaskDto {
   priority: TaskPriority;
   /** Termenul, `YYYY-MM-DD`. */
   dueDate: string;
-  client: ClientRefDto | null;
-  location: { id: string; name: string } | null;
+  /** Intervalul orar estimat (`HH:mm`), dacă a fost stabilit. */
+  startTime: string | null;
+  endTime: string | null;
+  client: TaskClientDto | null;
+  location: { id: string; name: string; address: string | null } | null;
   assignee: UserRefDto | null;
+  /** Responsabilul task-ului nu este responsabil al clientului: a preluat doar această activitate. */
+  isCover: boolean;
+  /** Doar pentru deplasări: s-a confirmat completarea fișelor. */
+  sheetsCompleted: boolean;
+  sheetsCompletedAt: string | null;
   /** Obligația din care a fost generat task-ul, dacă există. */
   obligation: { id: string; title: string } | null;
   completedAt: string | null;
@@ -170,6 +202,8 @@ export interface TasksOverviewDto {
   /** Următoarele 7 zile, fără azi. */
   upcoming: TaskDto[];
   counts: { overdue: number; dueToday: number; upcoming: number };
+  /** Deplasări finalizate pentru care nu s-a confirmat completarea fișelor. */
+  visitsMissingSheets: number;
 }
 
 export interface ObligationDto {
@@ -185,6 +219,8 @@ export interface ObligationDto {
   recurrenceInterval: number;
   startDate: string;
   endDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
   isActive: boolean;
   /** Următorul termen: cel mai apropiat task deschis sau următoarea apariție calculată. */
   nextDueDate: string | null;
@@ -200,6 +236,7 @@ export const NOTIFICATION_TYPES = [
   'TASK_DUE_SOON',
   'TASK_DUE_TODAY',
   'TASK_OVERDUE',
+  'CLIENT_TRANSFERRED',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 

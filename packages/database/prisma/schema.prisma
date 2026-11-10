@@ -45,6 +45,7 @@ model User {
   assignedTasks        Task[]                @relation("TaskAssignee")
   createdTasks         Task[]                @relation("TaskCreatedBy")
   completedTasks       Task[]                @relation("TaskCompletedBy")
+  sheetsCompletedTasks Task[]                @relation("TaskSheetsCompletedBy")
   notifications        Notification[]
   notificationSettings NotificationSettings?
 
@@ -341,6 +342,9 @@ model Obligation {
   startDate          DateTime       @db.Date
   /// După această dată nu se mai generează task-uri. Null = fără sfârșit.
   endDate            DateTime?      @db.Date
+  /// Intervalul orar estimat (`HH:mm`), copiat în task-urile generate. Opțional.
+  startTime          String?
+  endTime            String?
   isActive           Boolean        @default(true)
   searchText         String
   createdById        String?        @db.Uuid
@@ -360,36 +364,44 @@ model Obligation {
 
 /// O execuție concretă: ce trebuie făcut, până când și de către cine.
 model Task {
-  id             String       @id @default(uuid(7)) @db.Uuid
-  title          String
-  description    String?
+  id                  String       @id @default(uuid(7)) @db.Uuid
+  title               String
+  description         String?
   /// Observații adăugate pe parcursul execuției.
-  notes          String?
-  kind           TaskKind     @default(GENERAL)
-  status         TaskStatus   @default(TODO)
-  priority       TaskPriority @default(NORMAL)
-  dueDate        DateTime     @db.Date
-  clientId       String?      @db.Uuid
-  locationId     String?      @db.Uuid
-  obligationId   String?      @db.Uuid
+  notes               String?
+  kind                TaskKind     @default(GENERAL)
+  status              TaskStatus   @default(TODO)
+  priority            TaskPriority @default(NORMAL)
+  dueDate             DateTime     @db.Date
+  /// Intervalul orar estimat de responsabil (`HH:mm`). Opțional: „de la” fără „până la” este permis.
+  startTime           String?
+  endTime             String?
+  clientId            String?      @db.Uuid
+  locationId          String?      @db.Uuid
+  obligationId        String?      @db.Uuid
   /// Apariția din obligație pe care o reprezintă task-ul. Împreună cu `obligationId` garantează
   /// că aceeași apariție nu este generată de două ori, nici la rulări simultane.
-  occurrenceDate DateTime?    @db.Date
-  assigneeId     String?      @db.Uuid
-  createdById    String?      @db.Uuid
-  completedAt    DateTime?
-  completedById  String?      @db.Uuid
-  searchText     String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  occurrenceDate      DateTime?    @db.Date
+  assigneeId          String?      @db.Uuid
+  createdById         String?      @db.Uuid
+  completedAt         DateTime?
+  completedById       String?      @db.Uuid
+  /// Doar pentru deplasări: momentul în care s-a confirmat că fișele au fost completate.
+  /// Aplicația ține doar evidența; fișele propriu-zise nu sunt stocate.
+  sheetsCompletedAt   DateTime?
+  sheetsCompletedById String?      @db.Uuid
+  searchText          String
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
-  client        Client?        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  location      Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  obligation    Obligation?    @relation(fields: [obligationId], references: [id], onDelete: SetNull)
-  assignee      User?          @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  createdBy     User?          @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  completedBy   User?          @relation("TaskCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
-  notifications Notification[]
+  client            Client?        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  location          Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  obligation        Obligation?    @relation(fields: [obligationId], references: [id], onDelete: SetNull)
+  assignee          User?          @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy         User?          @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  completedBy       User?          @relation("TaskCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  sheetsCompletedBy User?          @relation("TaskSheetsCompletedBy", fields: [sheetsCompletedById], references: [id], onDelete: SetNull)
+  notifications     Notification[]
 
   @@unique([obligationId, occurrenceDate])
   @@index([status, dueDate])

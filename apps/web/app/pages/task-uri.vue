@@ -5,12 +5,14 @@ const route = useRoute()
 const router = useRouter()
 const list = useTemplateRef('list')
 
-// Linkurile din notificări (`?task=<id>`) și acțiunile rapide (`?nou=1`, `?nou=deplasare`).
+// Linkurile din notificări (`?task=<id>`), acțiunile rapide (`?nou=1`, `?nou=deplasare`)
+// și avertizarea de pe pagina principală (`?filtru=fise`).
 onMounted(() => {
-  const { task, nou } = route.query
+  const { task, nou, filtru } = route.query
   if (typeof task === 'string') list.value?.openById(task)
   else if (nou !== undefined) list.value?.openCreate(nou === 'deplasare' ? 'VISIT' : 'GENERAL')
-  if (task !== undefined || nou !== undefined) router.replace({ query: {} })
+  if (filtru === 'fise') list.value?.showMissingSheets()
+  if (task !== undefined || nou !== undefined || filtru !== undefined) router.replace({ query: {} })
 })
 </script>
 

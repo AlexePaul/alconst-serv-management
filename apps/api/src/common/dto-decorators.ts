@@ -9,7 +9,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@alconst/shared';
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, TIME_PATTERN } from '@alconst/shared';
 
 /** Adresă de email validă, normalizată (fără spații, cu litere mici). */
 export function IsNormalizedEmail(): PropertyDecorator {
@@ -89,5 +89,14 @@ export function IsOptionalDateOnly(label: string): PropertyDecorator {
     Transform(({ value }: { value: unknown }) => (value === '' ? null : value)),
     IsOptional(),
     IsDateOnly(label),
+  );
+}
+
+/** Oră opțională în format `HH:mm`; textul gol devine `null`. */
+export function IsOptionalTime(label: string): PropertyDecorator {
+  return applyDecorators(
+    Transform(({ value }: { value: unknown }) => (value === '' ? null : value)),
+    IsOptional(),
+    Matches(TIME_PATTERN, { message: `${label} trebuie să fie o oră validă (ex. 09:30).` }),
   );
 }

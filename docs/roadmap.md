@@ -48,6 +48,9 @@ Importul din Excel a fost scos din plan: nu există fișiere Excel de migrat.
 - [x] Preferințe de notificare per utilizator
 - [x] Bară de navigare rapidă pe mobil
 - [x] Curățarea periodică a sesiunilor și linkurilor expirate
+- [x] Interval orar estimat pe task-uri și obligații; fiecare își planifică singur calendarul
+- [x] Evidența completării fișelor la deplasări (doar confirmarea, nu fișele)
+- [x] Preluarea unei singure deplasări de către un coleg și predarea definitivă a unui client
 
 Amânat: **Web Push**. Necesită un service worker propriu, chei VAPID și stocarea abonamentelor,
 iar pe iPhone funcționează doar pentru aplicația instalată pe ecranul principal. Notificările din
@@ -97,6 +100,9 @@ aplicație și emailul acoperă nevoia de bază; Web Push se adaugă în etapa d
   deci modelul de tarife este deliberat flexibil.
 - **Deplasări**: o deplasare înseamnă mers la client și completarea fișelor. Este un tip de task,
   programat de regulă printr-o obligație recurentă.
+- **Fișe**: aplicația ține doar evidența că au fost completate la deplasare, nu le generează.
+- **Calendar**: fiecare persoană își planifică singură deplasările, cu un interval orar estimat.
+- **Preluări**: o firmă poate fi preluată de un coleg pentru o singură deplasare sau definitiv.
 - **Facturare**: facturile se emit prin SmartBill și nu sunt legate unu-la-unu de deplasări – pot
   exista facturi fără deplasare și deplasări fără factură. De aceea deplasările nu conțin nimic
   despre încasare; integrarea cu SmartBill va fi un modul separat.
@@ -106,16 +112,14 @@ aplicație și emailul acoperă nevoia de bază; Web Push se adaugă în etapa d
 1. **Documente reale** – câte un exemplu din fiecare tip (tematică, decizie, proces-verbal),
    ideal anonimizate, pentru a testa editorul și a pregăti template-urile. Necesare la începutul
    Etapei 4.
-2. **Fișele completate la deplasare** – ce sunt exact (fișe de instruire individuală?), cine le
-   semnează și dacă aplicația ar trebui să le genereze sau să țină evidența lor per angajat.
-   Se leagă de Etapa 4 și de „evidența instruirilor”.
+2. **Fișele, pe deplasare sau pe angajat** – acum se confirmă o singură dată pentru toată
+   deplasarea. Dacă trebuie știut pentru fiecare angajat al clientului dacă are fișa completată,
+   evidența se poate detalia (se leagă de „evidența instruirilor”).
 3. **SmartBill** – ce ar trebui să facă integrarea: doar să emită factura din aplicație, sau și să
    aducă înapoi starea plății? Nu este în etapele curente.
-4. **Ora deplasărilor** – task-urile au doar dată, fără oră. Dacă deplasările se programează la ore
-   fixe, calendarul poate primi și ore.
-5. **Vizibilitatea sumelor** – acum un angajat vede tarifele clienților lui. Dacă sumele trebuie
+4. **Vizibilitatea sumelor** – acum un angajat vede tarifele clienților lui. Dacă sumele trebuie
    să fie vizibile doar administratorilor, este o schimbare mică.
-6. **Conținutul emailului zilnic** – acum conține doar numere, ca titlurile task-urilor și numele
+5. **Conținutul emailului zilnic** – acum conține doar numere, ca titlurile task-urilor și numele
    clienților să nu treacă prin furnizorul de email. Dacă preferați emailuri cu detalii, se poate.
-7. **Ștergerea** – acum un angajat poate șterge puncte de lucru, angajați și contracte ale
+6. **Ștergerea** – acum un angajat poate șterge puncte de lucru, angajați și contracte ale
    clienților lui, dar nu clientul. De confirmat.

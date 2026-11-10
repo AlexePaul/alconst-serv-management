@@ -5,6 +5,8 @@ export interface ReminderTask {
   title: string;
   /** `YYYY-MM-DD` */
   dueDate: string;
+  /** Intervalul orar estimat, deja formatat (ex. „10:00–12:00”), dacă există. */
+  timeRange?: string | null;
   clientName: string | null;
   assigneeId: string | null;
   /** Responsabilii clientului – destinatarii reamintirilor când task-ul nu are responsabil. */
@@ -44,7 +46,7 @@ export function planReminders(
   for (const task of tasks) {
     const recipients = task.assigneeId ? [task.assigneeId] : task.clientResponsibleIds;
     const days = diffDays(today, task.dueDate);
-    const label = task.clientName ? `${task.title} · ${task.clientName}` : task.title;
+    const label = [task.title, task.clientName, task.timeRange].filter(Boolean).join(' · ');
 
     for (const userId of new Set(recipients)) {
       if (!activeUserIds.has(userId)) continue;

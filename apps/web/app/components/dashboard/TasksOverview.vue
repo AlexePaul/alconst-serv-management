@@ -58,7 +58,15 @@ function openTask(task: TaskDto) {
   formOpen.value = true
 }
 
+const visitOpen = ref(false)
+const visitTask = ref<TaskDto | null>(null)
+
 async function complete(task: TaskDto) {
+  if (task.kind === 'VISIT') {
+    visitTask.value = task
+    visitOpen.value = true
+    return
+  }
   busyId.value = task.id
   try {
     await api(`/tasks/${task.id}`, { method: 'PATCH', body: { status: 'DONE' } })
@@ -149,7 +157,7 @@ async function complete(task: TaskDto) {
                   <UIcon v-if="task.kind === 'VISIT'" :name="TASK_KIND_ICONS.VISIT" class="mr-1 inline size-3.5 align-[-2px] text-primary" />{{ task.title }}
                 </p>
                 <p class="truncate text-xs text-muted">
-                  {{ [task.client?.name, section.key === 'today' ? null : taskDueInfo(task, today).label, scope === 'all' && task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : null].filter(Boolean).join(' · ') || 'Fără client' }}
+                  {{ [formatTimeRange(task.startTime, task.endTime), task.client?.name, section.key === 'today' ? null : taskDueInfo(task, today).label, scope === 'all' && task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : null].filter(Boolean).join(' · ') || 'Fără client' }}
                 </p>
               </button>
             </li>
@@ -161,6 +169,17 @@ async function complete(task: TaskDto) {
       </UCard>
     </div>
 
+    <UAlert
+      v-if="data && data.visitsMissingSheets > 0"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-clipboard-x"
+      :title="countLabel(data.visitsMissingSheets, 'deplasare finalizată fără fișe confirmate', 'deplasări finalizate fără fișe confirmate')"
+      :actions="[{ label: 'Vezi lista', to: '/task-uri?filtru=fise', color: 'warning', variant: 'outline' }]"
+      class="mt-4"
+    />
+
+    <TasksVisitCompleteDialog v-model:open="visitOpen" :task="visitTask" @done="refresh()" />
     <TasksTaskFormModal
       v-model:open="formOpen"
       :task="selected"

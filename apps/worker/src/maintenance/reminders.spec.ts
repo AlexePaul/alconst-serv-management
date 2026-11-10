@@ -28,6 +28,13 @@ describe('planReminders', () => {
     ]);
   });
 
+  it('include intervalul orar în reamintire, dacă există', () => {
+    expect(plan([task({ timeRange: '10:00–12:00' })])[0]?.body).toBe(
+      'Deplasare · SC Exemplu SRL · 10:00–12:00',
+    );
+    expect(plan([task({ clientName: null, timeRange: null })])[0]?.body).toBe('Deplasare');
+  });
+
   it('reamintește în avans doar în fereastra aleasă de utilizator', () => {
     const inThree = task({ dueDate: '2026-11-13' });
     expect(plan([inThree])[0]).toMatchObject({

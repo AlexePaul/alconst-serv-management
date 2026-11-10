@@ -125,7 +125,15 @@ function openCreate(day: string) {
   formOpen.value = true
 }
 
+const visitOpen = ref(false)
+const visitTask = ref<TaskDto | null>(null)
+
 async function toggle(task: TaskDto) {
+  if (task.kind === 'VISIT' && isOpenTask(task.status)) {
+    visitTask.value = task
+    visitOpen.value = true
+    return
+  }
   busyId.value = task.id
   try {
     await api(`/tasks/${task.id}`, { method: 'PATCH', body: { status: isOpenTask(task.status) ? 'DONE' : 'TODO' } })
@@ -278,9 +286,10 @@ async function toggle(task: TaskDto) {
                     type="button"
                     class="block w-full truncate rounded border-l-2 px-1.5 py-0.5 text-left text-xs"
                     :class="chipClass(task)"
-                    :title="task.client ? `${task.title} · ${task.client.name}` : task.title"
+                    :title="[formatTimeRange(task.startTime, task.endTime), task.title, task.client?.name].filter(Boolean).join(' · ')"
                     @click="openTask(task)"
                   >
+                    <span v-if="task.startTime" class="font-semibold tabular-nums">{{ task.startTime }}</span>
                     {{ task.title }}
                   </button>
                   <button
@@ -373,6 +382,7 @@ async function toggle(task: TaskDto) {
                 :class="chipClass(task)"
                 @click="openTask(task)"
               >
+                <span v-if="task.startTime" class="block font-semibold tabular-nums">{{ formatTimeRange(task.startTime, task.endTime) }}</span>
                 <span class="block font-medium">{{ task.title }}</span>
                 <span v-if="task.client" class="block truncate opacity-80">{{ task.client.name }}</span>
               </button>
@@ -406,6 +416,7 @@ async function toggle(task: TaskDto) {
         </template>
       </div>
 
+      <TasksVisitCompleteDialog v-model:open="visitOpen" :task="visitTask" @done="refresh()" />
       <TasksTaskFormModal
         v-model:open="formOpen"
         :task="selected"
