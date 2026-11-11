@@ -34,7 +34,7 @@ describe('Rularea periodică (integrare cu baza de date)', () => {
 
   beforeEach(async () => {
     await db.$executeRawUnsafe(
-      'TRUNCATE TABLE "activity_logs", "password_reset_tokens", "sessions", "notifications", "tasks", "obligations", "clients", "services", "users" CASCADE',
+      'TRUNCATE TABLE "activity_logs", "password_reset_tokens", "sessions", "notifications", "tasks", "obligations", "clients", "services", "users", "worker_heartbeats" CASCADE',
     );
     mails = [];
     const fakeQueue = {
@@ -171,6 +171,22 @@ describe('Rularea periodică (integrare cu baza de date)', () => {
   it('nu trimite rezumat dacă nu există reamintiri noi', async () => {
     await task('Departe', addDays(today, 20));
     expect((await service.run(midday)).digestsQueued).toBe(0);
+  });
+
+  it('își notează fiecare rulare reușită, pentru avertizarea administratorilor', async () => {
+    expect(await db.workerHeartbeat.count()).toBe(0);
+    const before = Date.now();
+    await service.run(midday);
+    await service.run(midday);
+
+    const heartbeats = await db.workerHeartbeat.findMany();
+    expect(heartbeats).toHaveLength(1);
+    expect(heartbeats[0]).toMatchObject({
+      name: 'maintenance',
+      details: { tasksGenerated: 0, notificationsCreated: 0, digestsQueued: 0 },
+    });
+    // Momentul real al rulării, nu cel simulat în test.
+    expect(heartbeats[0]!.lastRunAt.getTime()).toBeGreaterThanOrEqual(before);
   });
 
   it('șterge sesiunile expirate și păstrează restul', async () => {

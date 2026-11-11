@@ -102,11 +102,13 @@ A doua parte – documente generate (după primirea exemplelor DOCX)
 
 ## Etapa 5 – Stabilizare
 
-- Backup automat (bază de date + fișiere) și test de restaurare
+- [x] Backup automat al bazei de date (zilnic, verificat, cu păstrare 14 zile) și test de
+      restaurare; copia în afara serverului se configurează la instalare
 - Politică de retenție a datelor
 - Întărirea CSP, revizuire de securitate
-- Monitorizare și alerte – în primul rând pentru worker: dacă rularea periodică nu a avut loc de
-  câteva ore, cineva trebuie să afle (o oprire mai lungă de 60 de zile ar pierde termene)
+- [x] Avertizare pentru administratori, pe pagina principală, dacă rularea periodică (worker-ul)
+      nu a mai avut loc de 3 ore
+- Monitorizare externă și alerte (serverul însuși, spațiul pe disc, certificatul)
 - Optimizări (de exemplu dimensiunea imaginilor Docker: CLI-ul Prisma ajunge acum și în imaginea API)
 - Pipeline de deploy, lansarea în producție
 

@@ -110,6 +110,28 @@ services:
       timeout: 5s
       retries: 10
 
+  # Backup al bazei de date: la pornire și apoi o dată pe zi, într-un volum separat de cel al
+  # bazei de date. Copia în afara serverului și restaurarea sunt descrise în docs/deploy.md.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    entrypoint: ['/bin/sh', '/usr/local/bin/run.sh']
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-alconst}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-alconst}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+    volumes:
+      - ./docker/backup/backup.sh:/usr/local/bin/backup.sh:ro
+      - ./docker/backup/run.sh:/usr/local/bin/run.sh:ro
+      - ./docker/backup/restore-check.sh:/usr/local/bin/restore-check.sh:ro
+      - backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -134,6 +156,7 @@ services:
 volumes:
   postgres-data:
   files-data:
+  backups:
   redis-data:
   caddy-data:
   caddy-config:

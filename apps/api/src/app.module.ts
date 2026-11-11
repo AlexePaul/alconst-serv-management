@@ -12,6 +12,7 @@ import { AppConfig } from './config/app-config.js';
 import { DocumentsModule } from './documents/documents.module.js';
 import { ConfigModule } from './config/config.module.js';
 import { HealthController } from './health/health.controller.js';
+import { SystemController } from './health/system.controller.js';
 import { MailQueueModule } from './mail/mail-queue.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -40,7 +41,7 @@ import { UsersModule } from './users/users.module.js';
     TasksModule,
     DocumentsModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, SystemController],
   providers: [
     // Ordinea contează: limitare de trafic → CSRF → autentificare → roluri.
     { provide: APP_GUARD, useClass: ThrottlerGuard },

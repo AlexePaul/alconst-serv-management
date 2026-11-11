@@ -545,3 +545,19 @@ model DocumentFile {
   @@index([clientId, folderId])
   @@map("document_files")
 }
+
+// ---------------------------------------------------------------------------------------------
+// Starea proceselor de fundal
+// ---------------------------------------------------------------------------------------------
+
+/// Ultima rulare reușită a unui proces de fundal, scrisă de worker. Dacă rularea periodică se
+/// oprește, administratorii văd acest lucru în aplicație (task-urile recurente, reamintirile și
+/// emailurile depind de ea).
+model WorkerHeartbeat {
+  name      String   @id
+  lastRunAt DateTime
+  /// Rezumatul ultimei rulări (câte task-uri, notificări și emailuri a produs).
+  details   Json?
+
+  @@map("worker_heartbeats")
+}

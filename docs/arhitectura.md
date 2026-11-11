@@ -304,7 +304,9 @@ Worker-ul rulează din oră în oră o sarcină idempotentă care:
    flexibile, depășirea datei planificate nu este restanță: se mai reamintește doar cu N zile
    înainte de sfârșitul perioadei și în ultima ei zi;
 3. trimite, după ora 7, cel mult un email-rezumat pe zi celor care au reamintiri noi;
-4. șterge sesiunile și linkurile expirate.
+4. șterge sesiunile și linkurile expirate;
+5. își notează rularea (`worker_heartbeats`). Dacă nu mai există nicio rulare de 3 ore,
+   administratorii văd o avertizare pe pagina principală – oprirea worker-ului nu trece neobservată.
 
 Fiecare reamintire are o cheie care îi descrie motivul (tip, task, destinatar, termen), cu
 constrângere de unicitate în baza de date. Rulările repetate nu pot produce notificări duplicate,

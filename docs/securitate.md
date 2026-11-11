@@ -135,11 +135,11 @@ vechi de 90 de zile.
 
 ## Rămâne de făcut
 
-| Subiect                                                                                        | Etapă       |
-| ---------------------------------------------------------------------------------------------- | ----------- |
-| Validarea structurii template-urilor DOCX (la încărcarea template-urilor)                      | 4           |
-| Scanare antivirus a fișierelor încărcate (opțional; acum se verifică doar tipul și conținutul) | de discutat |
-| Backup automat al bazei de date și al fișierelor, cu test de restaurare                        | 5           |
-| Politică de retenție a datelor personale (se stabilește împreună cu firma)                     | 5           |
-| CSP fără `'unsafe-inline'` pentru scripturi (hash-uri)                                         | 5           |
-| Autentificare în doi pași (opțional, dacă se dorește)                                          | de discutat |
+| Subiect                                                                                        | Etapă        |
+| ---------------------------------------------------------------------------------------------- | ------------ |
+| Validarea structurii template-urilor DOCX (la încărcarea template-urilor)                      | 4            |
+| Scanare antivirus a fișierelor încărcate (opțional; acum se verifică doar tipul și conținutul) | de discutat  |
+| Copia backup-urilor în afara serverului (backup-ul zilnic și testul de restaurare există)      | la instalare |
+| Politică de retenție a datelor personale (se stabilește împreună cu firma)                     | 5            |
+| CSP fără `'unsafe-inline'` pentru scripturi (hash-uri)                                         | 5            |
+| Autentificare în doi pași (opțional, dacă se dorește)                                          | de discutat  |

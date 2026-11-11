@@ -29,6 +29,7 @@ const GROUP_ICONS: Record<string, string> = {
   client: 'i-lucide-building-2',
   location: 'i-lucide-map-pin',
   contract: 'i-lucide-file-signature',
+  document: 'i-lucide-folder-open',
   service: 'i-lucide-briefcase',
   obligation: 'i-lucide-repeat',
   task: 'i-lucide-list-checks'

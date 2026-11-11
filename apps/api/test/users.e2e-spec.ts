@@ -183,4 +183,41 @@ describe('Administrare utilizatori (e2e)', () => {
     expect(response.body[0]).not.toHaveProperty('ip');
     expect(PASSWORD).toBeTruthy();
   });
+
+  describe('starea proceselor de fundal', () => {
+    const status = (cookie: string) => t.http().get('/api/system/status').set('Cookie', cookie);
+    const heartbeat = (lastRunAt: Date) =>
+      t.prisma.db.workerHeartbeat.upsert({
+        where: { name: 'maintenance' },
+        create: { name: 'maintenance', lastRunAt },
+        update: { lastRunAt },
+      });
+
+    it('este vizibilă doar administratorilor', async () => {
+      await t.createUser({ email: 'sef@test.ro' });
+      await t.createUser({ email: 'coleg@test.ro', role: 'EMPLOYEE' });
+      await status(await t.login('coleg@test.ro')).expect(403);
+      await t.http().get('/api/system/status').expect(401);
+      await status(await t.login('sef@test.ro')).expect(200);
+    });
+
+    it('semnalează rularea periodică oprită sau care nu a avut loc niciodată', async () => {
+      await t.createUser({ email: 'sef@test.ro' });
+      const cookie = await t.login('sef@test.ro');
+
+      expect((await status(cookie).expect(200)).body).toEqual({
+        maintenance: { lastRunAt: null, healthy: false },
+      });
+
+      await heartbeat(new Date(Date.now() - 30 * 60 * 1000));
+      expect((await status(cookie)).body.maintenance).toMatchObject({ healthy: true });
+
+      const old = new Date(Date.now() - 4 * 60 * 60 * 1000);
+      await heartbeat(old);
+      expect((await status(cookie)).body.maintenance).toEqual({
+        lastRunAt: old.toISOString(),
+        healthy: false,
+      });
+    });
+  });
 });

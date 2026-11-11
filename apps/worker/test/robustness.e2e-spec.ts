@@ -40,7 +40,7 @@ describe('Robustețea rulării periodice (integrare cu baza de date)', () => {
 
   beforeEach(async () => {
     await db.$executeRawUnsafe(
-      'TRUNCATE TABLE "activity_logs", "password_reset_tokens", "sessions", "notifications", "tasks", "obligations", "clients", "services", "users" CASCADE',
+      'TRUNCATE TABLE "activity_logs", "password_reset_tokens", "sessions", "notifications", "tasks", "obligations", "clients", "services", "users", "worker_heartbeats" CASCADE',
     );
     mails = [];
     const fakeQueue = {

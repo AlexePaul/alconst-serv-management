@@ -18,6 +18,7 @@ propriul pipeline.
 | `worker`   | Emailuri și rularea periodică                                            | nu           |
 | `migrate`  | Aplică migrările bazei de date la fiecare lansare, apoi se oprește       | nu           |
 | `postgres` | Baza de date (volum persistent)                                          | nu           |
+| `backup`   | Backup zilnic al bazei de date, într-un volum separat                    | nu           |
 | (S3)       | Fișierele încărcate – bucket privat, în afara serverului                 | nu           |
 | `redis`    | Cozile BullMQ (cu parolă și persistență)                                 | nu           |
 
@@ -137,16 +138,59 @@ rămâne oprit până la rezolvare – de aceea, înainte de fiecare actualizare
 
 ## Backup
 
-Nu este încă automatizat (planificat în Etapa 5). Până atunci, manual:
+Serviciul `backup` din `docker-compose.prod.yml` face automat un backup al bazei de date la
+pornire și apoi o dată pe zi, în volumul `backups` (separat de volumul bazei de date). Fiecare
+fișier este verificat înainte de a fi păstrat, iar cele mai vechi de 14 zile sunt șterse
+(`BACKUP_KEEP_DAYS`).
+
+Un backup la cerere, de exemplu înaintea unei actualizări:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production exec -T postgres \
-  sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' > backup-$(date +%F).dump
+docker compose -f docker-compose.prod.yml --env-file .env.production exec backup backup.sh
 ```
 
-Backup-urile trebuie păstrate **în afara serverului** și restaurarea trebuie testată periodic.
-Documentele stau în Amazon S3 (bucket privat, cu versionare), deci nu depind de server. Dacă se
-folosește stocarea locală, volumul `files-data` trebuie copiat împreună cu baza de date.
+Lista backup-urilor:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production exec backup ls -lh /backups
+```
+
+**Copia în afara serverului.** Un backup aflat doar pe același server nu ajută dacă serverul se
+pierde. Volumul trebuie copiat periodic în altă parte – de exemplu într-un bucket S3 separat, cu
+un cron pe instanță (calea volumului: `docker volume inspect alconst_backups`):
+
+```bash
+aws s3 sync /var/lib/docker/volumes/alconst_backups/_data s3://<bucket-backup>/baza-de-date/
+```
+
+Acest pas nu este automatizat din aplicație și trebuie configurat la instalare.
+
+**Test de restaurare.** Verifică faptul că un backup chiar poate fi restaurat, fără a atinge baza
+de date reală (restaurează într-o bază temporară și compară numărul de rânduri):
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production exec backup \
+  restore-check.sh /backups/<fișier>.dump
+```
+
+**Restaurarea propriu-zisă** înlocuiește datele curente; se face cu aplicația oprită:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production stop api worker
+```
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production exec backup sh -c \
+  'pg_restore --clean --if-exists --no-owner --no-privileges -d "$PGDATABASE" /backups/<fișier>.dump'
+```
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production start api worker
+```
+
+**Fișierele încărcate.** Documentele stau în Amazon S3 (bucket privat, cu versionare), deci nu
+depind de server. Dacă se folosește stocarea locală, volumul `files-data` trebuie copiat împreună
+cu backup-urile bazei de date.
 
 ## Ramuri și lansări
 

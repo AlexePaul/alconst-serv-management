@@ -7,6 +7,7 @@ import {
   DEFAULT_NOTIFICATION_SETTINGS,
   formatTimeRange,
   hourIn,
+  MAINTENANCE_HEARTBEAT,
   type MailJobData,
   MAX_REMIND_DAYS_BEFORE,
   QUEUE_MAIL,
@@ -61,6 +62,12 @@ export class MaintenanceService {
     await this.cleanup(now);
 
     const result = { tasksGenerated, notificationsCreated, digestsQueued };
+    // Semn de viață pentru administratori: dacă rularea se oprește, aplicația îi avertizează.
+    await this.db.workerHeartbeat.upsert({
+      where: { name: MAINTENANCE_HEARTBEAT },
+      create: { name: MAINTENANCE_HEARTBEAT, lastRunAt: new Date(), details: result },
+      update: { lastRunAt: new Date(), details: result },
+    });
     this.logger.log(
       `Rulare periodică (${today}): ${tasksGenerated} task-uri generate, ` +
         `${notificationsCreated} notificări, ${digestsQueued} rezumate pe email`,

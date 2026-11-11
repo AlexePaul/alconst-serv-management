@@ -87,6 +87,8 @@ const modules = [{
           </div>
         </section>
 
+        <DashboardSystemStatus v-if="isAdmin" />
+
         <DashboardTransferRequests @changed="refreshNuxtData(['dashboard:clients-summary', 'dashboard:tasks-overview'])" />
 
         <DashboardTasksOverview />
