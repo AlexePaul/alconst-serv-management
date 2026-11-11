@@ -31,6 +31,7 @@ const tabs = computed<TabsItem[]>(() => [
   { label: 'Detalii', value: 'details', icon: 'i-lucide-info', slot: 'details' },
   { label: 'Puncte de lucru', value: 'locations', icon: 'i-lucide-map-pin', badge: client.value?.locationCount || undefined, slot: 'locations' },
   { label: 'Contracte', value: 'contracts', icon: 'i-lucide-file-signature', slot: 'contracts' },
+  { label: 'Documente', value: 'documents', icon: 'i-lucide-folder-open', slot: 'documents' },
   { label: 'Activități', value: 'activities', icon: 'i-lucide-list-checks', slot: 'activities' }
 ])
 
@@ -387,6 +388,10 @@ const moreActions = computed<DropdownMenuItem[][]>(() => {
 
           <template #contracts>
             <ClientsContractsTab :client-id="client.id" @changed="refresh()" />
+          </template>
+
+          <template #documents>
+            <DocumentsDocumentBrowser :client-id="client.id" />
           </template>
 
           <template #activities>

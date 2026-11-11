@@ -42,6 +42,9 @@ FROM node:22-bookworm-slim AS api
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /out/api ./
+# Directorul fișierelor încărcate, pentru stocarea pe disc (FILES_STORAGE=local). Un volum montat
+# aici preia proprietarul directorului, deci aplicația (utilizatorul `node`) poate scrie în el.
+RUN mkdir -p /data/files && chown node:node /data/files
 USER node
 EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

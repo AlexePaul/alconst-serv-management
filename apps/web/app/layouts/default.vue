@@ -14,7 +14,6 @@ function close() {
 }
 
 /** Modulele care urmează să fie livrate apar în meniu, dar dezactivate. */
-const soon = { disabled: true, badge: { label: 'În curând', color: 'neutral', variant: 'subtle', size: 'sm' } } as const
 
 const unreadBadge = computed(() =>
   unread.value > 0 ? { label: unread.value > 99 ? '99+' : String(unread.value), color: 'error', variant: 'solid', size: 'sm' } as const : undefined
@@ -26,7 +25,7 @@ const mainItems = computed<NavigationMenuItem[]>(() => [
   { label: 'Calendar', icon: 'i-lucide-calendar-days', to: '/calendar', onSelect: close },
   { label: 'Obligații', icon: 'i-lucide-repeat', to: '/obligatii', onSelect: close },
   { label: 'Clienți', icon: 'i-lucide-building-2', to: '/clienti', onSelect: close },
-  { label: 'Documente', icon: 'i-lucide-file-text', ...soon },
+  { label: 'Documente', icon: 'i-lucide-folder-open', to: '/documente', onSelect: close },
   { label: 'Notificări', icon: 'i-lucide-bell', to: '/notificari', badge: unreadBadge.value, onSelect: close }
 ])
 

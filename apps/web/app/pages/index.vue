@@ -33,9 +33,9 @@ const modules = [{
   available: true
 }, {
   name: 'Documente',
-  description: 'Template-uri DOCX, generare automată, editare și arhivă.',
-  icon: 'i-lucide-file-text',
-  available: false
+  description: 'Dosare și fișiere pentru fiecare client și pentru firmă. Urmează generarea din template-uri DOCX.',
+  icon: 'i-lucide-folder-open',
+  available: true
 }]
 </script>
 

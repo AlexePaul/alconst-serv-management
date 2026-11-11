@@ -2,7 +2,7 @@
 // Etapa 1 (Foundation): utilizatori, sesiuni, resetare parolă, jurnal de activitate.
 // Etapa 2: clienți, responsabili, servicii, puncte de lucru, contracte și tarife.
 // Etapa 3: obligații recurente, task-uri, notificări.
-// Entitățile pentru documente se adaugă în etapa următoare.
+// Etapa 4 (prima parte): dosare și fișiere încărcate. Template-urile și documentele generate urmează.
 
 generator client {
   provider = "prisma-client"
@@ -51,6 +51,9 @@ model User {
   transfersTo          ClientTransferRequest[] @relation("TransferTo")
   transfersInitiated   ClientTransferRequest[] @relation("TransferInitiatedBy")
   notificationSettings NotificationSettings?
+  createdFolders       DocumentFolder[]        @relation("FolderCreatedBy")
+  uploadedFiles        DocumentFile[]          @relation("FileUploadedBy")
+  archivedFiles        DocumentFile[]          @relation("FileArchivedBy")
 
   @@map("users")
 }
@@ -150,6 +153,8 @@ model Client {
   obligations      Obligation[]
   tasks            Task[]
   transferRequests ClientTransferRequest[]
+  documentFolders  DocumentFolder[]
+  documentFiles    DocumentFile[]
 
   @@index([name])
   @@map("clients")
@@ -481,4 +486,62 @@ model ClientTransferRequest {
   @@index([status])
   @@index([clientId, status])
   @@map("client_transfer_requests")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Documente
+// ---------------------------------------------------------------------------------------------
+
+/// Dosar din secțiunea de documente. Fiecare client are propria secțiune;
+/// `clientId = null` înseamnă secțiunea generală a firmei.
+model DocumentFolder {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  clientId    String?  @db.Uuid
+  /// Dosarul părinte; null = în rădăcina secțiunii.
+  parentId    String?  @db.Uuid
+  name        String
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  client    Client?          @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  parent    DocumentFolder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children  DocumentFolder[] @relation("FolderTree")
+  files     DocumentFile[]
+  createdBy User?            @relation("FolderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([clientId, parentId])
+  @@map("document_folders")
+}
+
+/// Fișier încărcat. Conținutul stă în spațiul de stocare (disc sau S3), sub o cheie opacă;
+/// aici se păstrează doar descrierea lui. Fișierele nu se șterg din aplicație: se arhivează.
+model DocumentFile {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  clientId     String?   @db.Uuid
+  /// Dosarul în care se află; null = în rădăcina secțiunii.
+  folderId     String?   @db.Uuid
+  name         String
+  /// Extensia, cu litere mici – stabilește tipul trimis la descărcare.
+  extension    String
+  sizeBytes    Int
+  /// SHA-256 al conținutului, pentru verificarea integrității.
+  checksum     String
+  /// Cheia din spațiul de stocare. Generată de aplicație, niciodată din numele fișierului.
+  storageKey   String    @unique
+  /// Text normalizat folosit la căutare.
+  searchText   String
+  uploadedById String?   @db.Uuid
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  archivedAt   DateTime?
+  archivedById String?   @db.Uuid
+
+  client     Client?         @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  folder     DocumentFolder? @relation(fields: [folderId], references: [id], onDelete: Restrict)
+  uploadedBy User?           @relation("FileUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  archivedBy User?           @relation("FileArchivedBy", fields: [archivedById], references: [id], onDelete: SetNull)
+
+  @@index([clientId, folderId])
+  @@map("document_files")
 }

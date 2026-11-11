@@ -48,6 +48,15 @@ services:
       TRUST_PROXY: 1
       SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-14}
       PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-60}
+      # Documente: `s3` (recomandat; acces prin rolul IAM al instanței) sau `local` (volumul de mai jos).
+      FILES_STORAGE: ${FILES_STORAGE:?FILES_STORAGE este obligatoriu (s3 sau local)}
+      FILES_DIR: /data/files
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_REGION: ${S3_REGION:-}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+    volumes:
+      # Folosit doar cu FILES_STORAGE=local.
+      - files-data:/data/files
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -124,6 +133,7 @@ services:
 
 volumes:
   postgres-data:
+  files-data:
   redis-data:
   caddy-data:
   caddy-config:

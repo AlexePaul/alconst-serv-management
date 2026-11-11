@@ -127,8 +127,10 @@ pentru confidențialitate și permite o politică CSP strictă (`connect-src 'se
 | `notifications`            | Notificările din aplicație, cu o cheie unică anti-duplicat               |
 | `notification_settings`    | Preferințele de notificare ale fiecărui utilizator                       |
 | `client_transfer_requests` | Cererile de predare a unui client între colegi și răspunsul la ele       |
+| `document_folders`         | Dosarele din secțiunea de documente (pe client sau generale)             |
+| `document_files`           | Fișierele încărcate: nume, tip, dimensiune, cheie de stocare, arhivare   |
 
-Entitățile pentru documente se adaugă în Etapa 4, nu în avans.
+Template-urile și documentele generate se adaugă odată cu partea a doua a Etapei 4.
 Cheile primare sunt UUID v7 (ordonabile cronologic).
 
 ### Accesul la clienți
@@ -319,6 +321,33 @@ aplicație și nu trec prin furnizorul de email.
 
 „Azi” se stabilește în fusul orar al firmei (`APP_TIMEZONE`, implicit `Europe/Bucharest`), atât în
 API, cât și în worker și în interfață.
+
+### Documente
+
+Secțiunea de documente seamănă cu un spațiu de fișiere partajat: fiecare **client** are propria
+secțiune, iar firma are una **generală**. În fiecare secțiune fișierele stau în dosare, pe oricâte
+niveluri.
+
+- **Acces**: secțiunea unui client urmează regulile clientului (responsabilii lui și
+  administratorii); secțiunea generală este comună tuturor utilizatorilor. Dosarele și fișierele
+  nu pot fi mutate dintr-o secțiune în alta.
+- **Stocare**: conținutul fișierelor stă într-un spațiu de stocare separat de baza de date – pe
+  disc (`FILES_STORAGE=local`) sau în Amazon S3 (`FILES_STORAGE=s3`, prin rolul IAM al instanței).
+  Baza de date păstrează doar descrierea fișierului. Cheia de stocare este generată de aplicație
+  (`<secțiune>/<uuid>`) și nu conține nimic din numele fișierului.
+- **Fără adrese publice**: încărcarea și descărcarea trec prin API, autentificate și autorizate.
+  API-ul citește fișierul din stocare și îl trimite mai departe; browserul nu primește niciodată o
+  adresă directă către stocare.
+- **Încărcare**: fișierul este trimis ca atare (`application/octet-stream`), cu numele și
+  destinația în URL. Formularele HTML (`multipart`) nu sunt acceptate nici aici, deci protecția
+  CSRF a API-ului rămâne aceeași. Înainte de salvare se verifică numele, tipul (o listă de tipuri
+  acceptate), dimensiunea (`MAX_UPLOAD_MB`, implicit 25) și faptul că primii octeți corespund
+  extensiei – un executabil redenumit „.pdf” este respins.
+- **Descărcare**: întotdeauna ca atașament, cu tipul stabilit de server după extensie. Conținutul
+  încărcat nu este afișat niciodată în originea aplicației.
+- **Fără ștergere**: fișierele se arhivează și pot fi restaurate; un dosar poate fi șters doar dacă
+  este complet gol. Încărcările, redenumirile, mutările și arhivările apar în jurnalul de
+  activitate.
 
 ### Căutare
 

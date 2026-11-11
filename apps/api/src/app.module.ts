@@ -9,6 +9,7 @@ import { ClientsModule } from './clients/clients.module.js';
 import { SessionAuthGuard } from './auth/session-auth.guard.js';
 import { CsrfOriginGuard } from './common/csrf-origin.guard.js';
 import { AppConfig } from './config/app-config.js';
+import { DocumentsModule } from './documents/documents.module.js';
 import { ConfigModule } from './config/config.module.js';
 import { HealthController } from './health/health.controller.js';
 import { MailQueueModule } from './mail/mail-queue.module.js';
@@ -37,6 +38,7 @@ import { UsersModule } from './users/users.module.js';
     CatalogModule,
     ClientsModule,
     TasksModule,
+    DocumentsModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -62,6 +62,26 @@ descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
   doar celor doi implicați și administratorilor. Un angajat poate cere preluarea unui client doar
   dacă a executat deja un task pentru el.
 - **Notificări**: fiecare utilizator își vede doar propriile notificări.
+- **Documente**: fișierele unui client sunt accesibile doar responsabililor lui și
+  administratorilor; secțiunea generală, tuturor utilizatorilor. Pentru ceilalți, dosarele și
+  fișierele „nu există”.
+
+## Fișiere încărcate
+
+- **Fără URL-uri publice**: fișierele stau într-un spațiu de stocare privat (bucket S3 privat sau
+  un director de pe server) și se descarcă doar prin API, după autentificare și verificarea
+  accesului. Nu există linkuri permanente sau partajabile către fișiere.
+- **Tipuri acceptate**: documente, tabele, prezentări, imagini și arhive ZIP. Executabilele,
+  paginile HTML și scripturile sunt respinse. Tipul se verifică și după conținut (primii octeți),
+  nu doar după extensie.
+- **Dimensiune**: cel mult 25 MB pe fișier (`MAX_UPLOAD_MB`); cererea este întreruptă imediat ce
+  limita este depășită.
+- **Nume**: caracterele care ar permite ieșirea din dosar (`/`, `\`, `..`) sunt respinse, iar
+  cheia de stocare nu conține numele fișierului.
+- **Descărcare ca atașament**, cu `X-Content-Type-Options: nosniff`: un fișier încărcat nu poate
+  rula cod în originea aplicației.
+- **Fără ștergere din aplicație**: fișierele se arhivează. În S3, obiectele sunt criptate pe
+  server (SSE-S3); versionarea bucket-ului protejează suplimentar împotriva suprascrierii.
 
 ## Validarea datelor
 
@@ -115,11 +135,11 @@ vechi de 90 de zile.
 
 ## Rămâne de făcut
 
-| Subiect                                                                                             | Etapă       |
-| --------------------------------------------------------------------------------------------------- | ----------- |
-| Acces controlat la documente (URL-uri semnate, cu expirare scurtă; fără URL-uri publice permanente) | 4           |
-| Validarea fișierelor încărcate (tip real, dimensiune, structură DOCX)                               | 4           |
-| Backup automat al bazei de date și al fișierelor, cu test de restaurare                             | 5           |
-| Politică de retenție a datelor personale (se stabilește împreună cu firma)                          | 5           |
-| CSP fără `'unsafe-inline'` pentru scripturi (hash-uri)                                              | 5           |
-| Autentificare în doi pași (opțional, dacă se dorește)                                               | de discutat |
+| Subiect                                                                                        | Etapă       |
+| ---------------------------------------------------------------------------------------------- | ----------- |
+| Validarea structurii template-urilor DOCX (la încărcarea template-urilor)                      | 4           |
+| Scanare antivirus a fișierelor încărcate (opțional; acum se verifică doar tipul și conținutul) | de discutat |
+| Backup automat al bazei de date și al fișierelor, cu test de restaurare                        | 5           |
+| Politică de retenție a datelor personale (se stabilește împreună cu firma)                     | 5           |
+| CSP fără `'unsafe-inline'` pentru scripturi (hash-uri)                                         | 5           |
+| Autentificare în doi pași (opțional, dacă se dorește)                                          | de discutat |

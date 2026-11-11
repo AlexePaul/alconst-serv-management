@@ -19,6 +19,7 @@ la `https://app.alconst-serv.ro`, complet separat de website-ul public `alconst-
 | Bază de date   | PostgreSQL 16, Prisma ORM 7                                           |
 | Job-uri fundal | Redis 7, BullMQ 6                                                     |
 | Email          | Nodemailer (SMTP), trimis de worker                                   |
+| Fișiere        | Amazon S3 (sau disc local), acces doar prin API                       |
 | Deployment     | Docker Compose, Caddy (HTTPS automat)                                 |
 | Calitate       | Vitest, oxlint (backend), ESLint (frontend), Prettier, GitHub Actions |
 
@@ -149,6 +150,18 @@ Testele e2e folosesc o bază de date separată (`alconst_test`), creată automat
 - **Emailuri imediate** pentru task-urile atribuite și cererile de predare.
 - **Pagina principală**: restanțe, termenele de azi și din următoarele 7 zile.
 - **Mobil**: bară de navigare rapidă către task-uri, calendar, clienți și notificări.
+
+**Etapa 4 – Documente (prima parte)**
+
+- **Secțiuni**: câte una pentru fiecare client, plus una generală a firmei.
+- **Dosare** pe oricâte niveluri și **fișiere** încărcate cu butonul sau prin tragere: PDF, Word,
+  Excel, imagini și alte tipuri uzuale, până la 25 MB.
+- **Descărcare, redenumire, mutare, căutare** după nume. Fișierele nu se șterg: se arhivează și
+  pot fi restaurate.
+- **Acces**: documentele unui client le văd doar responsabilii lui și administratorii; fișierele nu
+  au adrese publice.
+
+Urmează: template-uri DOCX, generarea documentelor și editorul.
 
 ## Documentație
 

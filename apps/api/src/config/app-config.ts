@@ -1,6 +1,19 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { DEFAULT_TASK_HORIZON_DAYS, todayIn } from '@alconst/shared';
+import { tmpdir } from 'node:os';
+import { DEFAULT_MAX_UPLOAD_MB, DEFAULT_TASK_HORIZON_DAYS, todayIn } from '@alconst/shared';
+
+/** Unde este păstrat conținutul fișierelor încărcate. */
+export interface FilesConfig {
+  driver: 'local' | 's3';
+  /** Directorul folosit de stocarea pe disc. */
+  directory: string;
+  s3Bucket?: string;
+  s3Region?: string;
+  /** Doar pentru servicii compatibile S3 (ex. MinIO); pentru Amazon S3 rămâne necompletat. */
+  s3Endpoint?: string;
+  s3ForcePathStyle: boolean;
+}
 
 /** Configurarea aplicației, citită și validată o singură dată la pornire. */
 export class AppConfig {
@@ -18,6 +31,9 @@ export class AppConfig {
   timeZone: string;
   /** Cu câte zile în avans se generează task-urile din obligații. */
   taskHorizonDays: number;
+  files: FilesConfig;
+  /** Dimensiunea maximă a unui fișier încărcat, în MB. */
+  maxUploadMb: number;
 
   get isProduction(): boolean {
     return this.nodeEnv === 'production';
@@ -60,6 +76,37 @@ function integer(env: NodeJS.ProcessEnv, key: string, fallback: number, min: num
   return value;
 }
 
+/**
+ * Stocarea fișierelor: pe disc (`local`) sau în S3 (`s3`). În producție alegerea trebuie făcută
+ * explicit, ca fișierele să nu ajungă din greșeală în sistemul de fișiere al containerului.
+ */
+function loadFilesConfig(env: NodeJS.ProcessEnv, nodeEnv: string): FilesConfig {
+  const driver = env.FILES_STORAGE?.trim() || (nodeEnv === 'production' ? '' : 'local');
+  if (driver !== 'local' && driver !== 's3') {
+    throw new Error('FILES_STORAGE trebuie să fie „local” sau „s3”.');
+  }
+  const directory =
+    env.FILES_DIR?.trim() ||
+    (nodeEnv === 'test'
+      ? resolve(tmpdir(), 'alconst-test-files')
+      : resolve(import.meta.dirname, '../../../../.data/files'));
+  if (driver === 'local' && nodeEnv === 'production' && !env.FILES_DIR?.trim()) {
+    throw new Error('Pentru FILES_STORAGE=local, FILES_DIR este obligatoriu în producție.');
+  }
+  const files: FilesConfig = {
+    driver,
+    directory,
+    s3ForcePathStyle: env.S3_FORCE_PATH_STYLE?.trim() === 'true',
+  };
+  if (driver === 's3') {
+    files.s3Bucket = required(env, 'S3_BUCKET');
+    files.s3Region = required(env, 'S3_REGION');
+    const endpoint = env.S3_ENDPOINT?.trim();
+    if (endpoint) files.s3Endpoint = endpoint;
+  }
+  return files;
+}
+
 export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const nodeEnv = env.NODE_ENV ?? 'development';
   if (nodeEnv !== 'development' && nodeEnv !== 'test' && nodeEnv !== 'production') {
@@ -92,5 +139,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error(`APP_TIMEZONE invalid: „${config.timeZone}”.`);
   }
   config.taskHorizonDays = integer(env, 'TASK_HORIZON_DAYS', DEFAULT_TASK_HORIZON_DAYS, 1);
+  config.files = loadFilesConfig(env, nodeEnv);
+  config.maxUploadMb = integer(env, 'MAX_UPLOAD_MB', DEFAULT_MAX_UPLOAD_MB, 1);
   return config;
 }

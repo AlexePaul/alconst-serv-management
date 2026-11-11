@@ -82,14 +82,23 @@ aplicație și emailul acoperă nevoia de bază; Web Push se adaugă în etapa d
 
 ## Etapa 4 – Documente
 
-- Stocare S3-compatibilă pentru fișiere; acces doar prin URL-uri semnate, cu expirare scurtă
+Prima parte – secțiunea de documente ✅
+
+- [x] Stocare pentru fișiere: Amazon S3 sau disc local, în spatele aceleiași interfețe
+- [x] Acces doar prin API, autentificat și autorizat; fără adrese publice către fișiere
+- [x] Câte o secțiune de documente pe client, plus una generală a firmei
+- [x] Dosare pe mai multe niveluri; încărcare, descărcare, redenumire, mutare, căutare
+- [x] Validarea fișierelor încărcate: tip acceptat, conținut conform extensiei, dimensiune, nume
+- [x] Arhivare în loc de ștergere și pentru fișiere
+
+A doua parte – documente generate (după primirea exemplelor DOCX)
+
 - Template-uri DOCX: încărcare, validare, versionare, activare/dezactivare
 - Motor de generare: docxtemplater + pizzip, determinist, cu snapshot al datelor folosite
 - Numerotare fără duplicate (contor per tip/an, incrementat tranzacțional)
 - Generare individuală în cerere scurtă; generare în masă și conversie PDF în worker
 - Editor DOCX în aplicație (`@docx-editor.dev/vue`), cu versiuni separate de original
 - Arhivă cu căutare și filtrare după companie, tip, dată, număr
-- Secțiune de documente pe client, în care se pot încărca fișiere (de detaliat împreună cu firma)
 
 ## Etapa 5 – Stabilizare
 
@@ -176,6 +185,8 @@ permite deja modelul de date pentru ele este descris în [arhitectura.md](arhite
   (lunar, la 3 luni etc.); fiecare angajat bifează ce a făcut. Nu propune zile, ore sau trasee.
 - **Clienți săriți**: un client ratat într-o lună este de regulă vizitat luna următoare, pentru
   ambele perioade; ambele se marchează ca făcute, fără alte explicații.
+- **Secțiunea de documente**: un spațiu de fișiere pe secțiuni – fiecare client are documentele
+  lui, plus o secțiune generală a firmei – cu dosare, ca într-un drive partajat.
 - **Documente**: înainte de implementarea template-urilor, firma furnizează câte un DOCX
   anonimizat pentru fiecare tip (tematică de instruire, decizie internă, proces-verbal).
 
@@ -189,5 +200,6 @@ permite deja modelul de date pentru ele este descris în [arhitectura.md](arhite
    ca și acestea să fie doar dezactivate, este o schimbare mică.
 3. **Obligațiile unui punct de lucru arhivat** – rămân active până sunt dezactivate manual. Dacă
    arhivarea punctului de lucru ar trebui să le suspende automat, ca la clienți, se poate.
-4. **Secțiunea de documente** – ce fel de documente ar trebui încărcate pe client (contracte
-   semnate, fișe scanate, altele) și cine le poate vedea. Se stabilește la începutul Etapei 4.
+4. **Documente** – acum orice responsabil al unui client îi poate vedea, încărca, muta și arhiva
+   fișierele, iar secțiunea generală este comună tuturor. Dacă anumite dosare trebuie să fie
+   vizibile doar administratorilor (de exemplu contractele), se adaugă o restricție pe dosar.

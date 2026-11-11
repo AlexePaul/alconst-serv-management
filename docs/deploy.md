@@ -18,6 +18,7 @@ propriul pipeline.
 | `worker`   | Emailuri și rularea periodică                                            | nu           |
 | `migrate`  | Aplică migrările bazei de date la fiecare lansare, apoi se oprește       | nu           |
 | `postgres` | Baza de date (volum persistent)                                          | nu           |
+| (S3)       | Fișierele încărcate – bucket privat, în afara serverului                 | nu           |
 | `redis`    | Cozile BullMQ (cu parolă și persistență)                                 | nu           |
 
 ## Cerințe
@@ -53,6 +54,24 @@ configurare. Recomand o cheie API separată de cea a website-ului, cu drept doar
 să poată fi revocată independent. AWS limitează implicit portul 25 la ieșire; porturile 465 și 587
 nu sunt afectate.
 
+### Documente în Amazon S3
+
+Fișierele încărcate în aplicație se păstrează într-un bucket S3 privat:
+
+1. Creează un bucket (de exemplu `alconst-serv-documente`) în regiunea instanței, cu **Block all
+   public access** activ, **versionare** activă și criptare implicită (SSE-S3).
+2. Creează un rol IAM pentru instanța EC2, cu o politică limitată la acest bucket:
+   `s3:PutObject` și `s3:GetObject` pe `arn:aws:s3:::<bucket>/*`. Aplicația nu șterge obiecte,
+   deci nu are nevoie de `s3:DeleteObject`.
+3. Atașează rolul instanței. Containerele îl folosesc prin serviciul de metadate al instanței;
+   limita de salturi IMDSv2 trebuie să fie cel puțin 2 (`HttpPutResponseHopLimit=2`), altfel
+   containerele Docker nu ajung la el.
+4. În `.env.production`: `FILES_STORAGE=s3`, `S3_BUCKET=<bucket>`, `S3_REGION=<regiune>`. Nu se pun
+   chei de acces pe server.
+
+Alternativă fără S3: `FILES_STORAGE=local` păstrează fișierele în volumul Docker `files-data` de pe
+server. Este mai simplu, dar fișierele trebuie incluse atunci în backup-ul serverului.
+
 ## Instalare
 
 ```bash
@@ -77,6 +96,7 @@ cp .env.example .env.production
 | `REDIS_PASSWORD`                                       | Parolă generată (`openssl rand -base64 32`) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | Datele Resend (vezi „Email prin Resend”)    |
 | `MAIL_FROM`                                            | Expeditorul emailurilor                     |
+| `FILES_STORAGE`, `S3_BUCKET`, `S3_REGION`              | Stocarea documentelor (vezi „Documente”)    |
 
 Fișierul trebuie să fie lizibil doar de utilizatorul care rulează Docker (`chmod 600`).
 
@@ -125,8 +145,8 @@ docker compose -f docker-compose.prod.yml --env-file .env.production exec -T pos
 ```
 
 Backup-urile trebuie păstrate **în afara serverului** și restaurarea trebuie testată periodic.
-Din Etapa 4, documentele și template-urile vor sta în Amazon S3 (bucket privat, cu versionare),
-accesat de instanță printr-un rol IAM – fără chei de acces stocate pe server.
+Documentele stau în Amazon S3 (bucket privat, cu versionare), deci nu depind de server. Dacă se
+folosește stocarea locală, volumul `files-data` trebuie copiat împreună cu baza de date.
 
 ## CI/CD
 
@@ -141,4 +161,5 @@ configurat; se adaugă după alegerea serverului, ca pipeline separat de cel al 
 - Build-ul static al frontend-ului a fost rulat în browser cu service worker-ul activ.
 
 **Nu a fost verificat:** pornirea întregului `docker-compose.prod.yml` pe o instanță EC2 reală,
-obținerea certificatului TLS și trimiterea de emailuri prin Resend.
+obținerea certificatului TLS, trimiterea de emailuri prin Resend și stocarea documentelor într-un
+bucket S3 real (driverul S3 este testat doar împotriva unui server care îi imită operațiunile).

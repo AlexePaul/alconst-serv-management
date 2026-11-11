@@ -6,3 +6,4 @@ export * from './clients.js';
 export * from './search.js';
 export * from './dates.js';
 export * from './tasks.js';
+export * from './documents.js';
