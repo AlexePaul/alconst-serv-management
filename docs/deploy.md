@@ -148,10 +148,22 @@ Backup-urile trebuie păstrate **în afara serverului** și restaurarea trebuie 
 Documentele stau în Amazon S3 (bucket privat, cu versionare), deci nu depind de server. Dacă se
 folosește stocarea locală, volumul `files-data` trebuie copiat împreună cu baza de date.
 
+## Ramuri și lansări
+
+| Ramură          | Rol                                                                                 |
+| --------------- | ----------------------------------------------------------------------------------- |
+| `release/stage` | Tot ce este terminat și gata de testat. Aici se adună modificările.                 |
+| `release/prod`  | Doar ce a fost lansat. Primește modificări numai din `release/stage`, la o lansare. |
+
+Nu există ramura `main`. O lansare înseamnă aducerea lui `release/stage` în `release/prod`
+(pull request sau fast-forward), după ce verificările automate trec și lansarea este aprobată.
+`release/prod` se creează la prima lansare, ca să nu conțină niciodată cod nelansat.
+
 ## CI/CD
 
-`.github/workflows/ci.yml` rulează la fiecare push și pull request: formatare, lint, typecheck,
-teste unitare, teste e2e (cu PostgreSQL și Redis) și build. Deployment-ul automat nu este
+`.github/workflows/ci.yml` rulează la fiecare push pe `release/stage` și `release/prod` și la
+fiecare pull request: formatare, lint, typecheck, teste unitare, teste e2e (cu PostgreSQL și
+Redis, a doua oară și cu fusul orar al României) și build. Deployment-ul automat nu este
 configurat; se adaugă după alegerea serverului, ca pipeline separat de cel al website-ului public.
 
 ## Ce a fost verificat până acum

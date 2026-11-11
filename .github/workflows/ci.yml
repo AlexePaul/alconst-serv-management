@@ -1,8 +1,11 @@
 name: CI
 
+# Ramuri:
+#   release/stage – tot ce este gata de testat; aici se adună modificările
+#   release/prod  – doar ce a fost lansat; primește modificări numai din release/stage
 on:
   push:
-    branches: [main]
+    branches: [release/stage, release/prod]
   pull_request:
 
 concurrency:
