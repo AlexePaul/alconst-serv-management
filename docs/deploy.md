@@ -210,6 +210,23 @@ fiecare pull request: formatare, lint, typecheck, teste unitare, teste e2e (cu P
 Redis, a doua oară și cu fusul orar al României) și build. Deployment-ul automat nu este
 configurat; se adaugă după alegerea serverului, ca pipeline separat de cel al website-ului public.
 
+## Înainte de prima lansare
+
+Ce se poate verifica doar în mediul real și trebuie bifat înainte ca `release/stage` să ajungă
+în `release/prod`:
+
+- [ ] Instanța EC2, Elastic IP, Security Group și înregistrarea DNS pentru `app.alconst-serv.ro`
+- [ ] Certificatul TLS obținut de Caddy; `https://app.alconst-serv.ro/api/health` răspunde
+- [ ] Bucket-ul S3 pentru documente și rolul IAM al instanței: un fișier încărcat din aplicație
+      se descarcă înapoi identic
+- [ ] Emailurile prin Resend: „Ai uitat parola?” ajunge efectiv în căsuța de email
+- [ ] Primul administrator creat; colegii adăugați din aplicație
+- [ ] Backup: primul fișier apare în volumul `backups`, testul de restaurare trece, copia în afara
+      serverului este configurată
+- [ ] Aplicația instalată pe un iPhone real („Adaugă pe ecranul principal”) și parcursă: task-uri,
+      calendar, bifarea unei deplasări, încărcarea unui document din telefon
+- [ ] Avertizarea de pe pagina principală dispare după prima rulare a worker-ului
+
 ## Ce a fost verificat până acum
 
 - Imaginile Docker (`api`, `worker`, `migrate`, `web`) se construiesc cu succes.
