@@ -9,7 +9,10 @@ import { MailQueueService } from './mail-queue.service.js';
   imports: [
     BullModule.forRootAsync({
       inject: [AppConfig],
-      useFactory: (config: AppConfig) => ({ connection: { url: config.redisUrl } }),
+      useFactory: (config: AppConfig) => ({
+        connection: { url: config.redisUrl },
+        prefix: config.queuePrefix,
+      }),
     }),
     BullModule.registerQueue({ name: QUEUE_MAIL }),
   ],

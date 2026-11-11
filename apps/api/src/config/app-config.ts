@@ -20,9 +20,17 @@ export class AppConfig {
   nodeEnv: 'development' | 'test' | 'production';
   /** Originea publică a aplicației web, ex. `https://app.alconst-serv.ro`. */
   appUrl: string;
+  /** Interfața pe care ascultă API-ul: `127.0.0.1` în spatele unui proxy de pe aceeași mașină. */
+  apiHost: string;
   apiPort: number;
   databaseUrl: string;
+  /** Numărul maxim de conexiuni PostgreSQL ținute de acest proces. */
+  databasePoolMax: number;
   redisUrl: string;
+  /** Prefixul cheilor din Redis, ca aplicația să nu se suprapună cu altele pe același server. */
+  queuePrefix: string;
+  /** Versiunea instalată (commit-ul), raportată de `/api/ready`. */
+  version: string;
   sessionTtlDays: number;
   passwordResetTtlMinutes: number;
   /** Numărul de reverse proxy-uri de încredere din fața API-ului (0 = niciunul). */
@@ -76,6 +84,15 @@ function integer(env: NodeJS.ProcessEnv, key: string, fallback: number, min: num
   return value;
 }
 
+/** Prefixul cheilor BullMQ din Redis: litere mici, cifre, `-`, `_` și `:`. */
+export function queuePrefix(env: NodeJS.ProcessEnv): string {
+  const prefix = env.QUEUE_PREFIX?.trim() || 'alconst';
+  if (!/^[a-z0-9:_-]{1,40}$/.test(prefix)) {
+    throw new Error('QUEUE_PREFIX poate conține doar litere mici, cifre și caracterele - _ :');
+  }
+  return prefix;
+}
+
 /**
  * Stocarea fișierelor: pe disc (`local`) sau în S3 (`s3`). În producție alegerea trebuie făcută
  * explicit, ca fișierele să nu ajungă din greșeală în sistemul de fișiere al containerului.
@@ -126,9 +143,13 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const config = new AppConfig();
   config.nodeEnv = nodeEnv;
   config.appUrl = appUrl.origin;
+  config.apiHost = env.API_HOST?.trim() || '0.0.0.0';
   config.apiPort = integer(env, 'API_PORT', 3001, 1);
   config.databaseUrl = required(env, 'DATABASE_URL');
+  config.databasePoolMax = integer(env, 'DATABASE_POOL_MAX', 10, 1);
   config.redisUrl = required(env, 'REDIS_URL');
+  config.queuePrefix = queuePrefix(env);
+  config.version = env.APP_VERSION?.trim() || 'dev';
   config.sessionTtlDays = integer(env, 'SESSION_TTL_DAYS', 14, 1);
   config.passwordResetTtlMinutes = integer(env, 'PASSWORD_RESET_TTL_MINUTES', 60, 5);
   config.trustProxy = integer(env, 'TRUST_PROXY', 0, 0);

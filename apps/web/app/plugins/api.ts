@@ -2,15 +2,18 @@ import type { ApiErrorBody, UserDto } from '@alconst/shared'
 import { API_ERROR_CODES } from '@alconst/shared'
 
 /**
- * Clientul HTTP al aplicației. Toate cererile merg către `/api` pe aceeași origine,
- * iar autentificarea se face prin cookie-ul de sesiune (httpOnly), trimis automat de browser.
+ * Clientul HTTP al aplicației. Autentificarea se face prin cookie-ul de sesiune (httpOnly),
+ * trimis automat de browser. API-ul este fie pe aceeași origine (`/api`), fie – când interfața
+ * este găzduită separat – pe un alt subdomeniu al aceluiași domeniu; de aceea cererile includ
+ * explicit cookie-urile (`credentials: 'include'`).
  */
 export default defineNuxtPlugin((nuxtApp) => {
   const user = useState<UserDto | null>('auth:user', () => null)
   const toast = useToast()
 
   const api = $fetch.create({
-    baseURL: '/api',
+    baseURL: useRuntimeConfig().public.apiBase,
+    credentials: 'include',
     headers: { Accept: 'application/json' },
     async onResponseError({ response }) {
       const body = response._data as ApiErrorBody | undefined

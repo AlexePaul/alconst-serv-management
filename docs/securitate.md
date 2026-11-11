@@ -36,7 +36,12 @@ descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
 - Suplimentar, API-ul respinge orice cerere care modifică date dacă antetul `Origin` nu corespunde
   cu `APP_URL` (sau, în lipsa lui, dacă `Sec-Fetch-Site` indică altă origine).
 - API-ul acceptă doar `application/json`; formularele HTML clasice sunt respinse.
-- CORS nu este activat – web și API sunt pe aceeași origine.
+- CORS: API-ul acceptă cereri doar de la originea interfeței (`APP_URL`), cu cookie-ul de
+  sesiune. Nicio altă origine nu poate citi răspunsurile. Când interfața este găzduită separat de
+  API (Vercel), cele două trebuie să fie subdomenii ale aceluiași domeniu: cookie-ul
+  `SameSite=Strict` nu este trimis de pe alt domeniu.
+- Interfața găzduită pe Vercel constă doar din fișiere statice; datele aplicației merg din browser
+  direct la API și nu trec prin Vercel.
 
 ## Autorizare
 

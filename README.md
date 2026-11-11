@@ -12,16 +12,16 @@ la `https://app.alconst-serv.ro`, complet separat de website-ul public `alconst-
 
 ## Tehnologii
 
-| Zonă           | Alegere                                                               |
-| -------------- | --------------------------------------------------------------------- |
-| Frontend       | Nuxt 4 (SPA), Vue 3, TypeScript, Tailwind CSS 4, Nuxt UI 4, PWA       |
-| Backend        | NestJS 12 (REST), TypeScript, class-validator                         |
-| Bază de date   | PostgreSQL 16, Prisma ORM 7                                           |
-| Job-uri fundal | Redis 7, BullMQ 6                                                     |
-| Email          | Nodemailer (SMTP), trimis de worker                                   |
-| Fișiere        | Amazon S3 (sau disc local), acces doar prin API                       |
-| Deployment     | Docker Compose, Caddy (HTTPS automat)                                 |
-| Calitate       | Vitest, oxlint (backend), ESLint (frontend), Prettier, GitHub Actions |
+| Zonă           | Alegere                                                                        |
+| -------------- | ------------------------------------------------------------------------------ |
+| Frontend       | Nuxt 4 (SPA), Vue 3, TypeScript, Tailwind CSS 4, Nuxt UI 4, PWA                |
+| Backend        | NestJS 12 (REST), TypeScript, class-validator                                  |
+| Bază de date   | PostgreSQL 16, Prisma ORM 7                                                    |
+| Job-uri fundal | Redis 7, BullMQ 6                                                              |
+| Email          | Nodemailer (SMTP), trimis de worker                                            |
+| Fișiere        | Amazon S3 (sau disc local), acces doar prin API                                |
+| Deployment     | API și worker cu PM2 pe server, interfața pe Vercel; alternativ Docker Compose |
+| Calitate       | Vitest, oxlint (backend), ESLint (frontend), Prettier, GitHub Actions          |
 
 Deciziile tehnice sunt explicate în [docs/arhitectura.md](docs/arhitectura.md).
 
@@ -67,7 +67,7 @@ pnpm dev
 ```
 
 Aplicația este disponibilă la <http://localhost:3000>. API-ul rulează pe portul 3001, dar browserul
-îl accesează prin `/api` pe aceeași origine (proxy), exact ca în producție.
+îl accesează prin `/api` pe aceeași origine (proxy).
 
 ## Comenzi
 
@@ -168,5 +168,6 @@ Urmează: template-uri DOCX, generarea documentelor și editorul.
 - [Arhitectură și decizii tehnice](docs/arhitectura.md)
 - [Securitate](docs/securitate.md)
 - [Evaluarea editorului DOCX](docs/evaluare-editor-docx.md)
-- [Deployment în producție](docs/deploy.md)
+- [Instalarea: API pe instanța partajată, interfața pe Vercel](docs/instalare-server.md)
+- [Varianta cu Docker Compose (server dedicat, probe locale)](docs/deploy.md)
 - [Roadmap și întrebări deschise](docs/roadmap.md)

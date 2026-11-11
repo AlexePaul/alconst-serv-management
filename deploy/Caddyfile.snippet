@@ -1,0 +1,26 @@
+# Blocul API-ului pentru Caddy-ul de pe server (configurația Caddy nu stă în acest repository).
+# Înlocuiește <hostname-api> și <port> cu valorile mediului; portul este cel din API_PORT.
+#
+# Caddy rutează după hostname, deci blocul se adaugă lângă cele ale altor aplicații, fără a le atinge.
+# Interfața web nu este servită de aici: este găzduită separat (Vercel).
+
+<hostname-api> {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+	}
+
+	# `127.0.0.1`, nu `localhost`: numele se rezolvă întâi la ::1, iar API-ul ascultă pe IPv4.
+	# API-ul își pune singur celelalte antete de securitate și `Cache-Control: no-store`.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:<port>
+	}
+
+	# Orice altceva nu există pe acest hostname.
+	handle {
+		respond 404
+	}
+}

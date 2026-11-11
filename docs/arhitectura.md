@@ -50,11 +50,20 @@ nimic. `ssr: false` + `nuxt generate` produce fișiere statice, servite direct d
 - cookie-ul de sesiune nu trebuie retransmis între un server Nuxt și API;
 - PWA-ul se configurează simplu.
 
-### O singură origine pentru web și API
+### Interfața și API-ul: aceeași origine sau același domeniu
 
-Browserul accesează API-ul prin `/api` pe aceeași origine (în dezvoltare prin proxy-ul Nuxt, în
-producție prin Caddy). Consecințe: nu avem nevoie de CORS, cookie-ul poate fi `SameSite=Strict`,
-iar protecția CSRF se reduce la verificarea antetului `Origin`.
+Adresa API-ului este o setare de build a interfeței (`NUXT_PUBLIC_API_BASE`):
+
+- **aceeași origine** (`/api`): în dezvoltare, prin proxy-ul Nuxt, și la instalarea cu Docker
+  Compose, prin Caddy;
+- **origini diferite, același domeniu**: interfața pe Vercel, API-ul pe serverul propriu (de
+  exemplu `stage.exemplu.ro` și `api-stage.exemplu.ro`). Vercel servește doar fișiere statice;
+  cererile cu date merg din browser direct la API.
+
+În ambele cazuri cookie-ul de sesiune rămâne `SameSite=Strict`, iar protecția CSRF este
+verificarea antetului `Origin` față de `APP_URL`. În al doilea caz, API-ul permite prin CORS
+exact originea interfeței și nimic altceva. Un domeniu complet diferit pentru interfață nu
+funcționează: browserul nu ar trimite cookie-ul.
 
 ### Sesiuni în baza de date, nu JWT
 

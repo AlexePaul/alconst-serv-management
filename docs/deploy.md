@@ -1,9 +1,13 @@
-# Deployment în producție
+# Varianta cu Docker Compose (server dedicat)
 
-> **Nimic din acest document nu a fost executat.** Aplicația nu este instalată în producție și
-> DNS-ul nu a fost modificat. Pașii de mai jos descriu cum se face instalarea, după aprobare.
+> **Aceasta nu este instalarea folosită efectiv.** Aplicația se instalează pe o instanță partajată
+> (PM2) cu interfața pe Vercel – vezi [instalare-server.md](instalare-server.md). Varianta de mai
+> jos, cu tot pachetul într-un singur `docker-compose.prod.yml`, rămâne utilă pentru un server
+> dedicat și este cea cu care a fost probat local întregul pachet.
+>
+> **Nimic din acest document nu a fost executat în producție.** DNS-ul nu a fost modificat.
 
-Ținta este o instanță AWS EC2 cu Docker, la `https://app.alconst-serv.ro`. Website-ul public
+Ținta acestei variante este o instanță AWS EC2 cu Docker, la `https://app.alconst-serv.ro`. Website-ul public
 `alconst-serv.ro` nu este atins: aplicația are propriul subdomeniu, propriul server/containere și
 propriul pipeline.
 
@@ -131,7 +135,7 @@ rămâne oprit până la rezolvare – de aceea, înainte de fiecare actualizare
 
 ## Verificare după instalare
 
-- `https://app.alconst-serv.ro/api/health` răspunde `{"status":"ok"}`.
+- `https://app.alconst-serv.ro/api/ready` răspunde `{"status":"ok","version":"…"}`.
 - Autentificarea funcționează; în cookie apare `__Host-alconst_session` cu `Secure` și `HttpOnly`.
 - „Ai uitat parola?” trimite efectiv emailul (verifică și logul: `docker compose ... logs worker`).
 - Pe iPhone: Safari → Partajare → „Adaugă pe ecranul principal”.
@@ -207,8 +211,12 @@ Nu există ramura `main`. O lansare înseamnă aducerea lui `release/stage` în 
 
 `.github/workflows/ci.yml` rulează la fiecare push pe `release/stage` și `release/prod` și la
 fiecare pull request: formatare, lint, typecheck, teste unitare, teste e2e (cu PostgreSQL și
-Redis, a doua oară și cu fusul orar al României) și build. Deployment-ul automat nu este
-configurat; se adaugă după alegerea serverului, ca pipeline separat de cel al website-ului public.
+Redis, a doua oară și cu fusul orar al României) și build.
+
+După verificări, un push pe `release/stage` pornește deploy-ul pe serverul de stage (job-ul
+`deploy-stage`), descris în [instalare-server.md](instalare-server.md). Job-ul rămâne inactiv
+până când variabila de repository `DEPLOY_STAGE_ENABLED` este `true`. Pentru `release/prod` nu
+există deploy automat: producția se configurează separat, după aprobare.
 
 ## Înainte de prima lansare
 
@@ -216,7 +224,7 @@ Ce se poate verifica doar în mediul real și trebuie bifat înainte ca `release
 în `release/prod`:
 
 - [ ] Instanța EC2, Elastic IP, Security Group și înregistrarea DNS pentru `app.alconst-serv.ro`
-- [ ] Certificatul TLS obținut de Caddy; `https://app.alconst-serv.ro/api/health` răspunde
+- [ ] Certificatul TLS obținut de Caddy; `https://app.alconst-serv.ro/api/ready` răspunde
 - [ ] Bucket-ul S3 pentru documente și rolul IAM al instanței: un fișier încărcat din aplicație
       se descarcă înapoi identic
 - [ ] Emailurile prin Resend: „Ai uitat parola?” ajunge efectiv în căsuța de email

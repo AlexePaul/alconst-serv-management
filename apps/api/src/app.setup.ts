@@ -19,7 +19,18 @@ export function configureApp(app: NestExpressApplication): void {
   app.set('trust proxy', config.trustProxy);
   app.disable('x-powered-by');
 
-  app.use(helmet());
+  // Interfața poate fi găzduită separat de API (alt subdomeniu al aceluiași domeniu): resursele
+  // API-ului pot fi cerute de pe același site, dar nu de pe alte site-uri.
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }));
+  // Singura origine acceptată este cea a interfeței (APP_URL), cu cookie-ul de sesiune.
+  // Când interfața și API-ul sunt pe aceeași origine, regula nu are niciun efect.
+  app.enableCors({
+    origin: config.appUrl,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Accept'],
+    maxAge: 600,
+  });
   // Doar JSON: formularele clasice (urlencoded/multipart) nu sunt acceptate implicit,
   // ceea ce elimină o clasă întreagă de atacuri CSRF.
   app.useBodyParser('json', { limit: '1mb' });

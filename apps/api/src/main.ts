@@ -14,5 +14,7 @@ const app = await NestFactory.create<NestExpressApplication>(AppModule, APP_CREA
 configureApp(app);
 
 const config = app.get(AppConfig);
-await app.listen(config.apiPort);
-new Logger('Bootstrap').log(`API pornit pe portul ${config.apiPort} (${config.nodeEnv})`);
+await app.listen(config.apiPort, config.apiHost);
+new Logger('Bootstrap').log(
+  `API pornit pe ${config.apiHost}:${config.apiPort} (${config.nodeEnv}, versiunea ${config.version})`,
+);

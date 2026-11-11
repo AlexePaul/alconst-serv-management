@@ -15,7 +15,11 @@ export interface SmtpConfig {
 export class WorkerConfig {
   nodeEnv: 'development' | 'test' | 'production';
   redisUrl: string;
+  /** Prefixul cheilor din Redis; trebuie să fie același ca al API-ului. */
+  queuePrefix: string;
   databaseUrl: string;
+  /** Numărul maxim de conexiuni PostgreSQL ținute de worker. */
+  databasePoolMax: number;
   /** Adresa publică a aplicației, pentru linkurile din emailuri. */
   appUrl: string;
   /** Fusul orar în care se stabilește „azi” pentru termene și ora trimiterii rezumatului. */
@@ -83,10 +87,22 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv = process.env): WorkerCo
     throw new Error('În producție, SMTP_HOST este obligatoriu pentru trimiterea emailurilor.');
   }
 
+  const queuePrefix = env.QUEUE_PREFIX?.trim() || 'alconst';
+  if (!/^[a-z0-9:_-]{1,40}$/.test(queuePrefix)) {
+    throw new Error('QUEUE_PREFIX poate conține doar litere mici, cifre și caracterele - _ :');
+  }
+  const poolRaw = env.DATABASE_POOL_MAX?.trim();
+  const databasePoolMax = poolRaw ? Number(poolRaw) : 5;
+  if (!Number.isInteger(databasePoolMax) || databasePoolMax < 1) {
+    throw new Error('DATABASE_POOL_MAX trebuie să fie un număr întreg ≥ 1.');
+  }
+
   const config = new WorkerConfig();
   config.nodeEnv = nodeEnv;
   config.redisUrl = redisUrl;
+  config.queuePrefix = queuePrefix;
   config.databaseUrl = databaseUrl;
+  config.databasePoolMax = databasePoolMax;
   config.appUrl = appUrl;
   config.timeZone = timeZone;
   config.taskHorizonDays = taskHorizonDays;

@@ -282,6 +282,49 @@ describe('Autentificare (e2e)', () => {
     });
   });
 
+  describe('interfață găzduită separat de API (CORS)', () => {
+    it('acceptă doar originea interfeței, cu cookie-ul de sesiune', async () => {
+      const preflight = await t
+        .http()
+        .options('/api/auth/login')
+        .set('Origin', ORIGIN)
+        .set('Access-Control-Request-Method', 'POST')
+        .set('Access-Control-Request-Headers', 'content-type')
+        .expect(204);
+      expect(preflight.headers['access-control-allow-origin']).toBe(ORIGIN);
+      expect(preflight.headers['access-control-allow-credentials']).toBe('true');
+      expect(preflight.headers['access-control-allow-headers']).toContain('Content-Type');
+
+      const response = await t.http().get('/api/health').set('Origin', ORIGIN).expect(200);
+      expect(response.headers['access-control-allow-origin']).toBe(ORIGIN);
+      expect(response.headers['cross-origin-resource-policy']).toBe('same-site');
+    });
+
+    it('o altă origine nu primește niciodată permisiunea de a citi răspunsurile', async () => {
+      const foreign = 'https://alt-site.example';
+      const preflight = await t
+        .http()
+        .options('/api/auth/login')
+        .set('Origin', foreign)
+        .set('Access-Control-Request-Method', 'POST');
+      // Browserul compară valoarea cu propria origine: fiind alta, blochează răspunsul.
+      expect(preflight.headers['access-control-allow-origin']).not.toBe(foreign);
+      expect(preflight.headers['access-control-allow-origin']).not.toBe('*');
+      // Iar cererile care modifică date sunt respinse direct de server.
+      await t
+        .http()
+        .post('/api/auth/login')
+        .set('Origin', foreign)
+        .send({ email: 'x@test.ro', password: 'parola-de-test-123' })
+        .expect(403);
+    });
+  });
+
+  it('GET /api/ready verifică dependențele și raportează versiunea instalată', async () => {
+    const response = await t.http().get('/api/ready').expect(200);
+    expect(response.body).toEqual({ status: 'ok', version: 'dev' });
+  });
+
   it('GET /api/health este public', async () => {
     const response = await t.http().get('/api/health').expect(200);
     expect(response.body).toEqual({ status: 'ok' });

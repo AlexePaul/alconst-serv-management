@@ -19,7 +19,8 @@ class ConfigModule {}
 const prismaProvider = {
   provide: PRISMA,
   inject: [WorkerConfig],
-  useFactory: (config: WorkerConfig) => createPrismaClient(config.databaseUrl),
+  useFactory: (config: WorkerConfig) =>
+    createPrismaClient(config.databaseUrl, { poolMax: config.databasePoolMax }),
 };
 
 /**
@@ -34,7 +35,10 @@ const prismaProvider = {
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [WorkerConfig],
-      useFactory: (config: WorkerConfig) => ({ connection: { url: config.redisUrl } }),
+      useFactory: (config: WorkerConfig) => ({
+        connection: { url: config.redisUrl },
+        prefix: config.queuePrefix,
+      }),
     }),
     BullModule.registerQueue({ name: QUEUE_MAIL }, { name: QUEUE_MAINTENANCE }),
   ],

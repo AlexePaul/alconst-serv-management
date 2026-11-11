@@ -11,7 +11,7 @@ export function documentIcon(extension: string): string {
 
 /** Adresa de descărcare a unui fișier. Trece prin API, deci cere autentificare. */
 export function documentDownloadUrl(fileId: string): string {
-  return `/api/documents/files/${fileId}/download`
+  return `${useRuntimeConfig().public.apiBase}/documents/files/${fileId}/download`
 }
 
 export interface FolderOption {

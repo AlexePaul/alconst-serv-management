@@ -110,7 +110,8 @@ A doua parte – documente generate (după primirea exemplelor DOCX)
       nu a mai avut loc de 3 ore
 - Monitorizare externă și alerte (serverul însuși, spațiul pe disc, certificatul)
 - Optimizări (de exemplu dimensiunea imaginilor Docker: CLI-ul Prisma ajunge acum și în imaginea API)
-- Pipeline de deploy, lansarea în producție
+- [x] Pipeline de deploy pentru stage (inactiv până la configurarea infrastructurii)
+- Lansarea în producție
 
 ## Module viitoare (neplanificate încă)
 
@@ -147,7 +148,11 @@ permite deja modelul de date pentru ele este descris în [arhitectura.md](arhite
 ## Decizii luate împreună cu firma
 
 - **Identitate vizuală**: logo-ul oficial (din repository-ul website-ului) și bleumarinul lui.
-- **Găzduire**: AWS EC2; fișierele vor sta în Amazon S3.
+- **Găzduire**: API-ul și worker-ul pe o instanță AWS EC2 deja existentă, partajată cu o altă
+  aplicație (PM2, Caddy și PostgreSQL direct pe mașină; deploy prin GitHub Actions și SSM);
+  interfața pe Vercel; fișierele în Amazon S3, într-un bucket propriu.
+- **Ramuri**: `release/stage` și `release/prod`, fără `main`.
+- **Documente**: nu este nevoie de dosare vizibile doar administratorilor.
 - **Email**: căsuțe pe Zoho, trimitere automată prin Resend (SMTP).
 - **Import Excel**: nu este necesar.
 - **Permisiuni**: un angajat vede și modifică doar clienții lui și își poate adăuga clienți noi.
@@ -202,6 +207,3 @@ permite deja modelul de date pentru ele este descris în [arhitectura.md](arhite
    ca și acestea să fie doar dezactivate, este o schimbare mică.
 3. **Obligațiile unui punct de lucru arhivat** – rămân active până sunt dezactivate manual. Dacă
    arhivarea punctului de lucru ar trebui să le suspende automat, ca la clienți, se poate.
-4. **Documente** – acum orice responsabil al unui client îi poate vedea, încărca, muta și arhiva
-   fișierele, iar secțiunea generală este comună tuturor. Dacă anumite dosare trebuie să fie
-   vizibile doar administratorilor (de exemplu contractele), se adaugă o restricție pe dosar.

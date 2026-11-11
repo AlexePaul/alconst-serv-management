@@ -1,0 +1,30 @@
+# Documentul SSM al aplicației: singura comandă pe care rolul de deploy o poate porni pe server.
+#
+# Rulează exact /srv/alconst/remote-deploy.sh, cu mediul și commit-ul primite ca parametri
+# validați – fără comenzi libere. Rolul de deploy primește `ssm:SendCommand` doar pe acest
+# document (nu pe AWS-RunShellScript), deci un workflow din acest repository nu poate rula
+# altceva pe mașină și nu poate citi fișierele altor aplicații.
+#
+# Creare (o singură dată), cu numele ales la instalare:
+#   aws ssm create-document --name <nume> --document-type Command --document-format YAML \
+#     --content file://deploy/ssm-document.yml
+schemaVersion: '2.2'
+description: Deploy Alconst Serv Management
+parameters:
+  environment:
+    type: String
+    description: Mediul de instalat
+    allowedValues:
+      - stage
+      - prod
+  commit:
+    type: String
+    description: Commit-ul de instalat (SHA complet)
+    allowedPattern: '^[0-9a-f]{40}$'
+mainSteps:
+  - action: aws:runShellScript
+    name: deploy
+    inputs:
+      timeoutSeconds: '1800'
+      runCommand:
+        - /srv/alconst/remote-deploy.sh '{{ environment }}' '{{ commit }}'
