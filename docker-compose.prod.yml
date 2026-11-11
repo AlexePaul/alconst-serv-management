@@ -79,6 +79,10 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-Alconst Serv <no-reply@alconst-serv.ro>}
     depends_on:
+      # Ca și API-ul, worker-ul pornește doar după aplicarea migrărilor: altfel prima rulare
+      # periodică ar găsi o bază de date fără tabele (la instalare) sau cu schema veche.
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
 

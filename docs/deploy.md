@@ -231,8 +231,17 @@ Ce se poate verifica doar în mediul real și trebuie bifat înainte ca `release
 
 - Imaginile Docker (`api`, `worker`, `migrate`, `web`) se construiesc cu succes.
 - Ambele fișiere Compose sunt valide (`docker compose config`).
+- Întregul `docker-compose.prod.yml` a fost pornit local, de la zero, din imaginile construite
+  (cu `APP_DOMAIN=localhost` și `FILES_STORAGE=local`): migrările se aplică, API-ul și worker-ul
+  pornesc după ele, prima rulare periodică reușește, contul de administrator se creează din linia
+  de comandă, autentificarea merge prin HTTPS cu cookie-ul `__Host-`, un document încărcat se
+  descarcă identic, iar antetele de securitate sunt prezente.
+- Backup-ul la cerere, testul de restaurare și restaurarea propriu-zisă (după ștergerea unor date)
+  au fost rulate în același mediu.
 - Build-ul static al frontend-ului a fost rulat în browser cu service worker-ul activ.
+- Verificările automate (CI) trec pe GitHub, pe `release/stage`.
 
-**Nu a fost verificat:** pornirea întregului `docker-compose.prod.yml` pe o instanță EC2 reală,
-obținerea certificatului TLS, trimiterea de emailuri prin Resend și stocarea documentelor într-un
-bucket S3 real (driverul S3 este testat doar împotriva unui server care îi imită operațiunile).
+**Nu a fost verificat:** instalarea pe o instanță EC2 reală, obținerea certificatului TLS de la
+Let's Encrypt, trimiterea de emailuri prin Resend, stocarea documentelor într-un bucket S3 real
+(driverul S3 este testat doar împotriva unui server care îi imită operațiunile) și copia
+backup-urilor în afara serverului.

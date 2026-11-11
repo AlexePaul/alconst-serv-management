@@ -22,7 +22,14 @@ export class MaintenanceProcessor extends WorkerHost implements OnModuleInit {
   }
 
   async onModuleInit(): Promise<void> {
-    const jobOptions = { removeOnComplete: 24, removeOnFail: 100 };
+    // O rulare eșuată (de exemplu baza de date indisponibilă pentru moment) este reîncercată
+    // de câteva ori, la intervale tot mai mari, fără a aștepta ora următoare.
+    const jobOptions = {
+      removeOnComplete: 24,
+      removeOnFail: 100,
+      attempts: 4,
+      backoff: { type: 'exponential', delay: 30_000 },
+    };
     await this.queue.upsertJobScheduler(
       MAINTENANCE_JOB_HOURLY,
       { pattern: '5 * * * *', tz: this.config.timeZone },
