@@ -7,8 +7,8 @@ calendar și documente.
 Aplicația este **strict internă** (fără înregistrare publică, fără portal pentru clienți) și va rula
 la `https://app.alconst-serv.ro`, complet separat de website-ul public `alconst-serv.ro`.
 
-> **Stadiu:** Etapele 1 (Foundation), 2 (Clienți) și 3 (Task-uri, obligații și
-> calendar) sunt implementate. Urmează documentele. Vezi [docs/roadmap.md](docs/roadmap.md).
+> **Stadiu:** gata de testat pe stage; lansarea așteaptă doar configurarea infrastructurii.
+> Starea la zi, ce s-a făcut și ce urmează: [docs/roadmap.md](docs/roadmap.md).
 
 ## Tehnologii
 

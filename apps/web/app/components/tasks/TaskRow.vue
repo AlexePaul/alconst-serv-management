@@ -68,7 +68,7 @@ const period = computed(() => taskPeriodLabel(props.task))
           color="warning"
           variant="subtle"
           size="sm"
-          title="Responsabilul acestui task nu este responsabilul clientului"
+          title="Cel care face această activitate nu este responsabilul clientului"
         />
         <UBadge
           v-if="task.kind === 'VISIT' && task.status === 'DONE'"
@@ -102,7 +102,7 @@ const period = computed(() => taskPeriodLabel(props.task))
         <span
           v-if="task.obligation"
           class="inline-flex items-center gap-1"
-          :title="period ? 'Poate fi făcut oricând în această perioadă' : 'Generat dintr-o obligație recurentă'"
+          :title="period ? 'Poate fi făcută oricând în această perioadă' : 'Face parte dintr-o activitate recurentă'"
         >
           <UIcon name="i-lucide-repeat" class="size-3.5" />{{ period ?? 'Recurent' }}
         </span>

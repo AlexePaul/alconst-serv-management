@@ -169,10 +169,10 @@ export class NotificationsService {
       userId: assigneeId,
       type: 'TASK_ASSIGNED',
       subjectId: task.id,
-      title: 'Ți-a fost atribuit un task',
+      title: 'Ai primit ceva de făcut',
       body: task.title,
       taskId: task.id,
-      emailMessage: 'Un coleg ți-a atribuit un task în aplicația Alconst Serv.',
+      emailMessage: 'Un coleg ți-a dat ceva de făcut în aplicația Alconst Serv.',
     });
   }
 }

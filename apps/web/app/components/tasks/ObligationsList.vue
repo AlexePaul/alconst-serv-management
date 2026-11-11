@@ -105,7 +105,7 @@ async function confirmDelete() {
   deleting.value = true
   try {
     await api(`/obligations/${obligation.id}`, { method: 'DELETE' })
-    toast.add({ title: 'Obligația a fost ștearsă', description: obligation.title, color: 'success', icon: 'i-lucide-check' })
+    toast.add({ title: 'Activitatea recurentă a fost ștearsă', description: obligation.title, color: 'success', icon: 'i-lucide-check' })
     deleteOpen.value = false
     await onSaved()
   } catch (error) {
@@ -132,7 +132,7 @@ defineExpose({ openCreate })
         v-model="search"
         icon="i-lucide-search"
         placeholder="Caută după titlu sau client"
-        aria-label="Caută obligații"
+        aria-label="Caută activități recurente"
         class="w-full sm:w-72"
       />
       <USelect
@@ -144,7 +144,7 @@ defineExpose({ openCreate })
       <UButton
         v-if="clientId"
         icon="i-lucide-plus"
-        label="Adaugă obligație"
+        label="Adaugă activitate recurentă"
         class="sm:ml-auto"
         @click="openCreate"
       />
@@ -153,7 +153,7 @@ defineExpose({ openCreate })
     <UEmpty
       v-if="error"
       icon="i-lucide-cloud-off"
-      title="Obligațiile nu au putut fi încărcate"
+      title="Activitățile recurente nu au putut fi încărcate"
       :description="apiErrorMessage(error.cause ?? error)"
       :actions="[{ label: 'Încearcă din nou', icon: 'i-lucide-refresh-cw', onClick: () => { refresh() } }]"
       variant="naked"
@@ -166,13 +166,13 @@ defineExpose({ openCreate })
     <UEmpty
       v-else-if="obligations.length === 0"
       :icon="hasFilters ? 'i-lucide-search-x' : 'i-lucide-repeat'"
-      :title="hasFilters ? 'Nicio obligație găsită' : 'Nicio obligație încă'"
+      :title="hasFilters ? 'Nimic găsit' : 'Nimic recurent încă'"
       :description="hasFilters
-        ? 'Nicio obligație nu corespunde căutării sau filtrului ales.'
-        : 'Adaugă activitățile care se repetă – deplasări lunare, instruiri la 3 luni – iar aplicația creează singură task-urile și îți amintește de termene.'"
+        ? 'Nimic nu corespunde căutării sau filtrului ales.'
+        : 'Adaugă activitățile care se repetă – deplasări lunare, instruiri la 3 luni – iar aplicația le pune singură în lista „De făcut” și îți amintește de ele.'"
       :actions="hasFilters
         ? [{ label: 'Șterge filtrele', color: 'neutral', variant: 'outline', onClick: clearFilters }]
-        : [{ label: 'Adaugă obligație', icon: 'i-lucide-plus', onClick: openCreate }]"
+        : [{ label: 'Adaugă activitate recurentă', icon: 'i-lucide-plus', onClick: openCreate }]"
       variant="naked"
     />
 
@@ -236,7 +236,7 @@ defineExpose({ openCreate })
 
       <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p class="text-sm text-muted">
-          {{ countLabel(total, 'obligație', 'obligații') }}
+          {{ countLabel(total, 'activitate recurentă', 'activități recurente') }}
         </p>
         <UPagination
           v-if="total > PAGE_SIZE"
@@ -256,9 +256,9 @@ defineExpose({ openCreate })
     />
     <ConfirmDialog
       v-model:open="deleteOpen"
-      title="Ștergi obligația?"
-      :description="`„${selected?.title}” nu va mai genera task-uri, iar cele viitoare neîncepute vor fi șterse. Task-urile începute sau finalizate rămân în evidență.`"
-      confirm-label="Șterge obligația"
+      title="Ștergi activitatea recurentă?"
+      :description="`„${selected?.title}” nu va mai apărea în lista „De făcut”. Ce a fost deja început sau făcut rămâne în evidență.`"
+      confirm-label="Șterge"
       color="error"
       :loading="deleting"
       @confirm="confirmDelete"

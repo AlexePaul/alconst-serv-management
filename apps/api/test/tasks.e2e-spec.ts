@@ -568,7 +568,7 @@ describe('Obligații, task-uri și notificări (e2e)', () => {
       const mail = t.mail.sent.find((item) => item.kind === 'notification');
       expect(mail).toMatchObject({
         to: 'ana@test.ro',
-        headline: 'Ți-a fost atribuit un task',
+        headline: 'Ai primit ceva de făcut',
         actionUrl: `http://localhost:3000/task-uri?task=${task.id}`,
       });
       expect(JSON.stringify(mail)).not.toContain('Verificare');

@@ -398,13 +398,13 @@ const moreActions = computed<DropdownMenuItem[][]>(() => {
             <div class="space-y-8">
               <section>
                 <h3 class="mb-3 text-sm font-semibold text-highlighted">
-                  Obligații recurente
+                  Ce se repetă
                 </h3>
                 <TasksObligationsList :client-id="client.id" :client-name="client.name" @changed="tasksList?.refresh()" />
               </section>
               <section>
                 <h3 class="mb-3 text-sm font-semibold text-highlighted">
-                  Task-uri
+                  De făcut
                 </h3>
                 <TasksList ref="tasksList" :client-id="client.id" :client-name="client.name" />
               </section>
@@ -430,8 +430,8 @@ const moreActions = computed<DropdownMenuItem[][]>(() => {
           v-model:open="statusOpen"
           :title="client.isActive ? 'Arhivezi clientul?' : 'Reactivezi clientul?'"
           :description="client.isActive
-            ? `${client.name} nu va mai apărea printre clienții activi, iar obligațiile lui recurente vor fi suspendate: task-urile viitoare neîncepute, create automat, sunt retrase. Punctele de lucru, contractele și tot istoricul rămân în evidență. Clientul poate fi reactivat oricând.`
-            : `${client.name} va apărea din nou printre clienții activi, iar obligațiile lui recurente își vor relua programul de azi încolo.`"
+            ? `${client.name} nu va mai apărea printre clienții activi, iar activitățile lui recurente se opresc și nu mai apar în lista „De făcut”. Punctele de lucru, contractele și tot istoricul rămân în evidență. Clientul poate fi reactivat oricând.`
+            : `${client.name} va apărea din nou printre clienții activi, iar activitățile lui recurente reapar în lista „De făcut”, de azi încolo.`"
           :confirm-label="client.isActive ? 'Arhivează' : 'Reactivează'"
           :color="client.isActive ? 'warning' : 'primary'"
           :loading="busy"

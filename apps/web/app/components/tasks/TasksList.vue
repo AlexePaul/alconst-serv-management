@@ -36,7 +36,7 @@ const statusItems = [
 const { data: users } = useUserOptions()
 const { user: currentUser } = useAuth()
 const assigneeItems = computed(() => [
-  { label: 'Task-urile mele', value: 'me' },
+  { label: 'Ale mele', value: 'me' },
   { label: 'Ale tuturor', value: 'all' },
   { label: 'Fără responsabil', value: 'none' },
   ...users.value
@@ -103,7 +103,7 @@ async function openById(id: string) {
   try {
     openTask(await api<TaskDto>(`/tasks/${id}`))
   } catch (error) {
-    toast.add({ title: 'Task-ul nu a putut fi deschis', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
+    toast.add({ title: 'Activitatea nu a putut fi deschisă', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
   }
 }
 
@@ -131,7 +131,7 @@ defineExpose({ openCreate, openById, refresh, showMissingSheets })
         v-model="search"
         icon="i-lucide-search"
         placeholder="Caută după titlu sau client"
-        aria-label="Caută task-uri"
+        aria-label="Caută în lista de făcut"
         class="w-full sm:w-72"
       />
       <USelect
@@ -149,7 +149,7 @@ defineExpose({ openCreate, openById, refresh, showMissingSheets })
       <UButton
         v-if="clientId"
         icon="i-lucide-plus"
-        label="Creează task"
+        label="Adaugă activitate"
         class="sm:ml-auto"
         @click="openCreate()"
       />
@@ -158,7 +158,7 @@ defineExpose({ openCreate, openById, refresh, showMissingSheets })
     <UEmpty
       v-if="error"
       icon="i-lucide-cloud-off"
-      title="Task-urile nu au putut fi încărcate"
+      title="Lista nu a putut fi încărcată"
       :description="apiErrorMessage(error.cause ?? error)"
       :actions="[{ label: 'Încearcă din nou', icon: 'i-lucide-refresh-cw', onClick: () => { refresh() } }]"
       variant="naked"
@@ -171,15 +171,15 @@ defineExpose({ openCreate, openById, refresh, showMissingSheets })
     <UEmpty
       v-else-if="tasks.length === 0"
       :icon="hasFilters ? 'i-lucide-search-x' : 'i-lucide-circle-check-big'"
-      :title="status === 'missing-sheets' ? 'Toate fișele sunt confirmate' : hasFilters ? 'Niciun task găsit' : 'Niciun task deschis'"
+      :title="status === 'missing-sheets' ? 'Toate fișele sunt confirmate' : hasFilters ? 'Nimic găsit' : 'Nimic de făcut'"
       :description="hasFilters
-        ? 'Niciun task nu corespunde căutării sau filtrelor alese.'
+        ? 'Nimic nu corespunde căutării sau filtrelor alese.'
         : clientId
-          ? 'Acest client nu are task-uri deschise. Creează unul sau adaugă o obligație recurentă.'
-          : 'Nu ai nimic de făcut momentan. Task-urile apar aici când le creezi sau când sunt generate din obligații.'"
+          ? 'Nu este nimic de făcut pentru acest client. Adaugă o activitate sau una care se repetă.'
+          : 'Nu ai nimic de făcut momentan. Aici apar deplasările și activitățile tale, pe măsură ce le vine rândul.'"
       :actions="hasFilters
         ? [{ label: 'Șterge filtrele', color: 'neutral', variant: 'outline', onClick: clearFilters }]
-        : [{ label: 'Creează task', icon: 'i-lucide-plus', onClick: () => openCreate() }]"
+        : [{ label: 'Adaugă activitate', icon: 'i-lucide-plus', onClick: () => openCreate() }]"
       variant="naked"
     />
 
@@ -212,7 +212,7 @@ defineExpose({ openCreate, openById, refresh, showMissingSheets })
 
       <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p class="text-sm text-muted">
-          {{ countLabel(total, 'task', 'task-uri') }}
+          {{ countLabel(total, 'activitate', 'activități') }}
         </p>
         <UPagination
           v-if="total > PAGE_SIZE"

@@ -20,7 +20,7 @@ const viewItems = [
   { label: 'Zi', value: 'day' }
 ]
 const scopeItems = [
-  { label: 'Task-urile mele', value: 'me' },
+  { label: 'Ale mele', value: 'me' },
   { label: 'Ale tuturor', value: 'all' }
 ]
 const WEEKDAYS = ['Lu', 'Ma', 'Mi', 'Jo', 'Vi', 'Sâ', 'Du']
@@ -133,13 +133,13 @@ const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(()
         <template #right>
           <UButton
             icon="i-lucide-plus"
-            label="Creează task"
+            label="Adaugă activitate"
             class="hidden sm:inline-flex"
             @click="openCreate(cursor)"
           />
           <UButton
             icon="i-lucide-plus"
-            aria-label="Creează task"
+            aria-label="Adaugă activitate"
             class="sm:hidden"
             @click="openCreate(cursor)"
           />
@@ -176,7 +176,7 @@ const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(()
           <USelect
             v-model="scope"
             :items="scopeItems"
-            aria-label="Ale cui task-uri"
+            aria-label="Ale cui activități"
             class="hidden w-44 md:flex"
           />
           <USelect
@@ -198,7 +198,7 @@ const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(()
           <USelect
             v-model="scope"
             :items="scopeItems"
-            aria-label="Ale cui task-uri"
+            aria-label="Ale cui activități"
             class="w-40 shrink-0"
           />
         </div>
@@ -217,7 +217,7 @@ const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(()
           color="warning"
           variant="subtle"
           icon="i-lucide-triangle-alert"
-          description="Sunt prea multe task-uri în acest interval pentru a fi afișate toate. Alege o perioadă mai scurtă sau filtrează după responsabil."
+          description="Sunt prea multe activități în acest interval pentru a fi afișate toate. Alege o perioadă mai scurtă sau filtrează după responsabil."
         />
 
         <!-- Lună -->
@@ -252,7 +252,7 @@ const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(()
                     variant="ghost"
                     size="xs"
                     icon="i-lucide-plus"
-                    :aria-label="`Creează task pe ${formatDate(day)}`"
+                    :aria-label="`Adaugă activitate pe ${formatDate(day)}`"
                     class="hidden opacity-0 group-hover:opacity-100 focus:opacity-100 md:inline-flex"
                     @click="openCreate(day)"
                   />
@@ -311,7 +311,7 @@ const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(()
                 size="sm"
                 variant="soft"
                 icon="i-lucide-plus"
-                label="Task"
+                label="Activitate"
                 @click="openCreate(cursor)"
               />
             </div>
@@ -327,7 +327,7 @@ const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(()
               </li>
             </ul>
             <p v-else class="rounded-lg border border-dashed border-default px-4 py-6 text-center text-sm text-muted">
-              Niciun task în această zi.
+              Nimic de făcut în această zi.
             </p>
           </section>
         </template>
@@ -349,7 +349,7 @@ const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(()
                 variant="ghost"
                 size="xs"
                 icon="i-lucide-plus"
-                :aria-label="`Creează task pe ${formatDate(day)}`"
+                :aria-label="`Adaugă activitate pe ${formatDate(day)}`"
                 @click="openCreate(day)"
               />
             </div>
@@ -389,8 +389,8 @@ const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(()
           <UEmpty
             v-else-if="status !== 'pending'"
             icon="i-lucide-calendar-check"
-            title="Niciun task în această zi"
-            :actions="[{ label: 'Creează task', icon: 'i-lucide-plus', onClick: () => openCreate(cursor) }]"
+            title="Nimic de făcut în această zi"
+            :actions="[{ label: 'Adaugă activitate', icon: 'i-lucide-plus', onClick: () => openCreate(cursor) }]"
             variant="naked"
           />
         </template>

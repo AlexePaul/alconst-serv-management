@@ -37,7 +37,7 @@ export const TASK_KINDS = ['GENERAL', 'VISIT'] as const;
 export type TaskKind = (typeof TASK_KINDS)[number];
 
 export const TASK_KIND_LABELS: Record<TaskKind, string> = {
-  GENERAL: 'Activitate',
+  GENERAL: 'Altă activitate',
   VISIT: 'Deplasare',
 };
 

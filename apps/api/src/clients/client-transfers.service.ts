@@ -287,7 +287,7 @@ export class ClientTransfersService {
         title: 'Ai preluat un client',
         body:
           taskCount > 0
-            ? `${client.name} · ${taskCount === 1 ? '1 task deschis' : `${taskCount} task-uri deschise`}`
+            ? `${client.name} · ${taskCount === 1 ? '1 activitate de făcut' : `${taskCount} activități de făcut`}`
             : client.name,
         link: `/clienti/${client.id}`,
         emailMessage: 'Un administrator ți-a atribuit definitiv un client.',

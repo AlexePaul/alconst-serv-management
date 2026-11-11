@@ -1,5 +1,5 @@
 <script setup lang="ts">
-useHead({ title: 'Obligații' })
+useHead({ title: 'Activități recurente' })
 
 const list = useTemplateRef('list')
 </script>
@@ -7,17 +7,17 @@ const list = useTemplateRef('list')
 <template>
   <UDashboardPanel id="obligations">
     <template #header>
-      <UDashboardNavbar title="Obligații">
+      <UDashboardNavbar title="Activități recurente">
         <template #right>
           <UButton
             icon="i-lucide-plus"
-            label="Adaugă obligație"
+            label="Adaugă activitate recurentă"
             class="hidden sm:inline-flex"
             @click="list?.openCreate()"
           />
           <UButton
             icon="i-lucide-plus"
-            aria-label="Adaugă obligație"
+            aria-label="Adaugă activitate recurentă"
             class="sm:hidden"
             @click="list?.openCreate()"
           />
@@ -28,7 +28,7 @@ const list = useTemplateRef('list')
     <template #body>
       <div class="mx-auto w-full max-w-5xl">
         <p class="mb-4 text-sm text-muted">
-          Activitățile care se repetă pentru fiecare client. Din ele se creează automat task-uri, cu termen și responsabil.
+          Ce se repetă pentru fiecare client, de exemplu deplasarea lunară. Aplicația le pune singură în lista „De făcut”.
         </p>
         <TasksObligationsList ref="list" />
       </div>

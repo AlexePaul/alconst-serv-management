@@ -93,7 +93,7 @@ export function planReminders(
         planned.push({
           ...base,
           type: 'TASK_OVERDUE',
-          title: 'Task restant',
+          title: 'Activitate restantă',
           body: `${label} · termen ${formatDate(deadline)}`,
           dedupeKey: `overdue:${task.id}:${userId}:${deadline}:${week}`,
         });

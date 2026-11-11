@@ -35,9 +35,9 @@ describe('renderMail', () => {
       dueSoonCount: 0,
       appUrl: 'https://app.alconst-serv.ro',
     });
-    expect(mail.subject).toBe('Ai 2 task-uri restante – Alconst Serv');
-    expect(mail.text).toContain('2 task-uri restante');
-    expect(mail.text).toContain('1 task cu termen astăzi');
+    expect(mail.subject).toBe('Ai 2 activități restante – Alconst Serv');
+    expect(mail.text).toContain('2 activități restante');
+    expect(mail.text).toContain('1 activitate cu termen astăzi');
     expect(mail.text).not.toContain('zilele următoare');
     expect(mail.text).toContain('https://app.alconst-serv.ro/task-uri');
     expect(mail.html).toContain('href="https://app.alconst-serv.ro/task-uri"');

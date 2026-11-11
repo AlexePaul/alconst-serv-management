@@ -44,7 +44,7 @@ async function save(changes: Partial<NotificationSettingsDto>) {
         Notificări
       </h2>
       <p class="text-sm text-muted">
-        Reamintirile apar în aplicație pentru task-urile al căror responsabil ești. În ziua termenului și la restanțe ești anunțat întotdeauna.
+        Reamintirile apar în aplicație pentru activitățile pe care le ai tu de făcut. În ziua termenului și la restanțe ești anunțat întotdeauna.
       </p>
     </template>
 
@@ -75,7 +75,7 @@ async function save(changes: Partial<NotificationSettingsDto>) {
         :model-value="settings.emailEnabled"
         :disabled="saving"
         label="Notificări pe email"
-        description="Primești imediat un email când ți se atribuie un task sau apare o cerere de predare a unui client, și cel mult un rezumat pe zi cu termenele. Emailurile nu conțin titluri de task-uri sau nume de clienți."
+        description="Primești imediat un email când un coleg îți dă ceva de făcut sau apare o cerere de predare a unui client, și cel mult un rezumat pe zi cu termenele. Emailurile nu conțin titluri de task-uri sau nume de clienți."
         @update:model-value="save({ emailEnabled: $event })"
       />
     </div>

@@ -3,6 +3,75 @@
 Aplicația se construiește incremental. Fiecare etapă livrează funcționalități complete
 (backend + bază de date + interfață + teste), nu ecrane simulate.
 
+## Unde suntem acum
+
+_Actualizat: 11 noiembrie 2026 · ramura `release/stage`._
+
+**Pe scurt:** aplicația este gata de testat de către oameni. Ce lipsește pentru lansarea pe stage
+nu mai este cod, ci configurarea infrastructurii (lista „De făcut de Alex” de mai jos).
+
+| Etapă                               | Stare                                                              |
+| ----------------------------------- | ------------------------------------------------------------------ |
+| 1 – Foundation                      | ✅ gata                                                            |
+| 2 – Clienți                         | ✅ gata                                                            |
+| 3 – Activități, recurențe, calendar | ✅ gata                                                            |
+| 4 – Documente                       | 🟡 secțiunea de fișiere gata; documentele generate așteaptă DOCX   |
+| 5 – Stabilizare                     | 🟡 backup, supraveghere worker și pipeline gata; restul după stage |
+| Simplificarea interfeței            | ✅ gata (vezi mai jos)                                             |
+| Lansare stage                       | ⏳ așteaptă configurarea infrastructurii                           |
+| Lansare producție                   | ⏳ după perioada de testare pe stage                               |
+
+### Ce pot face testerii pe stage
+
+- intră în cont (parolă temporară la prima autentificare, apoi parola lor);
+- adaugă un client și spun, în același formular, cât de des merg la el și în ce luni;
+- văd pe pagina principală ce au de făcut și bifează deplasările (cu numărul de angajați și
+  confirmarea fișelor);
+- folosesc calendarul, contractele, punctele de lucru, documentele pe client și notificările;
+- găsesc explicațiile în pagina „Ajutor” din meniu.
+
+### De făcut de Alex pentru lansarea pe stage
+
+Pașii sunt descriși în [instalare-server.md](instalare-server.md).
+
+- [ ] Redis pe instanța EC2
+- [ ] Baza de date și rolul PostgreSQL ale aplicației (fără drepturi pe baza celeilalte aplicații)
+- [ ] Bucket S3 propriu și rolul IAM al instanței
+- [ ] Parametrii din Parameter Store, sub prefixul aplicației
+- [ ] Rolul OIDC de deploy, documentul SSM și blocul Caddy pentru API
+- [ ] În GitHub: mediul `stage` (secrete și variabile) și variabila `DEPLOY_STAGE_ENABLED`
+- [ ] Proiectul Vercel pentru interfață (`apps/web`), cu `NUXT_PUBLIC_API_BASE`
+- [ ] Domeniile: interfața și API-ul ca subdomenii ale aceluiași domeniu
+- [ ] Ramura implicită a repository-ului: `release/stage`
+- [ ] Conturile testerilor (din „Utilizatori”, cu parolă temporară)
+- [ ] Baza de date adăugată în scriptul de backup al instanței
+
+### Verificat doar local, de confirmat pe stage
+
+- deploy-ul prin GitHub Actions și SSM (repetat local cu PM2 real, nu pe AWS);
+- stocarea în S3 (testată pe un server de probă, nu pe un bucket real);
+- build-ul pe Vercel (reprodus local cu aceeași configurație);
+- aplicația pe un iPhone fizic (verificată doar în emulare).
+
+### Simplificarea interfeței (noiembrie 2026) ✅
+
+Scop: cineva fără experiență tehnică să poată folosi aplicația din prima zi.
+
+- [x] Cuvinte obișnuite: „De făcut” și „activitate” în loc de „task”, „activitate recurentă” în
+      loc de „obligație” (în cod și în documentația tehnică au rămas `task` și `obligation`)
+- [x] Pagina principală arată doar ce este de făcut; secțiunile goale nu mai apar
+- [x] Client nou și frecvența deplasărilor într-un singur formular; câmpurile rare sunt strânse
+      sub „Mai multe detalii”
+- [x] Pagina „Ajutor”: cinci pași și întrebări frecvente
+- [x] Parcurgere completă în browser, pe desktop și pe iPhone (emulat), ca utilizator nou
+
+### Ce urmează după lansarea pe stage
+
+1. Corecturi din observațiile testerilor.
+2. Documentele generate (Etapa 4, partea a doua) – după primirea exemplelor DOCX anonimizate.
+3. Restul stabilizării: retenția datelor, întărirea CSP, monitorizare externă, Web Push.
+4. Crearea ramurii `release/prod` și lansarea în producție, cu aprobarea ta.
+
 ## Etapa 1 – Foundation ✅
 
 - [x] Monorepo pnpm: `apps/web`, `apps/api`, `apps/worker`, `packages/database`, `packages/shared`
@@ -33,7 +102,10 @@ Aplicația se construiește incremental. Fiecare etapă livrează funcționalit�
 
 Importul din Excel a fost scos din plan: nu există fișiere Excel de migrat.
 
-## Etapa 3 – Task-uri, obligații și calendar ✅
+## Etapa 3 – Activități, recurențe și calendar ✅
+
+În interfață, task-urile se numesc „activități” („De făcut”), iar obligațiile „activități
+recurente”.
 
 - [x] Obligații recurente configurabile (zilnic, săptămânal, lunar, anual, la N unități), cu sau
       fără client, cu punct de lucru și responsabil; nicio frecvență nu este fixată în cod

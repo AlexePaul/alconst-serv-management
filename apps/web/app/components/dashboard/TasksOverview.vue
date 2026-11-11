@@ -6,7 +6,7 @@ const api = useApi()
 
 const scope = ref<'mine' | 'all'>('mine')
 const scopeItems = [
-  { label: 'Task-urile mele', value: 'mine' },
+  { label: 'Ale mele', value: 'mine' },
   { label: 'Ale tuturor', value: 'all' }
 ]
 
@@ -25,8 +25,7 @@ const sections = computed(() => [
     icon: 'i-lucide-triangle-alert',
     tone: 'text-error',
     tasks: data.value?.overdue ?? [],
-    count: data.value?.counts.overdue ?? 0,
-    empty: 'Nicio restanță.'
+    count: data.value?.counts.overdue ?? 0
   },
   {
     key: 'pending',
@@ -34,8 +33,7 @@ const sections = computed(() => [
     icon: 'i-lucide-hourglass',
     tone: 'text-warning',
     tasks: data.value?.inPeriod ?? [],
-    count: data.value?.counts.inPeriod ?? 0,
-    empty: 'Nimic rămas din perioada curentă.'
+    count: data.value?.counts.inPeriod ?? 0
   },
   {
     key: 'today',
@@ -43,8 +41,7 @@ const sections = computed(() => [
     icon: 'i-lucide-calendar-check',
     tone: 'text-warning',
     tasks: data.value?.dueToday ?? [],
-    count: data.value?.counts.dueToday ?? 0,
-    empty: 'Nimic programat pentru azi.'
+    count: data.value?.counts.dueToday ?? 0
   },
   {
     key: 'upcoming',
@@ -52,10 +49,12 @@ const sections = computed(() => [
     icon: 'i-lucide-calendar-clock',
     tone: 'text-primary',
     tasks: data.value?.upcoming ?? [],
-    count: data.value?.counts.upcoming ?? 0,
-    empty: 'Niciun termen în următoarele 7 zile.'
+    count: data.value?.counts.upcoming ?? 0
   }
 ])
+
+/** Pe pagina principală apar doar secțiunile în care este ceva de făcut. */
+const visibleSections = computed(() => sections.value.filter(section => section.tasks.length > 0))
 
 const formOpen = ref(false)
 const selected = ref<TaskDto | null>(null)
@@ -78,7 +77,7 @@ const { toggle: complete, busyId, dialogOpen, dialogTask, skipped } = useTaskCom
         <USelect
           v-model="scope"
           :items="scopeItems"
-          aria-label="Ale cui task-uri"
+          aria-label="Ale cui activități"
           size="sm"
           class="w-40"
         />
@@ -98,13 +97,31 @@ const { toggle: complete, busyId, dialogOpen, dialogTask, skipped } = useTaskCom
       color="error"
       variant="subtle"
       icon="i-lucide-cloud-off"
-      title="Task-urile nu au putut fi încărcate"
+      title="Lista nu a putut fi încărcată"
       :description="apiErrorMessage(error.cause ?? error)"
       :actions="[{ label: 'Încearcă din nou', color: 'error', variant: 'outline', onClick: () => { refresh() } }]"
     />
 
-    <div v-else class="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-      <UCard v-for="section in sections" :key="section.key" :ui="{ body: 'p-0 sm:p-0', header: 'px-4 py-3 sm:px-4' }">
+    <div v-else-if="status === 'pending' && !data" class="space-y-3">
+      <USkeleton v-for="index in 2" :key="index" class="h-16 w-full" />
+    </div>
+
+    <!-- Nimic de făcut: un singur mesaj, nu patru casete goale. -->
+    <UCard v-else-if="visibleSections.length === 0">
+      <div class="flex flex-col items-center gap-2 py-4 text-center">
+        <UIcon name="i-lucide-circle-check-big" class="size-8 text-success" />
+        <p class="font-medium text-highlighted">
+          Nu ai nimic de făcut în următoarele 7 zile
+        </p>
+        <p class="max-w-md text-sm text-muted">
+          Deplasările și celelalte activități apar aici singure, când le vine rândul. Ca să apară,
+          adaugă un client și spune cât de des mergi la el.
+        </p>
+      </div>
+    </UCard>
+
+    <div v-else class="grid gap-4" :class="visibleSections.length > 1 ? 'md:grid-cols-2' : ''">
+      <UCard v-for="section in visibleSections" :key="section.key" :ui="{ body: 'p-0 sm:p-0', header: 'px-4 py-3 sm:px-4' }">
         <template #header>
           <div class="flex items-center gap-2">
             <UIcon :name="section.icon" class="size-4" :class="section.tone" />
@@ -122,13 +139,7 @@ const { toggle: complete, busyId, dialogOpen, dialogTask, skipped } = useTaskCom
           </div>
         </template>
 
-        <div v-if="status === 'pending' && !data" class="space-y-3 p-4">
-          <USkeleton v-for="index in 2" :key="index" class="h-10 w-full" />
-        </div>
-        <p v-else-if="section.tasks.length === 0" class="px-4 py-6 text-center text-sm text-muted">
-          {{ section.empty }}
-        </p>
-        <template v-else>
+        <template v-if="section.tasks.length > 0">
           <ul class="divide-y divide-default">
             <li v-for="task in section.tasks.slice(0, 6)" :key="task.id" class="flex items-start gap-2.5 px-4 py-2.5">
               <button

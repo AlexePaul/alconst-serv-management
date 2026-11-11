@@ -212,7 +212,9 @@ export class TasksService {
     const endTime = dto.endTime !== undefined ? dto.endTime : before.endTime;
     assertTimeRange(startTime, endTime);
     if (dto.clientEmployeeCount !== undefined && !clientId) {
-      throw AppException.validation('Task-ul nu are un client pentru care să fie notat numărul.');
+      throw AppException.validation(
+        'Activitatea nu are un client pentru care să fie notat numărul.',
+      );
     }
 
     // Confirmarea fișelor există doar pentru deplasări și se șterge dacă task-ul își schimbă tipul.
@@ -295,12 +297,12 @@ export class TasksService {
     const existing = await this.find(id, auth);
     if (existing.obligationId) {
       throw AppException.validation(
-        'Task-urile generate dintr-o obligație nu pot fi șterse. Marchează task-ul ca anulat.',
+        'O activitate care se repetă nu poate fi ștearsă din listă. Marcheaz-o ca anulată.',
       );
     }
     if (existing.status !== 'TODO') {
       throw AppException.validation(
-        'Doar task-urile neîncepute pot fi șterse. Celelalte rămân în evidență; dacă nu mai este necesar, marchează task-ul ca anulat.',
+        'Doar activitățile neîncepute pot fi șterse. Celelalte rămân în evidență; dacă nu mai este necesară, marcheaz-o ca anulată.',
       );
     }
     await this.prisma.db.task.delete({ where: { id } });
@@ -443,7 +445,7 @@ export class TasksService {
       where: { id, ...this.access.taskScope(auth.user) },
       include: taskInclude,
     });
-    if (!row) throw AppException.notFound('Task-ul nu există.');
+    if (!row) throw AppException.notFound('Activitatea nu există.');
     return row;
   }
 

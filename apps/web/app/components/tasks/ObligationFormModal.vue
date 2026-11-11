@@ -196,8 +196,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       : await api<ObligationDto>('/obligations', { method: 'POST', body })
     emit('saved', saved)
     toast.add({
-      title: isEdit.value ? 'Modificările au fost salvate' : 'Obligația a fost adăugată',
-      description: countLabel(saved.openTaskCount, 'task deschis', 'task-uri deschise'),
+      title: isEdit.value ? 'Modificările au fost salvate' : 'Activitatea recurentă a fost adăugată',
+      description: countLabel(saved.openTaskCount, 'activitate de făcut', 'activități de făcut'),
       color: 'success',
       icon: 'i-lucide-check'
     })
@@ -209,8 +209,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 <template>
   <UModal
     v-model:open="open"
-    :title="isEdit ? 'Modifică obligația' : 'Adaugă obligație'"
-    description="O activitate care se repetă. Task-urile se creează automat, cu termen și responsabil."
+    :title="isEdit ? 'Modifică activitatea recurentă' : 'Adaugă activitate recurentă'"
+    description="Ceva care se repetă, de exemplu o deplasare lunară. Aplicația o pune singură în lista „De făcut”, de fiecare dată."
     :dismissible="!loading"
     :ui="{ content: 'sm:max-w-2xl' }"
   >
@@ -256,7 +256,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </UFormField>
         </div>
 
-        <UFormField label="Responsabil" name="assigneeId" help="Primește task-urile generate și reamintirile de termen.">
+        <UFormField label="Responsabil" name="assigneeId" help="Persoana care o are de făcut și primește reamintirile.">
           <USelect v-model="state.assigneeId" :items="assigneeItems" class="w-full sm:w-72" />
         </UFormField>
 
@@ -338,7 +338,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </p>
         </div>
 
-        <UFormField label="Descriere" name="description" help="Se copiază în fiecare task generat.">
+        <UFormField label="Descriere" name="description" help="Apare la fiecare activitate din listă.">
           <UTextarea
             v-model="state.description"
             :rows="2"
@@ -347,8 +347,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           />
         </UFormField>
 
-        <UFormField v-if="isEdit" name="isActive" help="O obligație inactivă nu mai generează task-uri; cele viitoare neîncepute sunt șterse.">
-          <USwitch v-model="state.isActive" label="Obligație activă" />
+        <UFormField v-if="isEdit" name="isActive" help="Dacă o oprești, nu mai apare în lista „De făcut”; ce a fost deja făcut rămâne în evidență.">
+          <USwitch v-model="state.isActive" label="Activă" />
         </UFormField>
 
         <UAlert
@@ -356,10 +356,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           color="neutral"
           variant="subtle"
           icon="i-lucide-info"
-          description="Modificările se aplică task-urilor viitoare neîncepute. Cele începute, finalizate sau anulate rămân neschimbate."
+          description="Modificările se aplică de acum înainte. Ce a fost deja început, făcut sau anulat rămâne neschimbat."
         />
 
-        <FormActions :submit-label="isEdit ? 'Salvează' : 'Adaugă obligația'" :loading="loading" @cancel="open = false" />
+        <FormActions :submit-label="isEdit ? 'Salvează' : 'Adaugă'" :loading="loading" @cancel="open = false" />
       </UForm>
     </template>
   </UModal>

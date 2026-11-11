@@ -86,7 +86,7 @@ async function transfer() {
           color="neutral"
           variant="subtle"
           icon="i-lucide-info"
-          :description="`${isAdmin ? 'Ca administrator, predarea are loc imediat.' : 'Predarea are loc doar după ce colegul acceptă cererea.'} Noul responsabil preia clientul, obligațiile lui și task-urile deschise ale celui care predă; task-urile deja încheiate rămân în istoricul celui care le-a făcut. Pentru o singură deplasare, schimbă doar responsabilul pe acel task.`"
+          :description="`${isAdmin ? 'Ca administrator, predarea are loc imediat.' : 'Predarea are loc doar după ce colegul acceptă cererea.'} Noul responsabil preia clientul, cu tot ce este de făcut la el de acum înainte; ce a fost deja făcut rămâne în istoricul celui care a făcut-o. Pentru o singură deplasare, schimbă doar persoana pe acea deplasare.`"
         />
 
         <UFormField label="De la">

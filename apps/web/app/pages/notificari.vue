@@ -122,7 +122,7 @@ onMounted(refreshUnread)
           v-else-if="notifications.length === 0"
           icon="i-lucide-bell"
           :title="unreadOnly ? 'Nicio notificare necitită' : 'Nicio notificare'"
-          description="Aici apar reamintirile de termen, restanțele și task-urile care îți sunt atribuite."
+          description="Aici apar reamintirile, restanțele și ce îți dau colegii de făcut."
           variant="naked"
         />
 

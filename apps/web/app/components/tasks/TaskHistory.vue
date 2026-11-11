@@ -20,9 +20,9 @@ const VALUE_LABELS = {
 }
 
 function summary(entry: TaskHistoryEntryDto): string {
-  if (entry.action === 'task.created') return 'a creat task-ul'
+  if (entry.action === 'task.created') return 'a adăugat activitatea'
   if (entry.changes.length === 0) {
-    return (ACTIVITY_ACTION_LABELS as Record<string, string>)[entry.action]?.toLowerCase() ?? 'a modificat task-ul'
+    return (ACTIVITY_ACTION_LABELS as Record<string, string>)[entry.action]?.toLowerCase() ?? 'a modificat activitatea'
   }
   return `a modificat ${entry.changes.map(change => describeHistoryChange(change, VALUE_LABELS)).join('; ')}`
 }

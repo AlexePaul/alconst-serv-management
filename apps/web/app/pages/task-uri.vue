@@ -1,5 +1,5 @@
 <script setup lang="ts">
-useHead({ title: 'Task-uri' })
+useHead({ title: 'De făcut' })
 
 const route = useRoute()
 const router = useRouter()
@@ -19,7 +19,7 @@ onMounted(() => {
 <template>
   <UDashboardPanel id="tasks">
     <template #header>
-      <UDashboardNavbar title="Task-uri">
+      <UDashboardNavbar title="De făcut">
         <template #right>
           <UButton
             to="/calendar"
@@ -31,13 +31,13 @@ onMounted(() => {
           />
           <UButton
             icon="i-lucide-plus"
-            label="Creează task"
+            label="Adaugă activitate"
             class="hidden sm:inline-flex"
             @click="list?.openCreate()"
           />
           <UButton
             icon="i-lucide-plus"
-            aria-label="Creează task"
+            aria-label="Adaugă activitate"
             class="sm:hidden"
             @click="list?.openCreate()"
           />

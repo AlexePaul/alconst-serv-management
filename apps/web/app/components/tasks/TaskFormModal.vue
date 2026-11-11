@@ -179,7 +179,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       : await api<TaskDto>('/tasks', { method: 'POST', body })
     emit('saved', saved)
     toast.add({
-      title: isEdit.value ? 'Modificările au fost salvate' : 'Task-ul a fost creat',
+      title: isEdit.value ? 'Modificările au fost salvate' : 'Activitatea a fost adăugată',
       description: saved.title,
       color: 'success',
       icon: 'i-lucide-check'
@@ -202,7 +202,7 @@ async function confirmDelete() {
   try {
     await api(`/tasks/${props.task.id}`, { method: 'DELETE' })
     emit('deleted', props.task.id)
-    toast.add({ title: 'Task-ul a fost șters', color: 'success', icon: 'i-lucide-check' })
+    toast.add({ title: 'Activitatea a fost ștearsă', color: 'success', icon: 'i-lucide-check' })
     deleteOpen.value = false
     open.value = false
   } catch (error) {
@@ -216,8 +216,8 @@ async function confirmDelete() {
 <template>
   <UModal
     v-model:open="open"
-    :title="isEdit ? 'Task' : 'Creează task'"
-    :description="task?.obligation ? `Generat din obligația „${task.obligation.title}”` : isEdit ? 'Detalii, status și observații.' : 'Ce trebuie făcut, până când și de către cine.'"
+    :title="isEdit ? 'Activitate' : 'Adaugă activitate'"
+    :description="task?.obligation ? `Face parte din „${task.obligation.title}”, care se repetă` : isEdit ? 'Detalii, status și observații.' : 'Ce trebuie făcut, până când și de către cine.'"
     :dismissible="!loading"
     :ui="{ content: 'sm:max-w-2xl' }"
   >
@@ -281,7 +281,7 @@ async function confirmDelete() {
           <UFormField
             label="Responsabil"
             name="assigneeId"
-            :help="task?.client ? 'Schimbă-l pentru a preda doar acest task unui coleg.' : undefined"
+            :help="task?.client ? 'Schimbă persoana pentru a da doar această activitate unui coleg.' : undefined"
           >
             <USelect v-model="state.assigneeId" :items="assigneeItems" class="w-full" />
           </UFormField>
@@ -294,7 +294,7 @@ async function confirmDelete() {
           v-if="isEdit"
           label="Status"
           name="status"
-          help="Generarea unui document nu finalizează task-ul; statusul se schimbă doar de aici."
+          help="Se schimbă doar de aici sau cu bifa din listă."
         >
           <USelect v-model="state.status" :items="statusItems" class="w-full sm:w-64" />
         </UFormField>
@@ -315,7 +315,7 @@ async function confirmDelete() {
 
         <div v-if="canRequestTakeover" class="rounded-lg border border-default px-4 py-3 text-sm">
           <p class="text-default">
-            Ai preluat acest task de la un coleg. Dacă urmează să te ocupi definitiv de acest client, poți cere preluarea lui; are loc doar după ce colegul acceptă.
+            Ai preluat această activitate de la un coleg. Dacă urmează să te ocupi definitiv de acest client, poți cere preluarea lui; are loc doar după ce colegul acceptă.
           </p>
           <div class="mt-3 flex flex-wrap items-center gap-2">
             <USelect
@@ -404,16 +404,16 @@ async function confirmDelete() {
               :disabled="loading"
               @click="open = false"
             />
-            <UButton type="submit" :loading="loading" :label="isEdit ? 'Salvează' : 'Creează task-ul'" />
+            <UButton type="submit" :loading="loading" :label="isEdit ? 'Salvează' : 'Adaugă'" />
           </div>
         </div>
       </UForm>
 
       <ConfirmDialog
         v-model:open="deleteOpen"
-        title="Ștergi task-ul?"
-        :description="`„${task?.title}” va fi șters definitiv. Folosește ștergerea doar pentru un task creat din greșeală; dacă doar nu mai trebuie făcut, marchează-l drept anulat.`"
-        confirm-label="Șterge task-ul"
+        title="Ștergi activitatea?"
+        :description="`„${task?.title}” va fi ștearsă definitiv. Folosește ștergerea doar pentru ceva adăugat din greșeală; dacă doar nu mai trebuie făcută, marcheaz-o drept anulată.`"
+        confirm-label="Șterge"
         color="error"
         :loading="deleting"
         @confirm="confirmDelete"

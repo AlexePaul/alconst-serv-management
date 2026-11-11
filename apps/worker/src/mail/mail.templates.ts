@@ -64,19 +64,21 @@ function plural(count: number, one: string, many: string): string {
  */
 function taskDigest(data: Extract<MailJobData, { kind: 'task-digest' }>): RenderedMail {
   const lines = [
-    data.overdueCount > 0 ? plural(data.overdueCount, 'task restant', 'task-uri restante') : null,
+    data.overdueCount > 0
+      ? plural(data.overdueCount, 'activitate restantă', 'activități restante')
+      : null,
     data.dueTodayCount > 0
-      ? `${plural(data.dueTodayCount, 'task', 'task-uri')} cu termen astăzi`
+      ? `${plural(data.dueTodayCount, 'activitate', 'activități')} cu termen astăzi`
       : null,
     data.dueSoonCount > 0
-      ? `${plural(data.dueSoonCount, 'task', 'task-uri')} cu termen în zilele următoare`
+      ? `${plural(data.dueSoonCount, 'activitate', 'activități')} cu termen în zilele următoare`
       : null,
   ].filter((line): line is string => line !== null);
   const url = `${data.appUrl}/task-uri`;
 
   const subject =
     data.overdueCount > 0
-      ? `Ai ${plural(data.overdueCount, 'task restant', 'task-uri restante')} – Alconst Serv`
+      ? `Ai ${plural(data.overdueCount, 'activitate restantă', 'activități restante')} – Alconst Serv`
       : 'Termene de urmărit – Alconst Serv';
   const text = [
     `Bună, ${data.firstName},`,
@@ -93,7 +95,7 @@ function taskDigest(data: Extract<MailJobData, { kind: 'task-digest' }>): Render
     `<p style="margin:0 0 12px;line-height:1.5;">Bună, ${escapeHtml(data.firstName)},</p>
       <p style="margin:0 0 8px;line-height:1.5;">Ai notificări noi în aplicația Alconst Serv:</p>
       <ul style="margin:0 0 20px;padding-left:20px;line-height:1.7;">${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
-      <p style="margin:0 0 20px;"><a href="${escapeHtml(url)}" style="display:inline-block;background:#344881;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;">Deschide task-urile</a></p>
+      <p style="margin:0 0 20px;"><a href="${escapeHtml(url)}" style="display:inline-block;background:#344881;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;">Vezi ce ai de făcut</a></p>
       <p style="margin:0;line-height:1.5;font-size:14px;color:#4b5563;">Poți opri aceste emailuri din Contul meu → Notificări.</p>`,
   );
   return { subject, text, html };

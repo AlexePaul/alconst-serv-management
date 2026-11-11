@@ -36,7 +36,7 @@ export function useTaskCompletion(onDone: () => unknown) {
       }
       await api(`/tasks/${task.id}`, { method: 'PATCH', body: { status: open ? 'DONE' : 'TODO' } })
       toast.add({
-        title: open ? 'Task finalizat' : 'Task redeschis',
+        title: open ? 'Activitate făcută' : 'Activitate redeschisă',
         description: task.title,
         color: 'success',
         icon: 'i-lucide-check'

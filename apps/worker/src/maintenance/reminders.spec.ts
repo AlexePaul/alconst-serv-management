@@ -140,7 +140,7 @@ describe('planReminders', () => {
 
     it('restanța începe după perioadă și se numără de la sfârșitul ei', () => {
       expect(on('2026-12-01')).toEqual([
-        ['TASK_OVERDUE', 'Task restant', 'overdue:t1:ana:2026-11-30:0'],
+        ['TASK_OVERDUE', 'Activitate restantă', 'overdue:t1:ana:2026-11-30:0'],
       ]);
       expect(on('2026-12-07')[0]?.[2]).toBe('overdue:t1:ana:2026-11-30:0');
       expect(on('2026-12-08')[0]?.[2]).toBe('overdue:t1:ana:2026-11-30:1');

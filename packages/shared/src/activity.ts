@@ -92,13 +92,13 @@ export const ACTIVITY_ACTION_LABELS: Record<ActivityAction, string> = {
   'service.created': 'A adăugat un serviciu',
   'service.updated': 'A modificat un serviciu',
   'service.deleted': 'A șters un serviciu',
-  'obligation.created': 'A adăugat o obligație',
-  'obligation.updated': 'A modificat o obligație',
-  'obligation.deleted': 'A șters o obligație',
-  'task.created': 'A creat un task',
-  'task.updated': 'A modificat un task',
-  'task.status_changed': 'A schimbat statusul unui task',
-  'task.deleted': 'A șters un task',
+  'obligation.created': 'A adăugat o activitate recurentă',
+  'obligation.updated': 'A modificat o activitate recurentă',
+  'obligation.deleted': 'A șters o activitate recurentă',
+  'task.created': 'A adăugat o activitate',
+  'task.updated': 'A modificat o activitate',
+  'task.status_changed': 'A schimbat starea unei activități',
+  'task.deleted': 'A șters o activitate',
 };
 
 export interface ActivityLogDto {

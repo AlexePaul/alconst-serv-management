@@ -19,7 +19,7 @@ const maintenance = computed(() => data.value?.maintenance)
     icon="i-lucide-server-crash"
     title="Rularea periodică a aplicației este oprită"
     :description="maintenance.lastRunAt
-      ? `Ultima rulare a fost la ${formatDateTime(maintenance.lastRunAt)}. Până la repornirea procesului de fundal (worker), task-urile recurente nu se mai generează, iar reamintirile și emailurile nu se mai trimit.`
-      : 'Procesul de fundal (worker) nu a rulat încă niciodată. Până la pornirea lui, task-urile recurente nu se generează, iar reamintirile și emailurile nu se trimit.'"
+      ? `Ultima rulare a fost la ${formatDateTime(maintenance.lastRunAt)}. Până la repornirea procesului de fundal (worker), activitățile recurente nu mai apar în listă, iar reamintirile și emailurile nu se mai trimit.`
+      : 'Procesul de fundal (worker) nu a rulat încă niciodată. Până la pornirea lui, activitățile recurente nu apar în listă, iar reamintirile și emailurile nu se trimit.'"
   />
 </template>

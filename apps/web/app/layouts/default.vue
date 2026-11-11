@@ -21,12 +21,13 @@ const unreadBadge = computed(() =>
 
 const mainItems = computed<NavigationMenuItem[]>(() => [
   { label: 'Acasă', icon: 'i-lucide-layout-dashboard', to: '/', exact: true, onSelect: close },
-  { label: 'Task-uri', icon: 'i-lucide-list-checks', to: '/task-uri', onSelect: close },
+  { label: 'De făcut', icon: 'i-lucide-list-checks', to: '/task-uri', onSelect: close },
   { label: 'Calendar', icon: 'i-lucide-calendar-days', to: '/calendar', onSelect: close },
-  { label: 'Obligații', icon: 'i-lucide-repeat', to: '/obligatii', onSelect: close },
+  { label: 'Recurente', icon: 'i-lucide-repeat', to: '/obligatii', onSelect: close },
   { label: 'Clienți', icon: 'i-lucide-building-2', to: '/clienti', onSelect: close },
   { label: 'Documente', icon: 'i-lucide-folder-open', to: '/documente', onSelect: close },
-  { label: 'Notificări', icon: 'i-lucide-bell', to: '/notificari', badge: unreadBadge.value, onSelect: close }
+  { label: 'Notificări', icon: 'i-lucide-bell', to: '/notificari', badge: unreadBadge.value, onSelect: close },
+  { label: 'Ajutor', icon: 'i-lucide-circle-help', to: '/ajutor', onSelect: close }
 ])
 
 const adminItems = computed<NavigationMenuItem[]>(() => [
@@ -38,7 +39,7 @@ const adminItems = computed<NavigationMenuItem[]>(() => [
 /** Pe telefon, cele mai folosite pagini sunt la un singur gest distanță. */
 const bottomItems = [
   { label: 'Acasă', icon: 'i-lucide-layout-dashboard', to: '/', exact: true },
-  { label: 'Task-uri', icon: 'i-lucide-list-checks', to: '/task-uri' },
+  { label: 'De făcut', icon: 'i-lucide-list-checks', to: '/task-uri' },
   { label: 'Calendar', icon: 'i-lucide-calendar-days', to: '/calendar' },
   { label: 'Clienți', icon: 'i-lucide-building-2', to: '/clienti' },
   { label: 'Notificări', icon: 'i-lucide-bell', to: '/notificari' }

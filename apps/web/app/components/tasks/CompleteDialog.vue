@@ -81,7 +81,7 @@ async function finish(sheetsCompleted?: boolean) {
       sheetsCompleted === undefined ? null : sheetsCompleted ? 'Fișele sunt marcate drept completate.' : 'Fișele rămân de confirmat.'
     ].filter(Boolean).join(' ')
     toast.add({
-      title: isVisit.value ? 'Deplasare finalizată' : 'Task finalizat',
+      title: isVisit.value ? 'Deplasare făcută' : 'Activitate făcută',
       description: details || current.title,
       color: 'success',
       icon: 'i-lucide-check'
@@ -101,7 +101,7 @@ async function finish(sheetsCompleted?: boolean) {
 <template>
   <UModal
     v-model:open="open"
-    :title="isVisit ? 'Finalizezi deplasarea?' : 'Finalizezi task-ul?'"
+    :title="isVisit ? 'Ai făcut deplasarea?' : 'Ai făcut activitatea?'"
     :description="task ? [task.title, task.client?.name, taskPeriodLabel(task) ?? formatDate(task.dueDate)].filter(Boolean).join(' · ') : undefined"
     :dismissible="loading === null"
   >

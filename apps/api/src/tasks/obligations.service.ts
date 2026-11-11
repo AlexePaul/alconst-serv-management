@@ -322,7 +322,7 @@ export class ObligationsService {
       where: { id, ...this.access.obligationScope(auth.user) },
       include,
     });
-    if (!row) throw AppException.notFound('Obligația nu există.');
+    if (!row) throw AppException.notFound('Activitatea recurentă nu există.');
     return row;
   }
 
