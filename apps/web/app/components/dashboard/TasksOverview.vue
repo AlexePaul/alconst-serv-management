@@ -151,14 +151,19 @@ const { toggle: complete, busyId, dialogOpen, dialogTask, skipped } = useTaskCom
               >
                 <UIcon name="i-lucide-check" class="size-3.5" />
               </button>
-              <button type="button" class="min-w-0 flex-1 text-left" @click="openTask(task)">
-                <p class="truncate text-sm font-medium text-highlighted">
-                  <UIcon v-if="task.kind === 'VISIT'" :name="TASK_KIND_ICONS.VISIT" class="mr-1 inline size-3.5 align-[-2px] text-primary" />{{ task.title }}
-                </p>
-                <p class="truncate text-xs text-muted">
-                  {{ [formatTimeRange(task.startTime, task.endTime), task.client?.name, section.key === 'today' ? null : taskDueInfo(task, today).label, scope === 'all' && task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : null].filter(Boolean).join(' · ') || 'Fără client' }}
-                </p>
-              </button>
+              <div class="min-w-0 flex-1">
+                <button type="button" class="block w-full text-left" @click="openTask(task)">
+                  <p class="truncate text-sm font-medium text-highlighted">
+                    <UIcon v-if="task.kind === 'VISIT'" :name="TASK_KIND_ICONS.VISIT" class="mr-1 inline size-3.5 align-[-2px] text-primary" />{{ task.title }}
+                  </p>
+                  <p class="truncate text-xs text-muted">
+                    {{ [formatTimeRange(task.startTime, task.endTime), task.client?.name, section.key === 'today' ? null : taskDueInfo(task, today).label, scope === 'all' && task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : null].filter(Boolean).join(' · ') || 'Fără client' }}
+                  </p>
+                </button>
+                <div class="mt-1.5 empty:hidden">
+                  <TasksClientConfirm :task="task" @changed="refresh()" />
+                </div>
+              </div>
             </li>
           </ul>
           <p v-if="section.count > 6" class="border-t border-default px-4 py-2 text-xs text-muted">

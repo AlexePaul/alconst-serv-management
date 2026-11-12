@@ -385,6 +385,51 @@ describe('Obligații, task-uri și notificări (e2e)', () => {
       expect(list.map((task) => task.title)).toEqual(['Dimineață', 'După-amiază', 'Fără oră']);
     });
 
+    it('confirmarea cu clientul se notează manual și cade la reprogramare', async () => {
+      const visit = await createVisit(ana.cookie, { startTime: '10:00' });
+      expect((visit as unknown as { clientConfirmed: boolean }).clientConfirmed).toBe(false);
+
+      const confirmed = await patch(`/api/tasks/${visit.id}`, ana.cookie, {
+        clientConfirmed: true,
+      }).expect(200);
+      expect(confirmed.body.clientConfirmed).toBe(true);
+      expect(confirmed.body.clientConfirmedAt).not.toBeNull();
+
+      // O modificare fără legătură cu programarea păstrează confirmarea.
+      const noted = await patch(`/api/tasks/${visit.id}`, ana.cookie, {
+        notes: 'Sună la poartă',
+        startTime: '10:00',
+        dueDate: today,
+      }).expect(200);
+      expect(noted.body.clientConfirmed).toBe(true);
+
+      // Altă oră = altă programare: trebuie confirmată din nou.
+      const moved = await patch(`/api/tasks/${visit.id}`, ana.cookie, {
+        startTime: '12:00',
+      }).expect(200);
+      expect(moved.body.clientConfirmed).toBe(false);
+      expect(moved.body.clientConfirmedAt).toBeNull();
+
+      // Reprogramare și confirmare în aceeași cerere.
+      const tomorrow = new Date(`${today}T00:00:00Z`);
+      tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+      const both = await patch(`/api/tasks/${visit.id}`, ana.cookie, {
+        dueDate: tomorrow.toISOString().slice(0, 10),
+        clientConfirmed: true,
+      }).expect(200);
+      expect(both.body.clientConfirmed).toBe(true);
+
+      const history = await t.prisma.db.activityLog.findMany({ where: { entityId: visit.id } });
+      expect(JSON.stringify(history)).toContain('clientConfirmed');
+    });
+
+    it('o activitate fără client nu poate fi confirmată cu clientul', async () => {
+      const task = (
+        await post('/api/tasks', ana.cookie, { title: 'Internă', dueDate: today }).expect(201)
+      ).body as Task;
+      await patch(`/api/tasks/${task.id}`, ana.cookie, { clientConfirmed: true }).expect(400);
+    });
+
     it('validează intervalul orar', async () => {
       const invalid = await post('/api/tasks', ana.cookie, {
         title: 'X',

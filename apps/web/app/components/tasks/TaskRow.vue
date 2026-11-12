@@ -11,7 +11,7 @@ const props = defineProps<{
   busy?: boolean
 }>()
 
-defineEmits<{ open: [], toggle: [] }>()
+defineEmits<{ open: [], toggle: [], changed: [] }>()
 
 const open = computed(() => isOpenTask(props.task.status))
 const due = computed(() => taskDueInfo(props.task, props.today))
@@ -36,78 +36,83 @@ const period = computed(() => taskPeriodLabel(props.task))
       <UIcon :name="task.status === 'CANCELLED' ? 'i-lucide-x' : 'i-lucide-check'" class="size-4" />
     </button>
 
-    <button type="button" class="min-w-0 flex-1 text-left" @click="$emit('open')">
-      <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span class="font-medium" :class="open ? 'text-highlighted' : 'text-muted line-through'">{{ task.title }}</span>
-        <UBadge
-          v-if="task.kind === 'VISIT'"
-          :label="TASK_KIND_LABELS.VISIT"
-          :icon="TASK_KIND_ICONS.VISIT"
-          color="primary"
-          variant="subtle"
-          size="sm"
-        />
-        <UBadge
-          v-if="task.priority === 'HIGH' && open"
-          label="Prioritate ridicată"
-          color="error"
-          variant="subtle"
-          size="sm"
-        />
-        <UBadge
-          v-if="task.status === 'IN_PROGRESS'"
-          :label="TASK_STATUS_LABELS.IN_PROGRESS"
-          color="info"
-          variant="subtle"
-          size="sm"
-        />
-        <UBadge
-          v-if="task.isCover"
-          label="Înlocuire"
-          icon="i-lucide-arrow-left-right"
-          color="warning"
-          variant="subtle"
-          size="sm"
-          title="Cel care face această activitate nu este responsabilul clientului"
-        />
-        <UBadge
-          v-if="task.kind === 'VISIT' && task.status === 'DONE'"
-          :label="task.sheetsCompleted ? 'Fișe completate' : 'Fișe neconfirmate'"
-          :icon="task.sheetsCompleted ? 'i-lucide-clipboard-check' : 'i-lucide-clipboard-x'"
-          :color="task.sheetsCompleted ? 'success' : 'warning'"
-          variant="subtle"
-          size="sm"
-        />
-        <UBadge
-          v-if="task.status === 'CANCELLED'"
-          :label="TASK_STATUS_LABELS.CANCELLED"
-          color="neutral"
-          variant="subtle"
-          size="sm"
-        />
-      </p>
-      <p class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">
-        <span v-if="timeRange" class="inline-flex items-center gap-1 font-medium text-default">
-          <UIcon name="i-lucide-clock" class="size-3.5" />{{ timeRange }}
-        </span>
-        <span v-if="task.client && !hideClient" class="inline-flex max-w-full min-w-0 items-center gap-1">
-          <UIcon name="i-lucide-building-2" class="size-3.5 shrink-0" /><span class="truncate">{{ task.client.name }}</span>
-        </span>
-        <span v-if="task.location" class="inline-flex items-center gap-1">
-          <UIcon name="i-lucide-map-pin" class="size-3.5" />{{ task.location.name }}
-        </span>
-        <span class="inline-flex items-center gap-1">
-          <UIcon name="i-lucide-user-round" class="size-3.5" />{{ task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : 'Fără responsabil' }}
-        </span>
-        <span
-          v-if="task.obligation"
-          class="inline-flex items-center gap-1"
-          :title="period ? 'Poate fi făcută oricând în această perioadă' : 'Face parte dintr-o activitate recurentă'"
-        >
-          <UIcon name="i-lucide-repeat" class="size-3.5" />{{ period ?? 'Recurent' }}
-        </span>
-      </p>
-    </button>
+    <div class="min-w-0 flex-1">
+      <button type="button" class="block w-full text-left" @click="$emit('open')">
+        <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span class="font-medium" :class="open ? 'text-highlighted' : 'text-muted line-through'">{{ task.title }}</span>
+          <UBadge
+            v-if="task.kind === 'VISIT'"
+            :label="TASK_KIND_LABELS.VISIT"
+            :icon="TASK_KIND_ICONS.VISIT"
+            color="primary"
+            variant="subtle"
+            size="sm"
+          />
+          <UBadge
+            v-if="task.priority === 'HIGH' && open"
+            label="Prioritate ridicată"
+            color="error"
+            variant="subtle"
+            size="sm"
+          />
+          <UBadge
+            v-if="task.status === 'IN_PROGRESS'"
+            :label="TASK_STATUS_LABELS.IN_PROGRESS"
+            color="info"
+            variant="subtle"
+            size="sm"
+          />
+          <UBadge
+            v-if="task.isCover"
+            label="Înlocuire"
+            icon="i-lucide-arrow-left-right"
+            color="warning"
+            variant="subtle"
+            size="sm"
+            title="Cel care face această activitate nu este responsabilul clientului"
+          />
+          <UBadge
+            v-if="task.kind === 'VISIT' && task.status === 'DONE'"
+            :label="task.sheetsCompleted ? 'Fișe completate' : 'Fișe neconfirmate'"
+            :icon="task.sheetsCompleted ? 'i-lucide-clipboard-check' : 'i-lucide-clipboard-x'"
+            :color="task.sheetsCompleted ? 'success' : 'warning'"
+            variant="subtle"
+            size="sm"
+          />
+          <UBadge
+            v-if="task.status === 'CANCELLED'"
+            :label="TASK_STATUS_LABELS.CANCELLED"
+            color="neutral"
+            variant="subtle"
+            size="sm"
+          />
+        </p>
+        <p class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">
+          <span v-if="timeRange" class="inline-flex items-center gap-1 font-medium text-default">
+            <UIcon name="i-lucide-clock" class="size-3.5" />{{ timeRange }}
+          </span>
+          <span v-if="task.client && !hideClient" class="inline-flex max-w-full min-w-0 items-center gap-1">
+            <UIcon name="i-lucide-building-2" class="size-3.5 shrink-0" /><span class="truncate">{{ task.client.name }}</span>
+          </span>
+          <span v-if="task.location" class="inline-flex items-center gap-1">
+            <UIcon name="i-lucide-map-pin" class="size-3.5" />{{ task.location.name }}
+          </span>
+          <span class="inline-flex items-center gap-1">
+            <UIcon name="i-lucide-user-round" class="size-3.5" />{{ task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : 'Fără responsabil' }}
+          </span>
+          <span
+            v-if="task.obligation"
+            class="inline-flex items-center gap-1"
+            :title="period ? 'Poate fi făcută oricând în această perioadă' : 'Face parte dintr-o activitate recurentă'"
+          >
+            <UIcon name="i-lucide-repeat" class="size-3.5" />{{ period ?? 'Recurent' }}
+          </span>
+        </p>
+      </button>
+      <div class="mt-1.5 empty:hidden">
+        <TasksClientConfirm :task="task" @changed="$emit('changed')" />
+      </div>
+    </div>
 
     <UBadge
       :label="due.label"

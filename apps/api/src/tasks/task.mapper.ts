@@ -60,6 +60,8 @@ export function toTaskDto(row: TaskRow): TaskDto {
     obligation: row.obligation,
     sheetsCompleted: row.sheetsCompletedAt !== null,
     sheetsCompletedAt: row.sheetsCompletedAt?.toISOString() ?? null,
+    clientConfirmed: row.clientConfirmedAt !== null,
+    clientConfirmedAt: row.clientConfirmedAt?.toISOString() ?? null,
     completedAt: row.completedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

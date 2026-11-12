@@ -32,6 +32,7 @@ const schema = z.object({
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   sheetsCompleted: z.boolean().optional(),
+  clientConfirmed: z.boolean().optional(),
   priority: z.enum(TASK_PRIORITIES),
   status: z.enum(TASK_STATUSES),
   description: z.string().trim().max(5000).optional(),
@@ -103,6 +104,7 @@ watch(open, (isOpen) => {
     startTime: task?.startTime ?? '',
     endTime: task?.endTime ?? '',
     sheetsCompleted: task?.sheetsCompleted ?? false,
+    clientConfirmed: task?.clientConfirmed ?? false,
     priority: task?.priority ?? 'NORMAL',
     status: task?.status ?? 'TODO',
     description: task?.description ?? '',
@@ -164,11 +166,13 @@ async function requestTakeover() {
 }
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  const { clientId, locationId, assigneeId, sheetsCompleted, ...fields } = event.data
+  const { clientId, locationId, assigneeId, sheetsCompleted, clientConfirmed, ...fields } = event.data
   const body = {
     ...fields,
     // Confirmarea fișelor se trimite doar la editarea unei deplasări.
     ...(isEdit.value && fields.kind === 'VISIT' ? { sheetsCompleted } : {}),
+    // Trimisă doar când a fost schimbată: altfel o reprogramare ar păstra o confirmare veche.
+    ...(isEdit.value && clientConfirmed !== undefined && clientConfirmed !== props.task?.clientConfirmed ? { clientConfirmed } : {}),
     clientId: clientId ?? null,
     locationId: locationId === NONE ? null : locationId,
     assigneeId: assigneeId === NONE ? null : assigneeId
@@ -336,6 +340,14 @@ async function confirmDelete() {
             />
           </div>
         </div>
+
+        <UFormField
+          v-if="isEdit && state.kind === 'VISIT' && state.clientId"
+          name="clientConfirmed"
+          help="Bifează după ce ai stabilit ziua cu clientul. Dacă muți data sau ora, confirmarea se șterge."
+        >
+          <USwitch v-model="state.clientConfirmed" label="Confirmat cu clientul" />
+        </UFormField>
 
         <UFormField
           v-if="isEdit && state.kind === 'VISIT'"

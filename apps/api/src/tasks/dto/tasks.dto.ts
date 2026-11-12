@@ -92,6 +92,14 @@ export class UpdateTaskDto extends PartialType(CreateTaskDto) {
   @Min(0, { message: 'Numărul de angajați nu poate fi negativ.' })
   @Max(MAX_EMPLOYEE_COUNT, { message: 'Numărul de angajați este prea mare.' })
   clientEmployeeCount?: number;
+
+  /**
+   * Ziua activității a fost stabilită cu clientul. O notează manual cel care a vorbit cu el;
+   * aplicația nu trimite nimic clientului.
+   */
+  @IsOptional()
+  @IsBoolean({ message: 'Valoare invalidă.' })
+  clientConfirmed?: boolean;
 }
 
 /** `missing-sheets` = deplasări finalizate fără confirmarea completării fișelor. */

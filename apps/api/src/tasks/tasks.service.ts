@@ -65,6 +65,11 @@ function describeChanges(before: TaskRow, after: TaskRow): FieldChange[] {
     before.sheetsCompletedAt ? 'YES' : 'NO',
     after.sheetsCompletedAt ? 'YES' : 'NO',
   );
+  compare(
+    'clientConfirmed',
+    before.clientConfirmedAt ? 'YES' : 'NO',
+    after.clientConfirmedAt ? 'YES' : 'NO',
+  );
   compare('assignee', fullName(before.assignee), fullName(after.assignee));
   compare('priority', before.priority, after.priority);
   compare('kind', before.kind, after.kind);
@@ -228,6 +233,25 @@ export class TasksService {
           ? { sheetsCompletedAt: new Date(), sheetsCompletedById: auth.user.id }
           : { sheetsCompletedAt: null, sheetsCompletedById: null };
 
+    // Confirmarea cu clientul privește o anumită programare: dacă ziua, ora sau clientul se
+    // schimbă, cade și trebuie notată din nou (în afară de cazul în care vine în aceeași cerere).
+    if (dto.clientConfirmed && !clientId) {
+      throw AppException.validation('Activitatea nu are un client cu care să fie confirmată.');
+    }
+    const rescheduled =
+      clientId !== before.clientId ||
+      startTime !== before.startTime ||
+      endTime !== before.endTime ||
+      (dto.dueDate !== undefined && dto.dueDate !== formatDateOnly(before.dueDate));
+    const wasConfirmed = before.clientConfirmedAt !== null;
+    const wantsConfirmed = dto.clientConfirmed ?? (wasConfirmed && !rescheduled);
+    const confirmation =
+      wantsConfirmed === wasConfirmed
+        ? {}
+        : wantsConfirmed
+          ? { clientConfirmedAt: new Date(), clientConfirmedById: auth.user.id }
+          : { clientConfirmedAt: null, clientConfirmedById: null };
+
     const status: TaskStatus = dto.status ?? before.status;
     const after = await this.prisma.db.task.update({
       where: { id },
@@ -243,6 +267,7 @@ export class TasksService {
         startTime,
         endTime,
         ...sheets,
+        ...confirmation,
         clientId,
         locationId,
         assigneeId,

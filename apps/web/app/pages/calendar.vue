@@ -323,6 +323,7 @@ const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(()
                   :busy="busyId === task.id"
                   @open="openTask(task)"
                   @toggle="toggle(task)"
+                  @changed="refresh()"
                 />
               </li>
             </ul>
@@ -383,6 +384,7 @@ const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(()
                 :busy="busyId === task.id"
                 @open="openTask(task)"
                 @toggle="toggle(task)"
+                @changed="refresh()"
               />
             </li>
           </ul>

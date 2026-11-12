@@ -40,6 +40,10 @@ const steps = [
 
 const questions = [
   {
+    q: 'Am vorbit cu clientul și am stabilit ziua. Unde notez?',
+    a: 'Sub fiecare deplasare este butonul „Am confirmat cu clientul”. Apasă-l după ce ați stabilit ziua; dacă muți apoi data sau ora, confirmarea se șterge și o notezi din nou. Numerele de telefon sunt în pagina clientului, la „Contacte”.'
+  },
+  {
     q: 'Am greșit ceva. Pot strica datele?',
     a: 'Nu. Clienții și documentele nu se șterg, se arhivează și pot fi readuse. Orice modificare poate fi corectată.'
   },

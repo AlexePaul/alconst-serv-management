@@ -46,6 +46,7 @@ model User {
   createdTasks         Task[]                  @relation("TaskCreatedBy")
   completedTasks       Task[]                  @relation("TaskCompletedBy")
   sheetsCompletedTasks Task[]                  @relation("TaskSheetsCompletedBy")
+  clientConfirmedTasks Task[]                  @relation("TaskClientConfirmedBy")
   notifications        Notification[]
   transfersFrom        ClientTransferRequest[] @relation("TransferFrom")
   transfersTo          ClientTransferRequest[] @relation("TransferTo")
@@ -410,6 +411,10 @@ model Task {
   /// Aplicația ține doar evidența; fișele propriu-zise nu sunt stocate.
   sheetsCompletedAt   DateTime?
   sheetsCompletedById String?      @db.Uuid
+  /// Momentul în care un coleg a notat că a stabilit cu clientul ziua (și ora) activității.
+  /// Se șterge dacă data, ora sau clientul se schimbă: noua programare trebuie confirmată din nou.
+  clientConfirmedAt   DateTime?
+  clientConfirmedById String?      @db.Uuid
   searchText          String
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
@@ -421,6 +426,7 @@ model Task {
   createdBy         User?          @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   completedBy       User?          @relation("TaskCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
   sheetsCompletedBy User?          @relation("TaskSheetsCompletedBy", fields: [sheetsCompletedById], references: [id], onDelete: SetNull)
+  clientConfirmedBy User?          @relation("TaskClientConfirmedBy", fields: [clientConfirmedById], references: [id], onDelete: SetNull)
   notifications     Notification[]
 
   @@unique([obligationId, occurrenceDate])

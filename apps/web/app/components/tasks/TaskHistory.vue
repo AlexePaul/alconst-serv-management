@@ -16,7 +16,8 @@ const VALUE_LABELS = {
   status: TASK_STATUS_LABELS as Record<string, string>,
   priority: TASK_PRIORITY_LABELS as Record<string, string>,
   kind: TASK_KIND_LABELS as Record<string, string>,
-  sheets: { YES: 'da', NO: 'nu' }
+  sheets: { YES: 'da', NO: 'nu' },
+  clientConfirmed: { YES: 'da', NO: 'nu' }
 }
 
 function summary(entry: TaskHistoryEntryDto): string {

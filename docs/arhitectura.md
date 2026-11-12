@@ -189,6 +189,14 @@ pe activități. Celelalte persoane stau în `client_contacts`: un rol scris lib
 are nevoie de telefon sau de email. Spre deosebire de clienți și contracte, contactele se șterg
 efectiv: nu poartă istoric.
 
+### Confirmarea cu clientul
+
+O deplasare cu client poate fi marcată „confirmat cu clientul” (`tasks.clientConfirmedAt`,
+`clientConfirmedById`): cel care a stabilit ziua cu clientul o notează dintr-o apăsare. Confirmarea
+privește o anumită programare, deci se șterge automat când se schimbă data, ora sau clientul.
+Aplicația nu trimite nimic clientului; confirmarea prin link, pe email, este amânată (vezi
+[roadmap.md](roadmap.md)).
+
 ### Numărul de angajați ai clienților
 
 Aplicația **nu ține evidența persoanelor** angajate la clienți și nu stochează date personale

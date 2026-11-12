@@ -204,6 +204,7 @@ defineExpose({ openCreate, openById, refresh, showMissingSheets })
                 :busy="busyId === task.id"
                 @open="openTask(task)"
                 @toggle="toggle(task)"
+                @changed="onChanged()"
               />
             </li>
           </ul>

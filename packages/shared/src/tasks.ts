@@ -340,6 +340,9 @@ export interface TaskDto {
   /** Doar pentru deplasări: s-a confirmat completarea fișelor. */
   sheetsCompleted: boolean;
   sheetsCompletedAt: string | null;
+  /** Un coleg a stabilit cu clientul ziua activității (telefonic sau altfel) și a notat asta. */
+  clientConfirmed: boolean;
+  clientConfirmedAt: string | null;
   /** Obligația din care a fost generat task-ul, dacă există. */
   obligation: { id: string; title: string } | null;
   completedAt: string | null;
