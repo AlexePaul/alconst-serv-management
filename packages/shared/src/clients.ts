@@ -73,6 +73,23 @@ export function normalizeCui(value: string): string {
   return value.replace(/\s+/g, '').toUpperCase();
 }
 
+// --- Persoane de contact -----------------------------------------------------------------------
+
+/** O persoană de contact a clientului, pe lângă contactul principal. */
+export interface ClientContactDto {
+  id: string;
+  clientId: string;
+  /** Rolul, în cuvintele utilizatorului (ex. „Administrator”). */
+  label: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+}
+
+/** Un contact fără telefon și fără email nu ajută pe nimeni. */
+export const CONTACT_METHOD_REQUIRED = 'Completează telefonul sau emailul.';
+
 // --- Puncte de lucru ---------------------------------------------------------------------------
 
 export interface LocationDto {

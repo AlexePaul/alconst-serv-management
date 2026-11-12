@@ -64,6 +64,31 @@ Scop: cineva fără experiență tehnică să poată folosi aplicația din prima
       sub „Mai multe detalii”
 - [x] Pagina „Ajutor”: cinci pași și întrebări frecvente
 - [x] Parcurgere completă în browser, pe desktop și pe iPhone (emulat), ca utilizator nou
+- [x] Contactele clientului: pe lângă contactul principal, oricâte persoane, fiecare cu rolul
+      scris de utilizator („Administrator”, „Persoana care este mereu acolo”), telefon și email
+
+### De decis: confirmarea deplasărilor cu clientul (propunere, neimplementată)
+
+Ideea: înaintea unei deplasări, clientul primește un email („venim în data de …, la ora …”) și
+confirmă dintr-un click. Clienții nu primesc cont în aplicație.
+
+Cum ar funcționa:
+
+1. La contactele clientului se bifează cine primește confirmările.
+2. Pe o deplasare care are zi și oră, angajatul apasă „Cere confirmarea clientului”. Emailul
+   pleacă doar la această apăsare, niciodată singur.
+3. Emailul conține numele firmei, data, intervalul orar și un buton „Confirm”. Linkul este unic,
+   valabil până în ziua deplasării și deschide o pagină care arată doar acea deplasare.
+4. În aplicație, deplasarea apare „în așteptarea confirmării” sau „confirmată de client”, iar
+   angajatul este anunțat când clientul confirmă.
+
+Ce trebuie hotărât înainte:
+
+- trimitere doar la apăsarea unui buton (recomandat) sau automată, cu câteva zile înainte;
+- dacă clientul poate și refuza sau cere altă zi, ori doar confirmă (recomandat pentru început);
+- adresa de la care pleacă emailul și textul lui;
+- este prima funcție prin care aplicația trimite emailuri în afara firmei și are o pagină
+  accesibilă fără autentificare, deci are nevoie de aprobarea ta explicită.
 
 ### Ce urmează după lansarea pe stage
 

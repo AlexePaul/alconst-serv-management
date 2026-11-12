@@ -275,6 +275,84 @@ describe('Clienți, puncte de lucru și contracte (e2e)', () => {
     });
   });
 
+  describe('persoane de contact', () => {
+    it('se adaugă, se modifică și se șterg; în jurnal rămâne doar rolul', async () => {
+      const client = await createClient(ana.cookie);
+      const created = (
+        await post('/api/contacts', ana.cookie, {
+          clientId: client.id,
+          label: ' Administrator ',
+          name: 'Ion Popescu',
+          phone: '0722 000 111',
+          email: ' Ion@Exemplu.RO ',
+        }).expect(201)
+      ).body as { id: string; label: string; email: string };
+      expect(created.label).toBe('Administrator');
+      expect(created.email).toBe('ion@exemplu.ro');
+
+      const updated = await patch(`/api/contacts/${created.id}`, ana.cookie, {
+        label: 'Persoana care este mereu acolo',
+        email: '',
+      }).expect(200);
+      expect(updated.body.email).toBeNull();
+      expect(updated.body.phone).toBe('0722 000 111');
+
+      const list = await get(`/api/contacts?clientId=${client.id}`, ana.cookie).expect(200);
+      expect(list.body).toHaveLength(1);
+
+      const logs = await t.prisma.db.activityLog.findMany({ where: { entityType: 'contact' } });
+      expect(logs.map((entry) => entry.action).sort()).toEqual([
+        'contact.created',
+        'contact.updated',
+      ]);
+      expect(JSON.stringify(logs)).not.toContain('Popescu');
+      expect(JSON.stringify(logs)).not.toContain('0722');
+
+      await del(`/api/contacts/${created.id}`, ana.cookie).expect(204);
+      expect(await t.prisma.db.clientContact.count()).toBe(0);
+    });
+
+    it('un contact are nevoie de rol și de telefon sau email', async () => {
+      const client = await createClient(ana.cookie);
+      await post('/api/contacts', ana.cookie, { clientId: client.id, phone: '0722' }).expect(400);
+      await post('/api/contacts', ana.cookie, { clientId: client.id, label: 'Admin' }).expect(400);
+      await post('/api/contacts', ana.cookie, {
+        clientId: client.id,
+        label: 'Admin',
+        email: 'nu-este-email',
+      }).expect(400);
+      const contact = (
+        await post('/api/contacts', ana.cookie, {
+          clientId: client.id,
+          label: 'Admin',
+          phone: '0722',
+        }).expect(201)
+      ).body as { id: string };
+      // Nu poate rămâne fără nicio cale de contact.
+      await patch(`/api/contacts/${contact.id}`, ana.cookie, { phone: '' }).expect(400);
+    });
+
+    it('contactele clienților altora nu sunt accesibile', async () => {
+      const client = await createClient(ana.cookie);
+      const contact = (
+        await post('/api/contacts', ana.cookie, {
+          clientId: client.id,
+          label: 'Admin',
+          phone: '0722',
+        }).expect(201)
+      ).body as { id: string };
+      await get(`/api/contacts?clientId=${client.id}`, dan.cookie).expect(404);
+      await post('/api/contacts', dan.cookie, {
+        clientId: client.id,
+        label: 'X',
+        phone: '1',
+      }).expect(404);
+      await patch(`/api/contacts/${contact.id}`, dan.cookie, { label: 'X' }).expect(404);
+      await del(`/api/contacts/${contact.id}`, dan.cookie).expect(404);
+      await get(`/api/contacts?clientId=${client.id}`, admin.cookie).expect(200);
+    });
+  });
+
   describe('arhivare în loc de ștergere', () => {
     const setup = async () => {
       const client = await createClient(ana.cookie, { employeeCount: 7 });

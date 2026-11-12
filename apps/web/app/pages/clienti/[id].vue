@@ -270,45 +270,7 @@ const moreActions = computed<DropdownMenuItem[][]>(() => {
                 </dl>
               </UCard>
 
-              <UCard>
-                <template #header>
-                  <h2 class="font-semibold text-highlighted">
-                    Contact
-                  </h2>
-                </template>
-                <dl class="space-y-3 text-sm">
-                  <div>
-                    <dt class="text-muted">
-                      Persoană de contact
-                    </dt>
-                    <dd class="text-highlighted">
-                      {{ orDash(client.contactPerson) }}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt class="text-muted">
-                      Telefon
-                    </dt>
-                    <dd>
-                      <ULink v-if="client.phone" :to="`tel:${client.phone.replace(/\s+/g, '')}`" class="text-primary">
-                        {{ client.phone }}
-                      </ULink>
-                      <span v-else class="text-highlighted">—</span>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt class="text-muted">
-                      Email
-                    </dt>
-                    <dd>
-                      <ULink v-if="client.email" :to="`mailto:${client.email}`" class="break-all text-primary">
-                        {{ client.email }}
-                      </ULink>
-                      <span v-else class="text-highlighted">—</span>
-                    </dd>
-                  </div>
-                </dl>
-              </UCard>
+              <ClientsContactsCard :client="client" @edit-client="editOpen = true" />
 
               <UCard>
                 <template #header>

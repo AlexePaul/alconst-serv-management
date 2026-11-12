@@ -149,6 +149,7 @@ model Client {
   assignments      ClientAssignment[]
   services         ClientService[]
   locations        Location[]
+  contacts         ClientContact[]
   contracts        Contract[]
   obligations      Obligation[]
   tasks            Task[]
@@ -205,6 +206,26 @@ model ClientService {
 }
 
 /// Punct de lucru al unui client.
+/// O persoană de contact a clientului, pe lângă contactul principal: date de serviciu, introduse
+/// de utilizator (ex. „Administrator”, „Persoana care este mereu acolo”).
+model ClientContact {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  clientId  String   @db.Uuid
+  /// Rolul, în cuvintele utilizatorului.
+  label     String
+  name      String?
+  phone     String?
+  email     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([clientId])
+  @@map("client_contacts")
+}
+
 model Location {
   id        String   @id @default(uuid(7)) @db.Uuid
   clientId  String   @db.Uuid

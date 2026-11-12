@@ -2,7 +2,9 @@
 
 Aplicația gestionează date despre companiile cliente. Nu ține evidența angajaților acestora –
 doar numărul lor – deci nu stochează date personale despre ei; rămân datele de contact ale
-clienților (persoană de contact, telefon, email) și conturile utilizatorilor interni. Documentul
+clienților (contactul principal și persoanele de contact adăugate de utilizatori: rol, nume,
+telefon, email) și conturile utilizatorilor interni. Persoanele de contact se pot șterge, iar în
+jurnalul de activitate rămâne doar rolul lor, nu numele sau telefonul. Documentul
 descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
 
 ## Autentificare

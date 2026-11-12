@@ -181,6 +181,14 @@ Istoricul responsabilităților se păstrează în jurnalul de activitate (modif
 și predările de clienți, cu utilizatorii implicați) și pe task-uri (cine a fost responsabil, cine
 a finalizat, cine a confirmat fișele).
 
+### Persoane de contact
+
+Fișa clientului are un contact principal (`contactPerson`, `phone`, `email`), folosit în liste și
+pe activități. Celelalte persoane stau în `client_contacts`: un rol scris liber de utilizator
+(„Administrator”, „Persoana care este mereu acolo”), nume, telefon, email și observații. Un contact
+are nevoie de telefon sau de email. Spre deosebire de clienți și contracte, contactele se șterg
+efectiv: nu poartă istoric.
+
 ### Numărul de angajați ai clienților
 
 Aplicația **nu ține evidența persoanelor** angajate la clienți și nu stochează date personale
