@@ -70,6 +70,7 @@ step "Verificarea rezultatului build-ului"
 for artifact in \
   apps/api/dist/main.js \
   apps/api/dist/cli/check-config.js \
+  apps/api/dist/cli/seed-admin.js \
   apps/worker/dist/main.js \
   apps/worker/dist/cli/check-config.js; do
   [ -s "$artifact" ] || fail "build-ul nu a produs $artifact."
@@ -85,6 +86,12 @@ NODE_ENV=production node --env-file="$ENV_FILE" apps/worker/dist/cli/check-confi
 
 step "Migrările bazei de date"
 ENV_FILE="$ENV_FILE" pnpm --filter @alconst/database exec prisma migrate deploy
+
+step "Primul administrator"
+# Acționează doar pe o bază de date fără niciun utilizator și doar dacă SEED_ADMIN_EMAIL și
+# SEED_ADMIN_PASSWORD sunt setate; altfel nu schimbă nimic.
+NODE_ENV=production node --env-file="$ENV_FILE" apps/api/dist/cli/seed-admin.js \
+  || fail "primul administrator nu a putut fi creat."
 
 step "Pornire de probă a API-ului"
 # Versiunea nouă este pornită pe un port alăturat, cu configurarea nouă, și trebuie să răspundă

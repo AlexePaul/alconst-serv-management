@@ -120,6 +120,9 @@ docker compose -f docker-compose.prod.yml --env-file .env.production exec api \
 
 Parola se cere interactiv și nu rămâne în istoricul comenzilor.
 
+Pe instanța partajată nu este nevoie de comandă: deploy-ul creează singur primul administrator
+(vezi [instalare-server.md](instalare-server.md), „Primul administrator”).
+
 ## Actualizare
 
 ```bash

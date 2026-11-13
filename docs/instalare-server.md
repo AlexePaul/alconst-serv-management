@@ -128,7 +128,16 @@ de date, și Redis.
    | `FILES_STORAGE`, `S3_BUCKET`, `S3_REGION`                           | `s3`, bucket-ul propriu, regiunea lui                              |
    | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | datele Resend (vezi [deploy.md](deploy.md))                        |
 
+   | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` | primul administrator; parolă temporară, de cel puțin 12 caractere |
+
    `NODE_ENV=production` este pus de PM2; nu se adaugă aici.
+
+   **Primul administrator.** La fiecare deploy, după migrări, dacă baza de date nu are niciun
+   utilizator, se creează un administrator cu adresa și parola din `SEED_ADMIN_*` (opțional și
+   `SEED_ADMIN_FIRST_NAME`, `SEED_ADMIN_LAST_NAME`). Parola este temporară: aplicația cere
+   schimbarea ei la prima autentificare. Dacă există deja un utilizator, pasul nu face nimic,
+   deci nu poate reseta o parolă și nu recreează un cont; `SEED_ADMIN_PASSWORD` poate fi ștearsă
+   după prima autentificare.
 
 6. **Rolul instanței** primește în plus: `ssm:GetParametersByPath` pe prefixul `/alconst/stage/`
    și `s3:PutObject`, `s3:GetObject` pe bucket-ul aplicației.
@@ -159,8 +168,9 @@ de date, și Redis.
 - [ ] Un reboot de probă: revin amândouă aplicațiile.
 - [ ] Baza de date a aplicației adăugată în scriptul de backup al instanței, apoi **un restore de
       probă** – nu citirea scriptului.
-- [ ] Primul administrator:
-      `cd /srv/alconst/stage/apps/api && node --env-file=/etc/alconst/stage.env dist/cli/create-admin.js --email … --first-name … --last-name …`
+- [ ] Primul administrator: este creat de deploy, din `SEED_ADMIN_EMAIL` și `SEED_ADMIN_PASSWORD`
+      (pasul 5 de mai sus). Intră cu parola temporară, schimb-o când ți se cere, apoi adaugă-i pe
+      ceilalți din „Utilizatori”. După aceea șterge `SEED_ADMIN_PASSWORD` din Parameter Store.
 - [ ] Swap pe instanță, dacă încă este 0.
 - [ ] Avertizarea „rularea periodică este oprită” nu apare pe pagina principală.
 

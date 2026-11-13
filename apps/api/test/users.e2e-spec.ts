@@ -1,3 +1,4 @@
+import { seedFirstAdmin } from '../src/users/first-admin.js';
 import { createTestApp, ORIGIN, PASSWORD, type TestApp } from './test-app.js';
 
 describe('Administrare utilizatori (e2e)', () => {
@@ -218,6 +219,67 @@ describe('Administrare utilizatori (e2e)', () => {
         lastRunAt: old.toISOString(),
         healthy: false,
       });
+    });
+  });
+
+  describe('primul administrator (seed)', () => {
+    const env = {
+      SEED_ADMIN_EMAIL: ' Sef@Alconst-Serv.ro ',
+      SEED_ADMIN_PASSWORD: 'parola-de-pornire-1',
+    };
+
+    it('este creat o singură dată, cu parolă temporară, și îi poate adăuga pe ceilalți', async () => {
+      await t.reset();
+      expect(await seedFirstAdmin(t.prisma.db, env)).toEqual({
+        status: 'created',
+        email: 'sef@alconst-serv.ro',
+      });
+      const created = await t.prisma.db.user.findUniqueOrThrow({
+        where: { email: 'sef@alconst-serv.ro' },
+      });
+      expect(created.role).toBe('ADMIN');
+      expect(created.mustChangePassword).toBe(true);
+      expect(created.passwordHash).not.toContain('parola-de-pornire-1');
+
+      // A doua rulare (următorul deploy) nu schimbă nimic, nici cu altă parolă.
+      expect(
+        await seedFirstAdmin(t.prisma.db, { ...env, SEED_ADMIN_PASSWORD: 'alta-parola-123456' }),
+      ).toEqual({ status: 'skipped', reason: 'users-exist' });
+      expect(await t.prisma.db.user.count()).toBe(1);
+      const after = await t.prisma.db.user.findUniqueOrThrow({ where: { id: created.id } });
+      expect(after.passwordHash).toBe(created.passwordHash);
+
+      const login = await t
+        .http()
+        .post('/api/auth/login')
+        .set('Origin', ORIGIN)
+        .send({ email: 'sef@alconst-serv.ro', password: 'parola-de-pornire-1' })
+        .expect(200);
+      expect(login.body.user?.mustChangePassword ?? login.body.mustChangePassword).toBe(true);
+    });
+
+    it('nu face nimic dacă există deja utilizatori sau dacă nu este configurat', async () => {
+      expect(await seedFirstAdmin(t.prisma.db, env)).toEqual({
+        status: 'skipped',
+        reason: 'users-exist',
+      });
+      await t.reset();
+      expect(await seedFirstAdmin(t.prisma.db, {})).toEqual({
+        status: 'skipped',
+        reason: 'not-configured',
+      });
+      expect(await t.prisma.db.user.count()).toBe(0);
+    });
+
+    it('refuză o adresă sau o parolă nevalidă', async () => {
+      await t.reset();
+      await expect(
+        seedFirstAdmin(t.prisma.db, { ...env, SEED_ADMIN_EMAIL: 'nu-este-email' }),
+      ).rejects.toThrow('SEED_ADMIN_EMAIL');
+      await expect(
+        seedFirstAdmin(t.prisma.db, { ...env, SEED_ADMIN_PASSWORD: 'scurta' }),
+      ).rejects.toThrow('SEED_ADMIN_PASSWORD');
+      expect(await t.prisma.db.user.count()).toBe(0);
     });
   });
 });
