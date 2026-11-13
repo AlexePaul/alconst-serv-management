@@ -12,17 +12,23 @@ const today = todayLocal()
 const view = ref<View>('month')
 /** Ziua de referință: luna/săptămâna afișată o conține, iar pe mobil este ziua selectată. */
 const cursor = ref(today)
-const scope = ref<'me' | 'all'>('me')
+/** Ale cui activități: `me`, `all` sau ID-ul unui coleg. */
+const scope = ref('me')
 
 const viewItems = [
   { label: 'Lună', value: 'month' },
   { label: 'Săptămână', value: 'week' },
   { label: 'Zi', value: 'day' }
 ]
-const scopeItems = [
+const { data: users } = useUserOptions()
+const { user: currentUser } = useAuth()
+const scopeItems = computed(() => [
   { label: 'Ale mele', value: 'me' },
-  { label: 'Ale tuturor', value: 'all' }
-]
+  { label: 'Ale tuturor', value: 'all' },
+  ...users.value
+    .filter(option => option.id !== currentUser.value?.id)
+    .map(option => ({ label: `${option.firstName} ${option.lastName}`, value: option.id }))
+])
 const WEEKDAYS = ['Lu', 'Ma', 'Mi', 'Jo', 'Vi', 'Sâ', 'Du']
 
 const range = computed(() => {
@@ -48,7 +54,7 @@ const { data, status, error, refresh } = useLazyAsyncData(
       status: 'all',
       from: range.value.from,
       to: range.value.to,
-      assignee: scope.value === 'me' ? 'me' : undefined,
+      assignee: scope.value === 'all' ? undefined : scope.value,
       pageSize: 500
     }
   }),
