@@ -104,7 +104,7 @@ function isActive(item: { to: string, exact?: boolean }): boolean {
       v-for="item in bottomItems"
       :key="item.to"
       :to="item.to"
-      class="relative flex h-14 flex-col items-center justify-center gap-0.5 text-[11px]"
+      class="relative flex h-14 flex-col items-center justify-center gap-0.5 text-xs"
       :class="isActive(item) ? 'font-medium text-primary' : 'text-muted'"
       :aria-current="isActive(item) ? 'page' : undefined"
     >
