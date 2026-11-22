@@ -19,6 +19,7 @@ useHead({
   <UApp :locale="ro" :toaster="{ position: 'top-right' }">
     <NuxtPwaManifest />
     <NuxtLoadingIndicator />
+    <OfflineBanner />
 
     <NuxtLayout>
       <NuxtPage />

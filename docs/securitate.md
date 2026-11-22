@@ -60,10 +60,17 @@ descrie măsurile implementate în Etapa 1 și ce rămâne de făcut.
   pe server, la fiecare cerere; pentru clienții altora răspunsul este „nu există”. Doar
   administratorii stabilesc responsabilii. Tarifele și venitul estimat urmează aceeași regulă: un
   angajat le vede doar pentru clienții lui, iar totalurile firmei doar administratorii.
-- **Task-uri și obligații**: un angajat vede ce îi este atribuit, ce a creat el și tot ce ține de
-  clienții lui. Un task atribuit unui coleg îi dă acces la task și la datele de contact ale
+- **Task-uri și obligații**: un angajat vede tot ce ține de clienții lui, ce îi este atribuit și
+  activitățile fără client create de el. Accesul la ce ține de un client urmează responsabilitatea
+  pentru client: după predarea clientului, fostul responsabil nu mai vede activitățile lui, chiar
+  dacă le-a creat el. Un task atribuit unui coleg îi dă acces la task și la datele de contact ale
   clientului (adresă, persoană de contact, telefon, număr de angajați), nu și la restul datelor
-  clientului. La finalizarea deplasării poate actualiza numărul de angajați.
+  clientului. Colegul poate duce deplasarea la capăt (status, observații, fișe, confirmarea cu
+  clientul, numărul de angajați, data și ora), dar nu poate schimba titlul, clientul sau punctul
+  de lucru, nu o poate da mai departe decât înapoi unui responsabil al clientului și nu poate
+  modifica sau șterge programul recurent al clientului.
+- **Schimbarea responsabililor** de către un administrator mută activitățile recurente și
+  task-urile deschise ale celui scos la un responsabil rămas, ca la predarea definitivă.
 - **Predarea definitivă a unui client** are loc doar prin acțiunea unui administrator sau cu
   acordul ambilor colegi. Nimeni nu își poate aproba singur cererea, iar cererile sunt vizibile
   doar celor doi implicați și administratorilor. Un angajat poate cere preluarea unui client doar
@@ -116,7 +123,8 @@ fi modificat din aplicație.
 
 ## Date trimise în afara aplicației
 
-Singurul serviciu extern folosit este cel de email (SMTP). Prin el trec:
+Serviciile externe folosite sunt cel de email (SMTP) și serviciile de push ale browserelor (vezi
+mai jos). Prin email trec:
 
 - emailul de resetare a parolei (prenumele și linkul de resetare);
 - notificările imediate (task atribuit, cereri de predare a unui client), cu text general: fără
@@ -124,6 +132,15 @@ Singurul serviciu extern folosit este cel de email (SMTP). Prin el trec:
 - rezumatul zilnic de notificări, care conține **doar numere** (câte task-uri restante, cu termen
   azi sau în zilele următoare). Titlurile task-urilor, numele clienților și orice date despre
   angajați rămân în aplicație.
+
+Notificările pe telefon (Web Push) trec prin serviciile de push ale producătorilor de browsere
+(Apple, Google, Mozilla, Microsoft). Conținutul lor – același text ca în aplicație – este criptat
+de server cu cheile dispozitivului (RFC 8291), deci serviciile de push transportă mesajul fără
+să-l poată citi. Adresa de livrare vine de la browser și este verificată atât la abonare, cât și
+la trimitere: serverul trimite doar către domeniile cunoscute ale acestor servicii, niciodată
+către alte adrese (de exemplu interne). La deconectare, dispozitivul este dezabonat, ca pe un
+telefon folosit de mai multe persoane notificările să nu ajungă la altcineva. Cheile VAPID ale
+serverului sunt generate automat la prima utilizare și păstrate în baza de date (`app_settings`).
 
 Reamintirile pentru un task al cărui responsabil are contul dezactivat ajung la responsabilii
 activi ai clientului sau, în lipsa lor, la administratori – adică doar la persoane care au deja

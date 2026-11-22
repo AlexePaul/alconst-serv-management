@@ -1,6 +1,13 @@
 import type { Queue } from 'bullmq';
 import { createPrismaClient, type PrismaClient } from '@alconst/database';
-import { addDays, diffDays, type MailJobData, startOfWeek, todayIn } from '@alconst/shared';
+import {
+  addDays,
+  diffDays,
+  type MailJobData,
+  type PushJobData,
+  startOfWeek,
+  todayIn,
+} from '@alconst/shared';
 import { WorkerConfig } from '../src/config/worker-config.js';
 import { MaintenanceService } from '../src/maintenance/maintenance.service.js';
 import { TEST_DATABASE_URL } from './global-setup.js';
@@ -22,6 +29,7 @@ describe('Robustețea rulării periodice (integrare cu baza de date)', () => {
   let db: PrismaClient;
   let service: MaintenanceService;
   let mails: MailJobData[];
+  let pushes: PushJobData[];
   let admin: string;
   let ana: string;
   let dan: string;
@@ -43,13 +51,19 @@ describe('Robustețea rulării periodice (integrare cu baza de date)', () => {
       'TRUNCATE TABLE "activity_logs", "password_reset_tokens", "sessions", "notifications", "tasks", "obligations", "clients", "services", "users", "worker_heartbeats" CASCADE',
     );
     mails = [];
+    pushes = [];
     const fakeQueue = {
       add: (_name: string, data: MailJobData) => {
         mails.push(data);
         return Promise.resolve();
       },
     } as unknown as Queue<MailJobData>;
-    service = new MaintenanceService(db, config, fakeQueue);
+    service = new MaintenanceService(db, config, fakeQueue, {
+      add: (_name: string, data: PushJobData) => {
+        pushes.push(data);
+        return Promise.resolve();
+      },
+    } as unknown as Queue<PushJobData>);
 
     const user = (email: string, role: 'ADMIN' | 'EMPLOYEE') =>
       db.user.create({

@@ -27,3 +27,5 @@ export {
   lockObligations,
   pendingGeneratedTasks,
 } from './obligation-tasks.js';
+
+export { generateVapidKeys, getVapidKeys, isAllowedPushEndpoint, type VapidKeys } from './push.js';

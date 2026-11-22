@@ -5,7 +5,7 @@ Aplicația se construiește incremental. Fiecare etapă livrează funcționalit�
 
 ## Unde suntem acum
 
-_Actualizat: 11 noiembrie 2026 · ramura `release/stage`._
+_Actualizat: 22 noiembrie 2026 · ramura `release/stage`._
 
 **Pe scurt:** aplicația este gata de testat de către oameni. Ce lipsește pentru lansarea pe stage
 nu mai este cod, ci configurarea infrastructurii (lista „De făcut de Alex” de mai jos).
@@ -70,6 +70,35 @@ Scop: cineva fără experiență tehnică să poată folosi aplicația din prima
 - [x] Confirmarea cu clientul, manuală: sub fiecare deplasare, butonul „Am confirmat cu
       clientul”; confirmarea se șterge dacă data, ora sau clientul se schimbă
 
+### Aplicația pe telefon și verificarea completă (22 noiembrie 2026) ✅
+
+Angajații folosesc aplicația mai ales de pe telefon.
+
+- [x] Instalarea pe ecranul principal explicată în aplicație: card pe pagina principală, cu pașii
+      pentru iPhone (Safari → Partajează → Adaugă pe ecranul principal) și buton direct pe Android
+- [x] Notificări pe telefon (Web Push), pornite din „Contul meu” sau de pe pagina principală, cu
+      notificare de probă; dezabonare automată la deconectare
+- [x] Numărul de necitite pe iconița aplicației; scurtături la apăsarea lungă pe iconiță (Android)
+- [x] Actualizări fără pierderi: versiunea nouă se instalează la schimbarea paginii, nu în mijlocul
+      unui formular; verificare din oră în oră
+- [x] Bandă de avertizare fără internet; datele se reîncarcă singure la revenirea în aplicație
+- [x] Bife mai mari, ușor de atins cu degetul; iconițele din text afișate corect
+- [x] Verificare de tip QA a regulilor de business, cu reparații:
+  - fostul responsabil al unui client predat nu mai vede și nu mai schimbă activitățile lui;
+  - schimbarea responsabililor mută și activitățile celui scos;
+  - colegul care înlocuiește la o deplasare nu mai poate schimba clientul, programul sau da
+    deplasarea altcuiva;
+  - activitatea recurentă dată unui coleg îl anunță;
+  - mutarea orei din activitatea recurentă șterge confirmarea cu clientul;
+  - punctele de lucru arhivate nu mai pot fi alese;
+  - câmpurile obligatorii trimise goale primesc un mesaj clar în loc de „eroare neașteptată”;
+  - rezumatul zilnic pe email nu mai numără de două ori;
+  - venitul lunar estimat ia în calcul doar contractele în vigoare;
+  - mesaje de validare în română peste tot.
+
+De verificat pe telefoane reale, pe stage: instalarea și notificările pe iPhone (iOS 16.4+) și pe
+Android; în emulare au fost verificate afișarea notificării, linkul ei și instrucțiunile.
+
 ### Amânat: confirmarea deplasărilor prin email
 
 Hotărât pe 12 noiembrie 2026: deocamdată confirmarea rămâne manuală (angajatul vorbește cu
@@ -92,7 +121,7 @@ email care verifică linkurile să nu confirme singure) și limită de încercă
 
 1. Corecturi din observațiile testerilor.
 2. Documentele generate (Etapa 4, partea a doua) – după primirea exemplelor DOCX anonimizate.
-3. Restul stabilizării: retenția datelor, întărirea CSP, monitorizare externă, Web Push.
+3. Restul stabilizării: retenția datelor, întărirea CSP, monitorizare externă.
 4. Crearea ramurii `release/prod` și lansarea în producție, cu aprobarea ta.
 
 ## Etapa 1 – Foundation ✅
@@ -171,9 +200,9 @@ Completări după discuțiile din noiembrie 2026:
 - [x] Apariții sărite: la bifarea unei deplasări, aplicația întreabă dacă și cea rămasă nebifată
       din perioada anterioară este făcută și le finalizează împreună
 
-Amânat: **Web Push**. Necesită un service worker propriu, chei VAPID și stocarea abonamentelor,
-iar pe iPhone funcționează doar pentru aplicația instalată pe ecranul principal. Notificările din
-aplicație și emailul acoperă nevoia de bază; Web Push se adaugă în etapa de stabilizare.
+- [x] **Web Push** (noiembrie 2026): notificări pe telefon pentru evenimente (imediat) și
+      reamintiri (între 7 și 21), numărul de necitite pe iconiță; pe iPhone, după instalarea
+      aplicației pe ecranul principal.
 
 ## Etapa 4 – Documente
 
@@ -236,7 +265,7 @@ permite deja modelul de date pentru ele este descris în [arhitectura.md](arhite
 | Fonturile din documente nu există în browser/pe server                          | Mediu  | Fonturi înlocuitoare servite local; aceleași fonturi instalate în imaginea worker-ului                                 |
 | Prisma 8 schimbă modelul de lucru                                               | Mic    | Rămânem pe 7.x stabil; evaluare după lansarea finală                                                                   |
 | Ecosistem foarte nou (NestJS 12, BullMQ 6, Nuxt 4)                              | Mic    | Versiuni fixate în lockfile, teste automate, actualizări controlate                                                    |
-| Web Push pe iOS funcționează doar pentru PWA instalată, cu permisiune explicită | Mediu  | Emailul și notificările din aplicație rămân canalele de bază                                                           |
+| Web Push pe iOS funcționează doar pentru PWA instalată, cu permisiune explicită | Mediu  | Aplicația explică instalarea pas cu pas; emailul și notificările din aplicație rămân canale de rezervă                 |
 | Stocarea fișierelor                                                             | Mic    | Amazon S3 (bucket privat, versionare), accesat prin rol IAM de pe instanța EC2                                         |
 | Un singur server = un singur punct de eșec                                      | Mediu  | Backup în afara serverului + procedură de restaurare (Etapa 5)                                                         |
 

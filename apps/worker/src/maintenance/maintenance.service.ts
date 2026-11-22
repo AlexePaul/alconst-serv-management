@@ -10,10 +10,13 @@ import {
   MAINTENANCE_HEARTBEAT,
   type MailJobData,
   MAX_REMIND_DAYS_BEFORE,
+  type PushJobData,
   QUEUE_MAIL,
+  QUEUE_PUSH,
   todayIn,
 } from '@alconst/shared';
 import { WorkerConfig } from '../config/worker-config.js';
+import { PUSH_FROM_HOUR, PUSH_UNTIL_HOUR, reminderPushPayload } from '../push/reminder-push.js';
 import { planReminders } from './reminders.js';
 
 export const PRISMA = Symbol('PRISMA');
@@ -24,6 +27,18 @@ const DIGEST_FROM_HOUR = 7;
 /** Notificările citite se păstrează atât timp. */
 const READ_NOTIFICATION_RETENTION_DAYS = 90;
 
+/** Câte minute au trecut de la miezul nopții, în fusul orar dat. */
+function minutesSinceMidnight(timeZone: string, now: Date): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now);
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+  return value('hour') * 60 + value('minute');
+}
+
 const toDate = (value: string) => new Date(`${value}T00:00:00.000Z`);
 const toDateOnly = (value: Date) => value.toISOString().slice(0, 10);
 
@@ -31,7 +46,10 @@ export interface MaintenanceResult {
   tasksGenerated: number;
   notificationsCreated: number;
   digestsQueued: number;
+  pushesQueued: number;
 }
+
+const REMINDER_TYPES = ['TASK_OVERDUE', 'TASK_DUE_TODAY', 'TASK_DUE_SOON'];
 
 /**
  * Activitățile periodice ale aplicației. Rulează din oră în oră și sunt idempotente:
@@ -45,6 +63,7 @@ export class MaintenanceService {
     @Inject(PRISMA) private readonly db: PrismaClient,
     private readonly config: WorkerConfig,
     @InjectQueue(QUEUE_MAIL) private readonly mailQueue: Queue<MailJobData>,
+    @InjectQueue(QUEUE_PUSH) private readonly pushQueue: Queue<PushJobData>,
   ) {}
 
   async run(now: Date = new Date()): Promise<MaintenanceResult> {
@@ -59,9 +78,12 @@ export class MaintenanceService {
       hourIn(this.config.timeZone, now) >= DIGEST_FROM_HOUR
         ? await this.queueDigests(today, now)
         : 0;
+    const hour = hourIn(this.config.timeZone, now);
+    const pushesQueued =
+      hour >= PUSH_FROM_HOUR && hour < PUSH_UNTIL_HOUR ? await this.queueReminderPushes(now) : 0;
     await this.cleanup(now);
 
-    const result = { tasksGenerated, notificationsCreated, digestsQueued };
+    const result = { tasksGenerated, notificationsCreated, digestsQueued, pushesQueued };
     // Semn de viață pentru administratori: dacă rularea se oprește, aplicația îi avertizează.
     await this.db.workerHeartbeat.upsert({
       where: { name: MAINTENANCE_HEARTBEAT },
@@ -70,7 +92,8 @@ export class MaintenanceService {
     });
     this.logger.log(
       `Rulare periodică (${today}): ${tasksGenerated} task-uri generate, ` +
-        `${notificationsCreated} notificări, ${digestsQueued} rezumate pe email`,
+        `${notificationsCreated} notificări, ${digestsQueued} rezumate pe email, ` +
+        `${pushesQueued} notificări pe telefon`,
     );
     return result;
   }
@@ -133,6 +156,11 @@ export class MaintenanceService {
       select: { id: true, email: true, firstName: true, notificationSettings: true },
     });
     const since = new Date(now.getTime() - DAY_MS);
+    // „Azi” înseamnă doar reamintirile create azi: una de ieri, încă necitită, ar apărea altfel
+    // ca termen de azi (și încă o dată ca restanță).
+    const todayStart = new Date(
+      now.getTime() - minutesSinceMidnight(this.config.timeZone, now) * 60_000,
+    );
     let queued = 0;
 
     for (const user of users) {
@@ -148,8 +176,10 @@ export class MaintenanceService {
         where: {
           userId: user.id,
           readAt: null,
-          createdAt: { gte: since },
-          type: { in: ['TASK_OVERDUE', 'TASK_DUE_TODAY', 'TASK_DUE_SOON'] },
+          OR: [
+            { type: { in: ['TASK_OVERDUE', 'TASK_DUE_SOON'] }, createdAt: { gte: since } },
+            { type: 'TASK_DUE_TODAY', createdAt: { gte: todayStart } },
+          ],
         },
         _count: { _all: true },
       });
@@ -179,6 +209,55 @@ export class MaintenanceService {
         },
         {
           attempts: 5,
+          backoff: { type: 'exponential', delay: 30_000 },
+          removeOnComplete: true,
+          removeOnFail: { age: 24 * 60 * 60 },
+        },
+      );
+      queued++;
+    }
+    return queued;
+  }
+
+  /**
+   * Trimite pe telefon reamintirile noi, câte o singură notificare pe utilizator la fiecare
+   * rulare. Reamintirile create noaptea așteaptă până dimineață. Doar pentru utilizatorii care au
+   * pornit notificările pe cel puțin un dispozitiv.
+   */
+  private async queueReminderPushes(now: Date): Promise<number> {
+    const users = await this.db.user.findMany({
+      where: { isActive: true, pushSubscriptions: { some: {} } },
+      select: { id: true },
+    });
+    const since = new Date(now.getTime() - DAY_MS);
+    let queued = 0;
+
+    for (const user of users) {
+      const pending = await this.db.notification.findMany({
+        where: {
+          userId: user.id,
+          readAt: null,
+          pushedAt: null,
+          createdAt: { gte: since },
+          type: { in: REMINDER_TYPES },
+        },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, type: true, title: true, body: true, taskId: true },
+      });
+      const payload = reminderPushPayload(pending);
+      if (!payload) continue;
+
+      // Marcate înainte de punerea în coadă: mai bine o notificare lipsă decât una dublă.
+      await this.db.notification.updateMany({
+        where: { id: { in: pending.map((notification) => notification.id) } },
+        data: { pushedAt: now },
+      });
+      const badge = await this.db.notification.count({ where: { userId: user.id, readAt: null } });
+      await this.pushQueue.add(
+        'push',
+        { userId: user.id, payload: { ...payload, badge } },
+        {
+          attempts: 3,
           backoff: { type: 'exponential', delay: 30_000 },
           removeOnComplete: true,
           removeOnFail: { age: 24 * 60 * 60 },

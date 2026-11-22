@@ -16,7 +16,13 @@ import {
   Min,
 } from 'class-validator';
 import { CUI_PATTERN, MAX_EMPLOYEE_COUNT, normalizeCui } from '@alconst/shared';
-import { IsOptionalEmail, IsOptionalText, IsTrimmedText } from '../../common/dto-decorators.js';
+import {
+  IsOptionalEmail,
+  IsOptionalText,
+  IsTrimmedText,
+  NULL_IS_A_VALUE,
+  IsOptionalNotNull,
+} from '../../common/dto-decorators.js';
 import { PaginationQuery, STATUS_FILTERS, type StatusFilter } from '../../common/pagination.js';
 
 export class CreateClientDto {
@@ -60,20 +66,20 @@ export class CreateClientDto {
   @Max(MAX_EMPLOYEE_COUNT, { message: 'Numărul de angajați este prea mare.' })
   employeeCount?: number | null;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsBoolean({ message: 'Statusul nu este valid.' })
   isActive?: boolean;
 
   /** Responsabilii clientului. Doar administratorii îi pot stabili; un angajat devine automat responsabil. */
-  @IsOptional()
-  @IsArray()
-  @ArrayUnique()
-  @ArrayMaxSize(50)
+  @IsOptionalNotNull()
+  @IsArray({ message: 'Lista de responsabili nu este validă.' })
+  @ArrayUnique({ message: 'Lista conține de două ori aceeași persoană sau același serviciu.' })
+  @ArrayMaxSize(50, { message: 'Ai ales prea multe elemente (cel mult 50).' })
   @IsUUID('all', { each: true, message: 'Responsabil invalid.' })
   responsibleIds?: string[];
 }
 
-export class UpdateClientDto extends PartialType(CreateClientDto) {}
+export class UpdateClientDto extends PartialType(CreateClientDto, NULL_IS_A_VALUE) {}
 
 export class ListClientsQuery extends PaginationQuery {
   @IsOptional()
@@ -92,17 +98,17 @@ export class ListClientsQuery extends PaginationQuery {
 }
 
 export class SetResponsiblesDto {
-  @IsArray()
-  @ArrayUnique()
-  @ArrayMaxSize(50)
+  @IsArray({ message: 'Lista de responsabili nu este validă.' })
+  @ArrayUnique({ message: 'Lista conține de două ori aceeași persoană sau același serviciu.' })
+  @ArrayMaxSize(50, { message: 'Ai ales prea multe elemente (cel mult 50).' })
   @IsUUID('all', { each: true, message: 'Responsabil invalid.' })
   userIds: string[];
 }
 
 export class SetClientServicesDto {
-  @IsArray()
-  @ArrayUnique()
-  @ArrayMaxSize(100)
+  @IsArray({ message: 'Lista de servicii nu este validă.' })
+  @ArrayUnique({ message: 'Lista conține de două ori aceeași persoană sau același serviciu.' })
+  @ArrayMaxSize(100, { message: 'Ai ales prea multe elemente (cel mult 100).' })
   @IsUUID('all', { each: true, message: 'Serviciu invalid.' })
   serviceIds: string[];
 }

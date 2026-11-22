@@ -52,11 +52,29 @@ const state = reactive<Partial<Schema>>({})
 const form = useTemplateRef('form')
 const { loading, errorMessage, submit, reset } = useFormSubmit(form)
 
+/**
+ * Clientul nu este al utilizatorului (doar face această deplasare în locul unui coleg): poate
+ * marca activitatea, muta data și ora și scrie observații; restul îl schimbă responsabilul.
+ */
+const coverOnly = computed(() => {
+  const client = props.task?.client
+  return Boolean(client && !isAdmin.value && !client.responsibles.some(person => person.id === user.value?.id))
+})
+
 const { data: users } = useUserOptions()
-const assigneeItems = computed(() => [
-  { label: 'Fără responsabil', value: NONE },
-  ...users.value.map(option => ({ label: `${option.firstName} ${option.lastName}`, value: option.id }))
-])
+const assigneeItems = computed(() => {
+  if (coverOnly.value) {
+    // Activitatea poate fi dată doar înapoi unui responsabil al clientului.
+    const allowed = new Set([props.task?.assignee?.id, ...(props.task?.client?.responsibles ?? []).map(person => person.id)])
+    return users.value
+      .filter(option => allowed.has(option.id))
+      .map(option => ({ label: `${option.firstName} ${option.lastName}`, value: option.id }))
+  }
+  return [
+    { label: 'Fără responsabil', value: NONE },
+    ...users.value.map(option => ({ label: `${option.firstName} ${option.lastName}`, value: option.id }))
+  ]
+})
 
 const kindItems = TASK_KINDS.map(kind => ({ label: TASK_KIND_LABELS[kind], value: kind }))
 const priorityItems = TASK_PRIORITIES.map(priority => ({ label: TASK_PRIORITY_LABELS[priority], value: priority }))
@@ -235,13 +253,31 @@ async function confirmDelete() {
       >
         <FormError :message="errorMessage" />
 
+        <UAlert
+          v-if="coverOnly"
+          color="info"
+          variant="subtle"
+          icon="i-lucide-arrow-left-right"
+          description="Faci această activitate în locul unui coleg. Poți să o bifezi, să muți data și ora și să scrii observații; restul îl schimbă responsabilul clientului."
+        />
+
         <UFormField label="Titlu" name="title" required>
-          <UInput v-model="state.title" placeholder="ex. Deplasare lunară, verificare stingătoare" class="w-full" />
+          <UInput
+            v-model="state.title"
+            placeholder="ex. Deplasare lunară, verificare stingătoare"
+            :disabled="coverOnly"
+            class="w-full"
+          />
         </UFormField>
 
         <div class="grid gap-5 sm:grid-cols-2">
           <UFormField label="Tip" name="kind" help="O deplasare înseamnă mers la client și completarea fișelor.">
-            <USelect v-model="state.kind" :items="kindItems" class="w-full" />
+            <USelect
+              v-model="state.kind"
+              :items="kindItems"
+              :disabled="coverOnly"
+              class="w-full"
+            />
           </UFormField>
           <UFormField
             :label="periodLabel ? 'Data planificată' : 'Termen'"
@@ -267,7 +303,8 @@ async function confirmDelete() {
             <ClientsClientSelect
               v-model="state.clientId"
               placeholder="Fără client"
-              clearable
+              :clearable="!coverOnly"
+              :disabled="coverOnly"
               :initial-label="task?.client?.name ?? defaults?.clientName"
             />
           </UFormField>
@@ -275,7 +312,7 @@ async function confirmDelete() {
             <USelect
               v-model="state.locationId"
               :items="locationItems"
-              :disabled="!state.clientId"
+              :disabled="!state.clientId || coverOnly"
               class="w-full"
             />
           </UFormField>
@@ -290,7 +327,12 @@ async function confirmDelete() {
             <USelect v-model="state.assigneeId" :items="assigneeItems" class="w-full" />
           </UFormField>
           <UFormField label="Prioritate" name="priority">
-            <USelect v-model="state.priority" :items="priorityItems" class="w-full" />
+            <USelect
+              v-model="state.priority"
+              :items="priorityItems"
+              :disabled="coverOnly"
+              class="w-full"
+            />
           </UFormField>
         </div>
 
@@ -362,6 +404,7 @@ async function confirmDelete() {
             v-model="state.description"
             :rows="2"
             autoresize
+            :disabled="coverOnly"
             class="w-full"
           />
         </UFormField>
@@ -399,7 +442,7 @@ async function confirmDelete() {
 
         <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
           <UButton
-            v-if="task && !task.obligation && task.status === 'TODO'"
+            v-if="task && !task.obligation && task.status === 'TODO' && !coverOnly"
             color="error"
             variant="ghost"
             icon="i-lucide-trash-2"

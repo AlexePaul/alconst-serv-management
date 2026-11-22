@@ -1,12 +1,14 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Inject, Module, type OnModuleDestroy } from '@nestjs/common';
 import { createPrismaClient, type PrismaClient } from '@alconst/database';
-import { QUEUE_MAIL, QUEUE_MAINTENANCE } from '@alconst/shared';
+import { QUEUE_MAIL, QUEUE_MAINTENANCE, QUEUE_PUSH } from '@alconst/shared';
 import { loadWorkerConfig, WorkerConfig } from './config/worker-config.js';
 import { MailTransportService } from './mail/mail-transport.service.js';
 import { MailProcessor } from './mail/mail.processor.js';
 import { MaintenanceProcessor } from './maintenance/maintenance.processor.js';
 import { MaintenanceService, PRISMA } from './maintenance/maintenance.service.js';
+import { PushSenderService } from './push/push-sender.service.js';
+import { PushProcessor } from './push/push.processor.js';
 
 const configProvider = { provide: WorkerConfig, useFactory: () => loadWorkerConfig() };
 
@@ -26,6 +28,7 @@ const prismaProvider = {
 /**
  * Worker-ul rulează ca proces separat de API și procesează job-urile din cozile BullMQ:
  *  - `mail`: trimiterea emailurilor;
+ *  - `push`: notificările pe telefon (Web Push);
  *  - `maintenance`: rularea periodică (generarea task-urilor din obligații, reamintiri, curățare).
  * Fiecare tip nou de job (generare documente etc.) se adaugă ca procesor aici.
  */
@@ -40,7 +43,11 @@ const prismaProvider = {
         prefix: config.queuePrefix,
       }),
     }),
-    BullModule.registerQueue({ name: QUEUE_MAIL }, { name: QUEUE_MAINTENANCE }),
+    BullModule.registerQueue(
+      { name: QUEUE_MAIL },
+      { name: QUEUE_MAINTENANCE },
+      { name: QUEUE_PUSH },
+    ),
   ],
   providers: [
     prismaProvider,
@@ -48,6 +55,8 @@ const prismaProvider = {
     MailProcessor,
     MaintenanceService,
     MaintenanceProcessor,
+    PushSenderService,
+    PushProcessor,
   ],
 })
 export class WorkerModule implements OnModuleDestroy {

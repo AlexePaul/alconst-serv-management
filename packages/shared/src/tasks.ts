@@ -445,3 +445,11 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettingsDto = {
 };
 
 export const MAX_REMIND_DAYS_BEFORE = 30;
+
+/** Starea notificărilor push, așa cum o vede interfața. */
+export interface PushConfigDto {
+  /** Cheia publică VAPID a serverului, necesară browserului pentru abonare. */
+  publicKey: string;
+  /** Numărul de dispozitive ale utilizatorului curent abonate la notificări. */
+  devices: number;
+}

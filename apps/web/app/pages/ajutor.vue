@@ -61,7 +61,15 @@ const questions = [
   },
   {
     q: 'Cum pun aplicația pe telefon?',
-    a: 'Pe iPhone, deschide adresa în Safari, apasă butonul de partajare și alege „Adaugă pe ecranul principal”. Apare ca o aplicație obișnuită.'
+    a: 'Pe iPhone: deschide adresa în Safari, apasă butonul de partajare (pătratul cu săgeata în sus) și alege „Adaugă pe ecranul principal”. Pe Android: în Chrome, apasă cele trei puncte din dreapta sus și alege „Adaugă pe ecranul de pornire” sau „Instalează aplicația”. Apare apoi ca o aplicație obișnuită.'
+  },
+  {
+    q: 'Cum primesc notificări pe telefon?',
+    a: 'Deschide aplicația de pe ecranul telefonului, intră la „Contul meu” și pornește „Notificări pe acest telefon”. Când telefonul întreabă, alege „Permite”. Primești imediat ce îți dau colegii de făcut, iar dimineața termenele zilei; noaptea nu ești deranjat.'
+  },
+  {
+    q: 'Văd informații vechi în aplicație.',
+    a: 'Aplicația se actualizează singură când revii în ea. Dacă tot vezi ceva vechi, închide aplicația și deschide-o din nou. Când nu ai internet, sus apare o bandă galbenă: ce modifici atunci nu se salvează.'
   }
 ]
 </script>

@@ -1,6 +1,6 @@
 import type { Queue } from 'bullmq';
 import { createPrismaClient, type PrismaClient } from '@alconst/database';
-import { addDays, type MailJobData, todayIn } from '@alconst/shared';
+import { addDays, type MailJobData, type PushJobData, todayIn } from '@alconst/shared';
 import { WorkerConfig } from '../src/config/worker-config.js';
 import { MaintenanceService } from '../src/maintenance/maintenance.service.js';
 import { TEST_DATABASE_URL } from './global-setup.js';
@@ -11,6 +11,7 @@ describe('Rularea periodică (integrare cu baza de date)', () => {
   let db: PrismaClient;
   let service: MaintenanceService;
   let mails: MailJobData[];
+  let pushes: PushJobData[];
   let ana: string;
   let dan: string;
   let clientId: string;
@@ -37,13 +38,19 @@ describe('Rularea periodică (integrare cu baza de date)', () => {
       'TRUNCATE TABLE "activity_logs", "password_reset_tokens", "sessions", "notifications", "tasks", "obligations", "clients", "services", "users", "worker_heartbeats" CASCADE',
     );
     mails = [];
+    pushes = [];
     const fakeQueue = {
       add: (_name: string, data: MailJobData) => {
         mails.push(data);
         return Promise.resolve();
       },
     } as unknown as Queue<MailJobData>;
-    service = new MaintenanceService(db, config, fakeQueue);
+    service = new MaintenanceService(db, config, fakeQueue, {
+      add: (_name: string, data: PushJobData) => {
+        pushes.push(data);
+        return Promise.resolve();
+      },
+    } as unknown as Queue<PushJobData>);
 
     const user = (email: string, firstName: string) =>
       db.user.create({
@@ -166,6 +173,42 @@ describe('Rularea periodică (integrare cu baza de date)', () => {
     await task('Încă unul', today);
     expect((await service.run(midday)).digestsQueued).toBe(0);
     expect(mails).toHaveLength(1);
+  });
+
+  it('trimite pe telefon reamintirile noi, strânse într-o notificare, doar ziua', async () => {
+    await task('Restant', addDays(today, -1));
+    await task('Azi', today);
+    await task('Al lui Dan', today, dan);
+    const subscribe = (userId: string, endpoint: string) =>
+      db.pushSubscription.create({ data: { userId, endpoint, p256dh: 'k', auth: 'a' } });
+    await subscribe(ana, 'https://fcm.googleapis.com/fcm/send/ana');
+
+    // Noaptea reamintirile se creează, dar nu se trimit pe telefon.
+    expect((await service.run(earlyMorning)).pushesQueued).toBe(0);
+    expect((await service.run(midday)).pushesQueued).toBe(1);
+    expect(pushes).toEqual([
+      {
+        userId: ana,
+        payload: {
+          title: 'Ai 2 reamintiri',
+          body: '1 restantă · 1 azi. Atinge pentru a vedea ce ai de făcut.',
+          url: '/',
+          tag: 'reminders',
+          badge: 2,
+        },
+      },
+    ]);
+    // Dan nu are notificările pornite pe niciun dispozitiv.
+    expect(await db.notification.count({ where: { userId: dan, pushedAt: null } })).toBe(1);
+
+    // O reamintire deja trimisă nu se repetă; una nouă și singură apare ca atare.
+    expect((await service.run(midday)).pushesQueued).toBe(0);
+    const later = await task('Mâine', addDays(today, 1));
+    expect((await service.run(midday)).pushesQueued).toBe(1);
+    expect(pushes[1]?.payload).toMatchObject({
+      title: 'Termen apropiat',
+      url: `/task-uri?task=${later.id}`,
+    });
   });
 
   it('nu trimite rezumat dacă nu există reamintiri noi', async () => {

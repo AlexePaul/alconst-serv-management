@@ -1,7 +1,8 @@
+import { getQueueToken } from '@nestjs/bullmq';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import type { MailJobData, UserRole } from '@alconst/shared';
+import { type MailJobData, type PushJobData, QUEUE_PUSH, type UserRole } from '@alconst/shared';
 import { AppModule } from '../src/app.module.js';
 import { APP_CREATE_OPTIONS, configureApp } from '../src/app.setup.js';
 import { hashPassword } from '../src/auth/password.js';
@@ -25,10 +26,21 @@ class FakeMailQueue {
   }
 }
 
+/** Coada notificărilor push, în memorie. */
+class FakePushQueue {
+  readonly jobs: PushJobData[] = [];
+
+  add(_name: string, data: PushJobData): Promise<void> {
+    this.jobs.push(data);
+    return Promise.resolve();
+  }
+}
+
 export interface TestApp {
   app: NestExpressApplication;
   prisma: PrismaService;
   mail: FakeMailQueue;
+  push: FakePushQueue;
   http: () => ReturnType<typeof request>;
   reset: () => Promise<void>;
   createUser: (overrides?: {
@@ -46,9 +58,12 @@ export interface TestApp {
 
 export async function createTestApp(): Promise<TestApp> {
   const mail = new FakeMailQueue();
+  const push = new FakePushQueue();
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(MailQueueService)
     .useValue(mail)
+    .overrideProvider(getQueueToken(QUEUE_PUSH))
+    .useValue(push)
     .compile();
 
   const app = moduleRef.createNestApplication<NestExpressApplication>(APP_CREATE_OPTIONS);
@@ -62,9 +77,11 @@ export async function createTestApp(): Promise<TestApp> {
     app,
     prisma,
     mail,
+    push,
     http,
     async reset() {
       mail.sent.length = 0;
+      push.jobs.length = 0;
       await prisma.db.$executeRawUnsafe(
         'TRUNCATE TABLE "activity_logs", "password_reset_tokens", "sessions", "client_transfer_requests", "notifications", "tasks", "obligations", "clients", "services", "users", "worker_heartbeats" CASCADE',
       );

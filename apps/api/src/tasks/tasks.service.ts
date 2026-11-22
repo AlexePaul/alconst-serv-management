@@ -201,6 +201,7 @@ export class TasksService {
     client: ClientInfo,
   ): Promise<TaskDto> {
     const before = await this.find(id, auth);
+    await this.assertCoverChanges(before, dto, auth);
 
     // Schimbarea clientului invalidează punctul de lucru, dacă nu este trimis unul nou.
     const clientId = dto.clientId !== undefined ? dto.clientId : before.clientId;
@@ -313,6 +314,45 @@ export class TasksService {
   }
 
   /**
+   * Un coleg care face doar această deplasare (clientul nu este al lui) o poate duce la capăt:
+   * status, observații, fișe, confirmarea cu clientul, numărul de angajați, data și ora. Nu poate
+   * schimba ce ține de client – titlul, tipul, clientul, punctul de lucru – și o poate da mai
+   * departe doar înapoi unui responsabil al clientului.
+   */
+  private async assertCoverChanges(
+    before: TaskRow,
+    dto: UpdateTaskDto,
+    auth: AuthContext,
+  ): Promise<void> {
+    if (!before.clientId || (await this.access.ownsClient(before.clientId, auth.user))) return;
+    const changes = [
+      dto.title !== undefined && dto.title !== before.title,
+      dto.description !== undefined && dto.description !== before.description,
+      dto.kind !== undefined && dto.kind !== before.kind,
+      dto.priority !== undefined && dto.priority !== before.priority,
+      dto.clientId !== undefined && dto.clientId !== before.clientId,
+      dto.locationId !== undefined && dto.locationId !== before.locationId,
+    ];
+    if (changes.some(Boolean)) {
+      throw AppException.forbidden(
+        'Clientul nu este al tău: poți marca activitatea ca făcută, schimba data și ora și scrie observații, dar restul îl modifică responsabilul clientului.',
+      );
+    }
+    if (dto.assigneeId !== undefined && dto.assigneeId !== before.assigneeId) {
+      const responsible = dto.assigneeId
+        ? await this.prisma.db.clientAssignment.count({
+            where: { clientId: before.clientId, userId: dto.assigneeId },
+          })
+        : 0;
+      if (responsible === 0) {
+        throw AppException.forbidden(
+          'Activitatea poate fi dată înapoi doar unui responsabil al clientului.',
+        );
+      }
+    }
+  }
+
+  /**
    * Ștergerea există doar pentru corectarea greșelilor: un task creat manual și încă neînceput.
    *  - task-urile generate dintr-o obligație se anulează – dacă ar fi șterse, următoarea generare
    *    le-ar crea din nou;
@@ -328,6 +368,11 @@ export class TasksService {
     if (existing.status !== 'TODO') {
       throw AppException.validation(
         'Doar activitățile neîncepute pot fi șterse. Celelalte rămân în evidență; dacă nu mai este necesară, marcheaz-o ca anulată.',
+      );
+    }
+    if (existing.clientId && !(await this.access.ownsClient(existing.clientId, auth.user))) {
+      throw AppException.forbidden(
+        'Activitățile unui client care nu este al tău le poate șterge doar responsabilul lui.',
       );
     }
     await this.prisma.db.task.delete({ where: { id } });

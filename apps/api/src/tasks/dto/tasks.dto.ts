@@ -26,6 +26,8 @@ import {
   IsOptionalText,
   IsOptionalTime,
   IsTrimmedText,
+  NULL_IS_A_VALUE,
+  IsOptionalNotNull,
 } from '../../common/dto-decorators.js';
 
 const emptyToNull = ({ value }: { value: unknown }) => (value === '' ? null : value);
@@ -40,15 +42,15 @@ export class CreateTaskDto {
   @IsOptionalText('Observațiile', 5000)
   notes?: string | null;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsIn(TASK_KINDS, { message: 'Tipul nu este valid.' })
   kind?: TaskKind;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsIn(TASK_PRIORITIES, { message: 'Prioritatea nu este validă.' })
   priority?: TaskPriority;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsIn(TASK_STATUSES, { message: 'Statusul nu este valid.' })
   status?: TaskStatus;
 
@@ -62,7 +64,7 @@ export class CreateTaskDto {
   endTime?: string | null;
 
   /** Doar pentru deplasări: confirmă că fișele au fost completate. */
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsBoolean({ message: 'Valoare invalidă.' })
   sheetsCompleted?: boolean;
 
@@ -82,12 +84,12 @@ export class CreateTaskDto {
   assigneeId?: string | null;
 }
 
-export class UpdateTaskDto extends PartialType(CreateTaskDto) {
+export class UpdateTaskDto extends PartialType(CreateTaskDto, NULL_IS_A_VALUE) {
   /**
    * Numărul de angajați ai clientului, confirmat sau corectat de cel care a fost acolo
    * (de regulă la finalizarea unei deplasări). Se salvează pe client, nu pe task.
    */
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsInt({ message: 'Numărul de angajați trebuie să fie un număr întreg.' })
   @Min(0, { message: 'Numărul de angajați nu poate fi negativ.' })
   @Max(MAX_EMPLOYEE_COUNT, { message: 'Numărul de angajați este prea mare.' })
@@ -97,7 +99,7 @@ export class UpdateTaskDto extends PartialType(CreateTaskDto) {
    * Ziua activității a fost stabilită cu clientul. O notează manual cel care a vorbit cu el;
    * aplicația nu trimite nimic clientului.
    */
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsBoolean({ message: 'Valoare invalidă.' })
   clientConfirmed?: boolean;
 }

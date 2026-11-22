@@ -31,9 +31,9 @@ export class ListDocumentsQuery extends SectionQuery {
 
 export class SearchDocumentsQuery extends SectionQuery {
   @Transform(trimmed)
-  @IsString()
+  @IsString({ message: 'Scrie ce cauți.' })
   @MinLength(2, { message: 'Scrie cel puțin două caractere.' })
-  @MaxLength(100)
+  @MaxLength(100, { message: 'Textul căutat poate avea cel mult 100 de caractere.' })
   q: string;
 }
 
@@ -45,15 +45,19 @@ export class CreateFolderDto extends SectionQuery {
 
   @Transform(trimmed)
   @IsString({ message: 'Numele este obligatoriu.' })
-  @MaxLength(MAX_DOCUMENT_NAME_LENGTH)
+  @MaxLength(MAX_DOCUMENT_NAME_LENGTH, {
+    message: `Numele poate avea cel mult ${MAX_DOCUMENT_NAME_LENGTH} de caractere.`,
+  })
   name: string;
 }
 
 export class UpdateFolderDto {
   @Transform(trimmed)
   @IsOptional()
-  @IsString()
-  @MaxLength(MAX_DOCUMENT_NAME_LENGTH)
+  @IsString({ message: 'Numele este obligatoriu.' })
+  @MaxLength(MAX_DOCUMENT_NAME_LENGTH, {
+    message: `Numele poate avea cel mult ${MAX_DOCUMENT_NAME_LENGTH} de caractere.`,
+  })
   name?: string;
 
   /** Noul dosar părinte; `null` = rădăcina secțiunii. */
@@ -72,15 +76,19 @@ export class UploadFileQuery extends SectionQuery {
 
   @Transform(trimmed)
   @IsString({ message: 'Numele fișierului este obligatoriu.' })
-  @MaxLength(MAX_DOCUMENT_NAME_LENGTH)
+  @MaxLength(MAX_DOCUMENT_NAME_LENGTH, {
+    message: `Numele poate avea cel mult ${MAX_DOCUMENT_NAME_LENGTH} de caractere.`,
+  })
   name: string;
 }
 
 export class UpdateFileDto {
   @Transform(trimmed)
   @IsOptional()
-  @IsString()
-  @MaxLength(MAX_DOCUMENT_NAME_LENGTH)
+  @IsString({ message: 'Numele este obligatoriu.' })
+  @MaxLength(MAX_DOCUMENT_NAME_LENGTH, {
+    message: `Numele poate avea cel mult ${MAX_DOCUMENT_NAME_LENGTH} de caractere.`,
+  })
   name?: string;
 
   /** Noul dosar; `null` = rădăcina secțiunii. */

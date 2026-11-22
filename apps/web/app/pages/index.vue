@@ -54,6 +54,8 @@ const today = formatLongDate(new Date())
           </div>
         </section>
 
+        <PhoneSetupCard />
+
         <DashboardSystemStatus v-if="isAdmin" />
 
         <DashboardTransferRequests @changed="refreshNuxtData(['dashboard:clients-summary', 'dashboard:tasks-overview'])" />

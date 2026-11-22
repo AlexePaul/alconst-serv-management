@@ -10,6 +10,7 @@ import { AppException } from '../common/app.exception.js';
 import { AppConfig } from '../config/app-config.js';
 import { MailQueueService } from '../mail/mail-queue.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { PushService } from '../push/push.service.js';
 import type {
   ListNotificationsQuery,
   UpdateNotificationSettingsDto,
@@ -42,6 +43,7 @@ export class NotificationsService {
     private readonly prisma: PrismaService,
     private readonly config: AppConfig,
     private readonly mailQueue: MailQueueService,
+    private readonly push: PushService,
   ) {}
 
   async list(userId: string, query: ListNotificationsQuery): Promise<Paginated<NotificationDto>> {
@@ -124,7 +126,7 @@ export class NotificationsService {
    * emailului nu afectează operațiunea care a produs notificarea.
    */
   async notify(input: NotifyInput): Promise<void> {
-    await this.prisma.db.notification.create({
+    const notification = await this.prisma.db.notification.create({
       data: {
         userId: input.userId,
         type: input.type,
@@ -137,6 +139,23 @@ export class NotificationsService {
       },
     });
 
+    const path = input.taskId ? `/task-uri?task=${input.taskId}` : (input.link ?? '/notificari');
+
+    // Pe telefon: imediat, cu același text ca în aplicație (conținutul este criptat până pe
+    // dispozitiv, deci nu trece în clar prin serviciile de push).
+    const pushed = await this.push.notifyUser(input.userId, {
+      title: input.title,
+      ...(input.body ? { body: input.body } : {}),
+      url: path,
+      tag: notification.id,
+    });
+    if (pushed) {
+      await this.prisma.db.notification.update({
+        where: { id: notification.id },
+        data: { pushedAt: new Date() },
+      });
+    }
+
     try {
       const user = await this.prisma.db.user.findUnique({
         where: { id: input.userId },
@@ -146,7 +165,6 @@ export class NotificationsService {
         user?.notificationSettings?.emailEnabled ?? DEFAULT_NOTIFICATION_SETTINGS.emailEnabled;
       if (!user?.isActive || !emailEnabled) return;
 
-      const path = input.taskId ? `/task-uri?task=${input.taskId}` : (input.link ?? '/notificari');
       await this.mailQueue.enqueue({
         kind: 'notification',
         to: user.email,

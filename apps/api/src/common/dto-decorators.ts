@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  ValidateIf,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -99,4 +100,20 @@ export function IsOptionalTime(label: string): PropertyDecorator {
     IsOptional(),
     Matches(TIME_PATTERN, { message: `${label} trebuie să fie o oră validă (ex. 09:30).` }),
   );
+}
+
+/**
+ * Pentru DTO-urile de modificare (`PartialType`): un câmp lipsă rămâne neschimbat, dar `null`
+ * este validat ca orice altă valoare. Câmpurile care se pot goli acceptă `null` explicit
+ * (`IsOptional` în DTO-ul de creare); pentru celelalte, `null` primește mesajul de câmp
+ * obligatoriu în loc să ajungă în baza de date și să producă o eroare neașteptată.
+ */
+export const NULL_IS_A_VALUE = { skipNullProperties: false } as const;
+
+/**
+ * Câmp opțional care nu poate fi golit: lipsa lui înseamnă „neschimbat”, iar `null` este
+ * respins cu mesajul validatorului (în loc de `IsOptional`, care ar lăsa `null` să treacă).
+ */
+export function IsOptionalNotNull(): PropertyDecorator {
+  return ValidateIf((_: unknown, value: unknown) => value !== undefined);
 }

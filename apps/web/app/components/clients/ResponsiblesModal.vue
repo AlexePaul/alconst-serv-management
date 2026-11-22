@@ -49,7 +49,7 @@ async function save() {
   <UModal
     v-model:open="open"
     title="Responsabili"
-    :description="`Utilizatorii care pot vedea și modifica ${client.name}. Administratorii au acces la toți clienții.`"
+    :description="`Utilizatorii care pot vedea și modifica ${client.name}. Cine este scos din listă predă deplasările și ce are de făcut la acest client primului responsabil nou (sau unuia rămas).`"
     :dismissible="!loading"
     :ui="{ footer: 'justify-end' }"
   >

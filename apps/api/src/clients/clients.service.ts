@@ -250,9 +250,36 @@ export class ClientsService {
     auth: AuthContext,
     client: ClientInfo,
   ): Promise<ClientDto> {
-    const existing = await this.prisma.db.client.findUnique({ where: { id } });
+    const existing = await this.prisma.db.client.findUnique({
+      where: { id },
+      include: { assignments: { select: { userId: true } } },
+    });
     if (!existing) throw AppException.notFound('Clientul nu există.');
     await this.assertActiveUsers(userIds);
+
+    // Cine nu mai este responsabil predă activitățile recurente și ce are deschis la acest client,
+    // ca la predarea definitivă: altfel ar rămâne cu deplasările și reamintirile unui client care
+    // nu mai este al lui. Primește un responsabil nou, dacă există, altfel unul rămas.
+    const previous = existing.assignments.map((assignment) => assignment.userId);
+    const removed = previous.filter((userId) => !userIds.includes(userId));
+    const heir = userIds.find((userId) => !previous.includes(userId)) ?? userIds[0];
+    const handOver =
+      heir && removed.length > 0
+        ? [
+            this.prisma.db.obligation.updateMany({
+              where: { clientId: id, assigneeId: { in: removed } },
+              data: { assigneeId: heir },
+            }),
+            this.prisma.db.task.updateMany({
+              where: {
+                clientId: id,
+                assigneeId: { in: removed },
+                status: { in: ['TODO', 'IN_PROGRESS'] },
+              },
+              data: { assigneeId: heir },
+            }),
+          ]
+        : [];
 
     await this.prisma.db.$transaction([
       this.prisma.db.clientAssignment.deleteMany({
@@ -262,6 +289,7 @@ export class ClientsService {
         data: userIds.map((userId) => ({ clientId: id, userId })),
         skipDuplicates: true,
       }),
+      ...handOver,
     ]);
     await this.activity.log({
       action: 'client.responsibles_updated',
@@ -315,6 +343,7 @@ export class ClientsService {
       isActive: true,
     };
     // „Azi” în fusul orar al firmei, nu în UTC.
+    const today = parseDateOnly(this.config.today());
     const horizon = parseDateOnly(this.config.today());
     horizon.setUTCDate(horizon.getUTCDate() + EXPIRING_WINDOW_DAYS);
 
@@ -322,7 +351,16 @@ export class ClientsService {
       this.prisma.db.client.count({ where: visibleActive }),
       this.prisma.db.client.aggregate({ where: visibleActive, _sum: { employeeCount: true } }),
       this.prisma.db.contractFee.findMany({
-        where: { contract: { status: 'ACTIVE', client: visibleActive } },
+        // Doar contractele în vigoare azi: unul expirat (dar neînchis) sau care începe abia de
+        // acum înainte nu aduce încă venit.
+        where: {
+          contract: {
+            status: 'ACTIVE',
+            client: visibleActive,
+            startDate: { lte: today },
+            OR: [{ endDate: null }, { endDate: { gte: today } }],
+          },
+        },
         select: { amount: true, frequencyUnit: true, frequencyInterval: true },
       }),
       this.prisma.db.contract.findMany({

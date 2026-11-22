@@ -294,6 +294,75 @@ describe('Obligații, task-uri și notificări (e2e)', () => {
       await del(`/api/tasks/${personal.id}`, dan.cookie).expect(204);
     });
 
+    it('după predarea clientului, fostul responsabil nu mai vede și nu mai schimbă nimic', async () => {
+      const obligation = await createObligation();
+      const manual = await createTask(ana.cookie, { title: 'Manual', assigneeId: ana.id });
+      await post(`/api/clients/${clientId}/transfer`, admin.cookie, {
+        fromUserId: ana.id,
+        toUserId: dan.id,
+      }).expect(200);
+
+      expect(
+        (await get(`/api/obligations?clientId=${clientId}`, ana.cookie).expect(200)).body.total,
+      ).toBe(0);
+      await patch(`/api/obligations/${obligation.id}`, ana.cookie, { title: 'X' }).expect(404);
+      await del(`/api/obligations/${obligation.id}`, ana.cookie).expect(404);
+      // Și sarcinile create de ea au trecut la Dan, odată cu clientul.
+      await get(`/api/tasks/${manual.id}`, ana.cookie).expect(404);
+      expect(
+        (await get(`/api/tasks?clientId=${clientId}`, ana.cookie).expect(200)).body.total,
+      ).toBe(0);
+      expect((await get(`/api/tasks/${manual.id}`, dan.cookie).expect(200)).body.assignee.id).toBe(
+        dan.id,
+      );
+    });
+
+    it('un coleg care doar înlocuiește face deplasarea, dar nu schimbă clientul sau programul', async () => {
+      const obligation = await createObligation();
+      const [first] = await tasksOf(obligation.id);
+      await patch(`/api/tasks/${first!.id}`, ana.cookie, { assigneeId: dan.id }).expect(200);
+
+      // Ce ține de deplasare: permis.
+      await patch(`/api/tasks/${first!.id}`, dan.cookie, {
+        dueDate: addDays(today, 1),
+        startTime: '09:00',
+        notes: 'Merg mâine',
+        clientConfirmed: true,
+      }).expect(200);
+      // Ce ține de client sau de program: interzis.
+      await patch(`/api/tasks/${first!.id}`, dan.cookie, { title: 'Altceva' }).expect(403);
+      await patch(`/api/tasks/${first!.id}`, dan.cookie, { clientId: null }).expect(403);
+      await patch(`/api/tasks/${first!.id}`, dan.cookie, { assigneeId: admin.id }).expect(403);
+      await patch(`/api/obligations/${obligation.id}`, dan.cookie, { title: 'X' }).expect(404);
+      // Golirea numărului de angajați nu este permisă nimănui.
+      await patch(`/api/tasks/${first!.id}`, dan.cookie, { clientEmployeeCount: null }).expect(400);
+      // Înapoi la responsabilul clientului: permis.
+      await patch(`/api/tasks/${first!.id}`, dan.cookie, { assigneeId: ana.id }).expect(200);
+    });
+
+    it('schimbarea responsabililor mută și activitățile celui scos', async () => {
+      const obligation = await createObligation();
+      await put(`/api/clients/${clientId}/responsibles`, admin.cookie, {
+        userIds: [dan.id],
+      }).expect(200);
+      const tasks = await tasksOf(obligation.id, 'open');
+      expect(tasks.length).toBeGreaterThan(0);
+      expect(new Set(tasks.map((task) => task.assignee?.id))).toEqual(new Set([dan.id]));
+      const obligations = (
+        await get(`/api/obligations?clientId=${clientId}`, admin.cookie).expect(200)
+      ).body.items as { id: string; assignee: { id: string } | null }[];
+      expect(obligations.find((item) => item.id === obligation.id)?.assignee?.id).toBe(dan.id);
+    });
+
+    it('trimiterea unui câmp obligatoriu gol dă un mesaj, nu o eroare neașteptată', async () => {
+      const task = await createTask(ana.cookie);
+      for (const body of [{ title: null }, { kind: null }, { priority: null }, { status: null }]) {
+        const response = await patch(`/api/tasks/${task.id}`, ana.cookie, body).expect(400);
+        expect(response.body.code).toBe('VALIDATION_FAILED');
+      }
+      await patch(`/api/clients/${clientId}`, ana.cookie, { isActive: null }).expect(400);
+    });
+
     it('filtrează după status, responsabil, interval și text', async () => {
       await createTask(ana.cookie, { title: 'Azi, al Anei', assigneeId: ana.id });
       await createTask(ana.cookie, {

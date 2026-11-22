@@ -14,6 +14,7 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "dependencies": {
+    "@alconst/database": "workspace:*",
     "@alconst/shared": "workspace:*",
     "@nestjs/bullmq": "^12.0.1",
     "@nestjs/common": "^12.0.1",
@@ -23,12 +24,13 @@
     "nodemailer": "^10.5.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "@alconst/database": "workspace:*"
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.0",
     "@nestjs/schematics": "^12.0.0",
     "@types/node": "^22.18.0",
+    "@types/web-push": "^3.6.4",
     "oxlint": "^1.58.0",
     "oxlint-tsgolint": "^7.0.2001",
     "typescript": "^6.0.3",

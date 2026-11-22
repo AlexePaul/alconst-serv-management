@@ -31,6 +31,8 @@ export function useAuth() {
   }
 
   async function logout(): Promise<void> {
+    // Pe un dispozitiv folosit și de altcineva, notificările nu trebuie să mai ajungă aici.
+    await usePushNotifications().disable().catch(() => {})
     try {
       await api('/auth/logout', { method: 'POST' })
     } catch {

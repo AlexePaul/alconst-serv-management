@@ -16,6 +16,7 @@ import { SystemController } from './health/system.controller.js';
 import { MailQueueModule } from './mail/mail-queue.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { PushModule } from './push/push.module.js';
 import { TasksModule } from './tasks/tasks.module.js';
 import { UsersModule } from './users/users.module.js';
 
@@ -32,6 +33,7 @@ import { UsersModule } from './users/users.module.js';
       }),
     }),
     MailQueueModule,
+    PushModule,
     NotificationsModule,
     ActivityModule,
     AuthModule,

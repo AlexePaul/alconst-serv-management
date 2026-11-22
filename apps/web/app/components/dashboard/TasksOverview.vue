@@ -144,7 +144,7 @@ const { toggle: complete, busyId, dialogOpen, dialogTask, skipped } = useTaskCom
             <li v-for="task in section.tasks.slice(0, 6)" :key="task.id" class="flex items-start gap-2.5 px-4 py-2.5">
               <button
                 type="button"
-                class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border border-accented text-transparent transition-colors hover:border-success hover:text-success"
+                class="relative mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-accented text-transparent transition-colors before:absolute before:-inset-2.5 before:content-[''] hover:border-success hover:text-success"
                 :disabled="busyId === task.id"
                 :aria-label="`Marchează „${task.title}” ca finalizat`"
                 @click="complete(task)"
@@ -154,7 +154,7 @@ const { toggle: complete, busyId, dialogOpen, dialogTask, skipped } = useTaskCom
               <div class="min-w-0 flex-1">
                 <button type="button" class="block w-full text-left" @click="openTask(task)">
                   <p class="truncate text-sm font-medium text-highlighted">
-                    <UIcon v-if="task.kind === 'VISIT'" :name="TASK_KIND_ICONS.VISIT" class="mr-1 inline size-3.5 align-[-2px] text-primary" />{{ task.title }}
+                    <UIcon v-if="task.kind === 'VISIT'" :name="TASK_KIND_ICONS.VISIT" class="mr-1 inline-block size-3.5 align-[-2px] text-primary" />{{ task.title }}
                   </p>
                   <p class="truncate text-xs text-muted">
                     {{ [formatTimeRange(task.startTime, task.endTime), task.client?.name, section.key === 'today' ? null : taskDueInfo(task, today).label, scope === 'all' && task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : null].filter(Boolean).join(' · ') || 'Fără client' }}

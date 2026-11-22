@@ -18,7 +18,13 @@ import {
   FEE_FREQUENCY_UNITS,
   type FeeFrequencyUnit,
 } from '@alconst/shared';
-import { IsDateOnly, IsOptionalDateOnly, IsOptionalText } from '../../common/dto-decorators.js';
+import {
+  IsDateOnly,
+  IsOptionalDateOnly,
+  IsOptionalText,
+  NULL_IS_A_VALUE,
+  IsOptionalNotNull,
+} from '../../common/dto-decorators.js';
 
 export class ContractFeeInput {
   @Transform(({ value }: { value: unknown }) => (value === '' ? null : value))
@@ -60,7 +66,7 @@ export class CreateContractDto {
   @IsOptionalDateOnly('Data expirării')
   endDate?: string | null;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsIn(CONTRACT_STATUSES, { message: 'Statusul nu este valid.' })
   status?: ContractStatus;
 
@@ -68,8 +74,8 @@ export class CreateContractDto {
   notes?: string | null;
 
   /** Tarifele contractului. La actualizare, lista trimisă o înlocuiește integral pe cea existentă. */
-  @IsOptional()
-  @IsArray()
+  @IsOptionalNotNull()
+  @IsArray({ message: 'Lista de tarife nu este validă.' })
   @ArrayMaxSize(30, { message: 'Un contract poate avea cel mult 30 de tarife.' })
   @ValidateNested({ each: true })
   @Type(() => ContractFeeInput)
@@ -77,7 +83,10 @@ export class CreateContractDto {
 }
 
 /** Contractul nu poate fi mutat la alt client. */
-export class UpdateContractDto extends PartialType(OmitType(CreateContractDto, ['clientId'])) {}
+export class UpdateContractDto extends PartialType(
+  OmitType(CreateContractDto, ['clientId']),
+  NULL_IS_A_VALUE,
+) {}
 
 export class ListContractsQuery {
   @IsUUID('all', { message: 'Client invalid.' })

@@ -11,6 +11,7 @@ export function useUnreadNotifications() {
   async function refresh(): Promise<void> {
     try {
       count.value = (await api<{ count: number }>('/notifications/unread-count')).count
+      setAppBadge(count.value)
     } catch {
       // Indicatorul nu este esențial; la o eroare de rețea păstrăm ultima valoare cunoscută.
     }

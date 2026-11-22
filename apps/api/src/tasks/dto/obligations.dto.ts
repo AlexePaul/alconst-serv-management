@@ -25,6 +25,8 @@ import {
   IsOptionalText,
   IsOptionalTime,
   IsTrimmedText,
+  NULL_IS_A_VALUE,
+  IsOptionalNotNull,
 } from '../../common/dto-decorators.js';
 import { PaginationQuery, STATUS_FILTERS, type StatusFilter } from '../../common/pagination.js';
 
@@ -37,11 +39,11 @@ export class CreateObligationDto {
   @IsOptionalText('Descrierea', 5000)
   description?: string | null;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsIn(TASK_KINDS, { message: 'Tipul nu este valid.' })
   kind?: TaskKind;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsIn(TASK_PRIORITIES, { message: 'Prioritatea nu este validă.' })
   priority?: TaskPriority;
 
@@ -63,7 +65,7 @@ export class CreateObligationDto {
   @IsIn(RECURRENCE_UNITS, { message: 'Frecvența nu este validă.' })
   recurrenceUnit: RecurrenceUnit;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsInt({ message: 'Intervalul trebuie să fie un număr întreg.' })
   @Min(1, { message: 'Intervalul trebuie să fie cel puțin 1.' })
   @Max(120, { message: 'Intervalul este prea mare.' })
@@ -79,7 +81,7 @@ export class CreateObligationDto {
    * Termen flexibil: poate fi făcută oricând în luna (sau săptămâna) în care cade termenul.
    * Implicit activ.
    */
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsBoolean({ message: 'Opțiunea pentru termen flexibil nu este validă.' })
   dueWithinPeriod?: boolean;
 
@@ -89,12 +91,12 @@ export class CreateObligationDto {
   @IsOptionalTime('Ora de sfârșit')
   endTime?: string | null;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsBoolean({ message: 'Statusul nu este valid.' })
   isActive?: boolean;
 }
 
-export class UpdateObligationDto extends PartialType(CreateObligationDto) {}
+export class UpdateObligationDto extends PartialType(CreateObligationDto, NULL_IS_A_VALUE) {}
 
 export class ListObligationsQuery extends PaginationQuery {
   @IsOptional()

@@ -125,7 +125,9 @@ export default defineNuxtConfig({
   },
 
   pwa: {
-    registerType: 'autoUpdate',
+    // O versiune nouă nu reîncarcă pagina în mijlocul unui formular: se instalează la următoarea
+    // schimbare de pagină sau la cerere (plugins/pwa-app.client.ts).
+    registerType: 'prompt',
     manifest: {
       id: '/',
       name: 'Alconst Serv – Management SSM/PSI',
@@ -138,22 +140,35 @@ export default defineNuxtConfig({
       orientation: 'any',
       background_color: '#ffffff',
       theme_color: '#344881',
+      categories: ['business', 'productivity'],
       icons: [
         { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
         { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },
         { src: '/pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+      ],
+      // Apăsarea lungă pe iconiță (Android) duce direct la paginile folosite des.
+      shortcuts: [
+        { name: 'De făcut', short_name: 'De făcut', url: '/task-uri', icons: [{ src: '/pwa-192.png', sizes: '192x192', type: 'image/png' }] },
+        { name: 'Calendar', short_name: 'Calendar', url: '/calendar', icons: [{ src: '/pwa-192.png', sizes: '192x192', type: 'image/png' }] },
+        { name: 'Clienți', short_name: 'Clienți', url: '/clienti', icons: [{ src: '/pwa-192.png', sizes: '192x192', type: 'image/png' }] }
       ]
     },
     workbox: {
       // Fără mod offline: service worker-ul păstrează doar „carcasa” aplicației pentru pornire
       // rapidă. Datele vin mereu din rețea, iar /api nu este niciodată servit din cache.
+      // Fără conexiune, aplicația afișează o bandă de avertizare (components/OfflineBanner.vue).
       globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
       navigateFallback: '/',
       navigateFallbackDenylist: [/^\/api\//],
-      cleanupOutdatedCaches: true
+      cleanupOutdatedCaches: true,
+      // Afișarea notificărilor pe telefon (Web Push) și deschiderea lor: public/push-sw.js.
+      importScripts: ['/push-sw.js']
     },
     client: {
-      installPrompt: false
+      // Pe Android, instalarea se oferă printr-un buton propriu (components/PhoneSetupCard.vue).
+      installPrompt: 'alconst:pwa-install-hidden',
+      // Aplicația instalată stă deschisă zile întregi: verifică din oră în oră dacă există o versiune nouă.
+      periodicSyncForUpdates: 3600
     },
     devOptions: {
       enabled: false

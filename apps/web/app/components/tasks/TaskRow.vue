@@ -23,7 +23,7 @@ const period = computed(() => taskPeriodLabel(props.task))
   <div class="flex items-start gap-3 px-4 py-3 sm:px-5">
     <button
       type="button"
-      class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border transition-colors"
+      class="relative mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors before:absolute before:-inset-2 before:content-['']"
       :class="task.status === 'DONE'
         ? 'border-success bg-success text-inverted'
         : task.status === 'CANCELLED'

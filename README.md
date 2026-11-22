@@ -102,7 +102,8 @@ Testele e2e folosesc o bază de date separată (`alconst_test`), creată automat
 - **Jurnal de activitate** (audit log) pentru autentificări și toate modificările de date.
 - **Interfață**: layout cu sidebar pe desktop și meniu adaptat pe mobil, temă luminoasă/întunecată,
   interfață în limba română, logo-ul și culorile firmei.
-- **PWA**: instalabilă pe iPhone (Add to Home Screen), fără mod offline.
+- **PWA**: instalabilă pe iPhone și Android, cu instrucțiuni pas cu pas în aplicație; se
+  actualizează singură fără să întrerupă un formular și avertizează când telefonul nu are internet.
 - **Worker**: coadă BullMQ pentru emailuri – baza pentru generarea documentelor și notificări.
 
 **Etapa 2 – Clienți**
@@ -150,6 +151,9 @@ Testele e2e folosesc o bază de date separată (`alconst_test`), creată automat
 - **Emailuri imediate** pentru task-urile atribuite și cererile de predare.
 - **Pagina principală**: restanțe, termenele de azi și din următoarele 7 zile.
 - **Mobil**: bară de navigare rapidă către task-uri, calendar, clienți și notificări.
+- **Notificări pe telefon (Web Push)**: imediat pentru ce primești de la colegi, iar ziua (7–21)
+  reamintirile de termen; numărul de necitite pe iconița aplicației. Pornite din „Contul meu”,
+  fără configurare pe server (cheile se generează automat).
 
 **Etapa 4 – Documente (prima parte)**
 

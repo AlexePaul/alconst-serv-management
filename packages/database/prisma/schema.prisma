@@ -52,6 +52,7 @@ model User {
   transfersTo          ClientTransferRequest[] @relation("TransferTo")
   transfersInitiated   ClientTransferRequest[] @relation("TransferInitiatedBy")
   notificationSettings NotificationSettings?
+  pushSubscriptions    PushSubscription[]
   createdFolders       DocumentFolder[]        @relation("FolderCreatedBy")
   uploadedFiles        DocumentFile[]          @relation("FileUploadedBy")
   archivedFiles        DocumentFile[]          @relation("FileArchivedBy")
@@ -454,6 +455,8 @@ model Notification {
   /// Constrângerea de unicitate garantează că aceeași notificare nu este creată de două ori.
   dedupeKey String    @unique
   readAt    DateTime?
+  /// Momentul în care notificarea a fost trimisă (sau inclusă într-un rezumat) pe telefon.
+  pushedAt  DateTime?
   createdAt DateTime  @default(now())
 
   user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -580,6 +583,37 @@ model DocumentFile {
 /// Ultima rulare reușită a unui proces de fundal, scrisă de worker. Dacă rularea periodică se
 /// oprește, administratorii văd acest lucru în aplicație (task-urile recurente, reamintirile și
 /// emailurile depind de ea).
+/// Un telefon sau un browser care primește notificări push (Web Push) pentru un utilizator.
+/// Abonamentul aparține dispozitivului: dacă pe același dispozitiv intră alt utilizator,
+/// abonamentul trece la acesta.
+model PushSubscription {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  userId        String    @db.Uuid
+  /// Adresa serviciului de push al browserului (Apple, Google, Mozilla).
+  endpoint      String    @unique
+  /// Cheile publice ale dispozitivului, folosite pentru criptarea conținutului notificării.
+  p256dh        String
+  auth          String
+  /// Descriere scurtă a dispozitivului (ex. „iPhone”), ca utilizatorul să-l recunoască.
+  deviceLabel   String?
+  createdAt     DateTime  @default(now())
+  lastSuccessAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+/// Setări ale aplicației generate automat la prima utilizare (ex. cheile VAPID pentru Web Push).
+model AppSetting {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+
+  @@map("app_settings")
+}
+
 model WorkerHeartbeat {
   name      String   @id
   lastRunAt DateTime

@@ -329,8 +329,11 @@ Worker-ul rulează din oră în oră o sarcină idempotentă care:
    flexibile, depășirea datei planificate nu este restanță: se mai reamintește doar cu N zile
    înainte de sfârșitul perioadei și în ultima ei zi;
 3. trimite, după ora 7, cel mult un email-rezumat pe zi celor care au reamintiri noi;
-4. șterge sesiunile și linkurile expirate;
-5. își notează rularea (`worker_heartbeats`). Dacă nu mai există nicio rulare de 3 ore,
+4. trimite pe telefon (Web Push), între 7:00 și 21:00, reamintirile noi – câte o singură
+   notificare pe utilizator la fiecare rulare (o reamintire apare ca atare, mai multe ca rezumat);
+   cele create noaptea așteaptă până dimineață;
+5. șterge sesiunile și linkurile expirate;
+6. își notează rularea (`worker_heartbeats`). Dacă nu mai există nicio rulare de 3 ore,
    administratorii văd o avertizare pe pagina principală – oprirea worker-ului nu trece neobservată.
 
 Fiecare reamintire are o cheie care îi descrie motivul (tip, task, destinatar, termen), cu
@@ -345,6 +348,23 @@ un transfer făcut de administrator – sunt anunțate imediat: în aplicație, 
 pe email, dacă destinatarul nu a oprit emailurile. Textul emailurilor este deliberat general
 („Un coleg vrea să îți predea un client”): titlurile task-urilor și numele clienților rămân în
 aplicație și nu trec prin furnizorul de email.
+
+**Notificări pe telefon (Web Push).** Fiecare dispozitiv pe care utilizatorul pornește
+notificările („Contul meu” sau cardul de pe pagina principală) are un rând în
+`push_subscriptions`. Evenimentele de mai sus ajung imediat și pe telefon, cu același text ca în
+aplicație; reamintirile, prin rularea periodică. API-ul doar pune mesajul în coada `push`;
+worker-ul îl trimite (biblioteca `web-push`) și șterge abonamentele pe care serviciul de push le
+declară expirate. Mesajul conține și numărul de notificări necitite, afișat pe iconița aplicației.
+Cheile VAPID se generează automat la prima utilizare și se păstrează în baza de date, deci nu
+necesită configurare; schimbarea lor ar invalida abonamentele existente. Pe iPhone, notificările
+funcționează doar pentru aplicația adăugată pe ecranul principal (iOS 16.4+), iar aplicația
+explică pașii.
+
+**Aplicația instalată (PWA).** Service worker-ul păstrează doar „carcasa” aplicației; datele vin
+mereu de la server. La revenirea în aplicație după mai mult de un minut, datele afișate se
+reîncarcă singure (pe iPhone aplicația instalată nu are buton de reîncărcare). O versiune nouă se
+instalează la următoarea schimbare de pagină, nu în mijlocul unui formular, iar fără internet o
+bandă galbenă avertizează că modificările nu se pot salva.
 
 „Azi” se stabilește în fusul orar al firmei (`APP_TIMEZONE`, implicit `Europe/Bucharest`), atât în
 API, cât și în worker și în interfață.

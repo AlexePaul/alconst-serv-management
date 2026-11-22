@@ -1,6 +1,11 @@
 import { OmitType, PartialType } from '@nestjs/mapped-types';
 import { IsUUID } from 'class-validator';
-import { IsOptionalEmail, IsOptionalText, IsTrimmedText } from '../../common/dto-decorators.js';
+import {
+  IsOptionalEmail,
+  IsOptionalText,
+  IsTrimmedText,
+  NULL_IS_A_VALUE,
+} from '../../common/dto-decorators.js';
 
 export class CreateContactDto {
   @IsUUID('all', { message: 'Client invalid.' })
@@ -23,7 +28,10 @@ export class CreateContactDto {
 }
 
 /** Contactul nu poate fi mutat la alt client. */
-export class UpdateContactDto extends PartialType(OmitType(CreateContactDto, ['clientId'])) {}
+export class UpdateContactDto extends PartialType(
+  OmitType(CreateContactDto, ['clientId']),
+  NULL_IS_A_VALUE,
+) {}
 
 export class ListContactsQuery {
   @IsUUID('all', { message: 'Client invalid.' })

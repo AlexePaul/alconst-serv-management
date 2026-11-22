@@ -7,7 +7,11 @@ import { PrismaService } from '../prisma/prisma.service.js';
 /**
  * Regulile de acces la task-uri și obligații:
  *  - administratorii văd tot;
- *  - un angajat vede ce îi este atribuit, ce a creat el și tot ce ține de clienții lui.
+ *  - un angajat vede tot ce ține de clienții lui, ce îi este atribuit lui și activitățile fără
+ *    client create de el.
+ *
+ * Accesul la ce ține de un client urmează întotdeauna responsabilitatea pentru client: cine a
+ * creat o activitate recurentă pentru un client predat apoi unui coleg nu mai are acces la ea.
  */
 @Injectable()
 export class TaskAccessService {
@@ -19,15 +23,49 @@ export class TaskAccessService {
   taskScope(user: User): Prisma.TaskWhereInput {
     if (user.role === 'ADMIN') return {};
     return {
-      OR: [{ assigneeId: user.id }, { createdById: user.id }, { client: this.clients.scope(user) }],
+      OR: [
+        { assigneeId: user.id },
+        { clientId: null, createdById: user.id },
+        { client: this.clients.scope(user) },
+      ],
     };
   }
 
+  /** Ce activități recurente vede un angajat. */
   obligationScope(user: User): Prisma.ObligationWhereInput {
     if (user.role === 'ADMIN') return {};
     return {
-      OR: [{ assigneeId: user.id }, { createdById: user.id }, { client: this.clients.scope(user) }],
+      OR: [
+        { assigneeId: user.id },
+        { clientId: null, createdById: user.id },
+        { client: this.clients.scope(user) },
+      ],
     };
+  }
+
+  /**
+   * Ce activități recurente poate modifica sau șterge un angajat: cele ale clienților lui și cele
+   * fără client create de el sau atribuite lui. Un coleg care doar face deplasările unui client
+   * al altcuiva le vede, dar nu poate schimba programul clientului.
+   */
+  obligationManageScope(user: User): Prisma.ObligationWhereInput {
+    if (user.role === 'ADMIN') return {};
+    return {
+      OR: [
+        { clientId: null, OR: [{ createdById: user.id }, { assigneeId: user.id }] },
+        { client: this.clients.scope(user) },
+      ],
+    };
+  }
+
+  /** Clientul este al utilizatorului (sau utilizatorul este administrator). */
+  async ownsClient(clientId: string | null, user: User): Promise<boolean> {
+    if (user.role === 'ADMIN') return true;
+    if (!clientId) return false;
+    const count = await this.prisma.db.client.count({
+      where: { id: clientId, ...this.clients.scope(user) },
+    });
+    return count > 0;
   }
 
   /**
@@ -65,12 +103,18 @@ export class TaskAccessService {
     const location = clientId
       ? await this.prisma.db.location.findFirst({
           where: { id: locationId, clientId },
-          select: { id: true },
+          select: { id: true, isActive: true },
         })
       : null;
     if (!location) {
       throw AppException.validation('Punctul de lucru nu aparține clientului ales.', {
         locationId: ['Punctul de lucru nu aparține clientului ales.'],
+      });
+    }
+    // Validat doar când punctul de lucru este ales acum: ce era deja ales rămâne neschimbat.
+    if (!location.isActive) {
+      throw AppException.validation('Punctul de lucru este arhivat. Alege altul.', {
+        locationId: ['Punctul de lucru este arhivat. Alege altul.'],
       });
     }
   }

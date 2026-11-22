@@ -22,6 +22,7 @@ import { formatDateOnly, parseDateOnly } from '../common/dates.js';
 import { statusWhere } from '../common/pagination.js';
 import type { AuthContext, ClientInfo } from '../common/request-context.js';
 import { AppConfig } from '../config/app-config.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type {
   CreateObligationDto,
@@ -55,6 +56,7 @@ export class ObligationsService {
     private readonly config: AppConfig,
     private readonly access: TaskAccessService,
     private readonly activity: ActivityService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async list(query: ListObligationsQuery, auth: AuthContext): Promise<Paginated<ObligationDto>> {
@@ -129,6 +131,9 @@ export class ObligationsService {
       entityLabel: created.title,
       ip: client.ip,
     });
+    if (dto.assigneeId && dto.assigneeId !== auth.user.id) {
+      await this.notifyAssigned(created, dto.assigneeId);
+    }
     return this.toDto(await this.find(created.id, auth));
   }
 
@@ -148,7 +153,7 @@ export class ObligationsService {
     auth: AuthContext,
     client: ClientInfo,
   ): Promise<ObligationDto> {
-    const before = await this.find(id, auth);
+    const before = await this.find(id, auth, 'manage');
 
     const clientId = dto.clientId !== undefined ? dto.clientId : before.clientId;
     const locationId =
@@ -230,6 +235,10 @@ export class ObligationsService {
       // Intervalul orar se propagă doar dacă s-a schimbat, ca să nu suprascrie orele ajustate
       // manual pe task-uri la o modificare fără legătură (ex. titlul).
       ...(timeChanged ? { startTime, endTime } : {}),
+      // Ce s-a stabilit cu clientul nu mai este valabil dacă se schimbă ora sau clientul.
+      ...(timeChanged || clientId !== before.clientId
+        ? { clientConfirmedAt: null, clientConfirmedById: null }
+        : {}),
     };
 
     const pending = this.pendingGeneratedTasks(id);
@@ -283,12 +292,28 @@ export class ObligationsService {
       entityLabel: next.title,
       ip: client.ip,
     });
+    if (assigneeId && assigneeId !== before.assigneeId && assigneeId !== auth.user.id) {
+      await this.notifyAssigned({ id, title: next.title }, assigneeId);
+    }
     return this.toDto(await this.find(id, auth));
+  }
+
+  /** O singură notificare pentru tot programul, nu câte una pentru fiecare apariție. */
+  private notifyAssigned(obligation: { id: string; title: string }, userId: string): Promise<void> {
+    return this.notifications.notify({
+      userId,
+      type: 'TASK_ASSIGNED',
+      subjectId: obligation.id,
+      title: 'Ai primit o activitate care se repetă',
+      body: obligation.title,
+      link: '/obligatii',
+      emailMessage: 'Un coleg ți-a dat o activitate care se repetă în aplicația Alconst Serv.',
+    });
   }
 
   /** Șterge obligația și task-urile ei viitoare neîncepute; restul task-urilor rămân în evidență. */
   async remove(id: string, auth: AuthContext, client: ClientInfo): Promise<void> {
-    const existing = await this.find(id, auth);
+    const existing = await this.find(id, auth, 'manage');
     await this.prisma.db.$transaction(async (tx) => {
       await lockObligations(tx, { obligationId: id });
       await tx.task.deleteMany({ where: this.pendingGeneratedTasks(id) });
@@ -317,12 +342,26 @@ export class ObligationsService {
     });
   }
 
-  private async find(id: string, auth: AuthContext): Promise<Row> {
+  private async find(
+    id: string,
+    auth: AuthContext,
+    purpose: 'view' | 'manage' = 'view',
+  ): Promise<Row> {
     const row = await this.prisma.db.obligation.findFirst({
       where: { id, ...this.access.obligationScope(auth.user) },
       include,
     });
     if (!row) throw AppException.notFound('Activitatea recurentă nu există.');
+    if (purpose === 'manage') {
+      const allowed = await this.prisma.db.obligation.count({
+        where: { id, ...this.access.obligationManageScope(auth.user) },
+      });
+      if (allowed === 0) {
+        throw AppException.forbidden(
+          'Programul acestui client îl pot schimba doar responsabilii lui sau un administrator.',
+        );
+      }
+    }
     return row;
   }
 
