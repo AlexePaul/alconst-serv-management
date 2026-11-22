@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
 
-const { isAdmin } = useAuth()
+const { user, isAdmin } = useAuth()
 const route = useRoute()
 const { count: unread, startPolling } = useUnreadNotifications()
 
-startPolling()
+/** Cu o parolă temporară, singura pagină disponibilă este „Contul meu”: meniul nu se afișează. */
+const locked = computed(() => user.value?.mustChangePassword === true)
+
+startPolling(() => !locked.value)
 
 const open = ref(false)
 
@@ -51,7 +54,7 @@ function isActive(item: { to: string, exact?: boolean }): boolean {
 </script>
 
 <template>
-  <UDashboardGroup unit="rem" class="max-lg:bottom-[calc(3.5rem+env(safe-area-inset-bottom))]">
+  <UDashboardGroup unit="rem" :class="locked ? '' : 'max-lg:bottom-[calc(3.5rem+env(safe-area-inset-bottom))]'">
     <UDashboardSidebar
       id="main"
       v-model:open="open"
@@ -72,6 +75,7 @@ function isActive(item: { to: string, exact?: boolean }): boolean {
 
       <template #default="{ collapsed }">
         <UNavigationMenu
+          v-if="!locked"
           :collapsed="collapsed"
           :items="mainItems"
           orientation="vertical"
@@ -79,7 +83,7 @@ function isActive(item: { to: string, exact?: boolean }): boolean {
         />
 
         <UNavigationMenu
-          v-if="isAdmin"
+          v-if="isAdmin && !locked"
           :collapsed="collapsed"
           :items="adminItems"
           orientation="vertical"
@@ -97,6 +101,7 @@ function isActive(item: { to: string, exact?: boolean }): boolean {
   </UDashboardGroup>
 
   <nav
+    v-if="!locked"
     class="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t border-default bg-default pb-[env(safe-area-inset-bottom)] lg:hidden"
     aria-label="Navigare rapidă"
   >

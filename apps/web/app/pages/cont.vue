@@ -73,7 +73,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           description="Contul tău folosește o parolă temporară stabilită de un administrator. Până la schimbarea ei, restul aplicației nu este disponibil."
         />
 
-        <UCard>
+        <UCard v-if="!user.mustChangePassword">
           <div class="flex items-center gap-4">
             <UAvatar :text="initials(user.firstName, user.lastName)" size="xl" />
             <div class="min-w-0">
@@ -109,11 +109,14 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </template>
 
           <UForm
+
             ref="form"
+            novalidate
             :schema="schema"
             :state="state"
             class="space-y-5"
             @submit="onSubmit"
+            @error="scrollToFirstError()"
           >
             <UAlert
               v-if="errorMessage"

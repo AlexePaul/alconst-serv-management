@@ -31,7 +31,7 @@ function frequencyLabel(obligation: ObligationDto): string {
 /** Următoarea dată este restantă abia după ce s-a încheiat și perioada ei (la termenele flexibile). */
 function isLate(obligation: ObligationDto): boolean {
   const next = obligation.nextDueDate
-  if (!next || next >= today) return false
+  if (!next || next >= today || obligation.clientArchived) return false
   const period = obligation.dueWithinPeriod ? occurrencePeriod(obligation.recurrenceUnit, next) : null
   return !period || period.end < today
 }
@@ -131,7 +131,7 @@ defineExpose({ openCreate })
       <UInput
         v-model="search"
         icon="i-lucide-search"
-        placeholder="Caută după titlu sau client"
+        placeholder="Caută titlu sau client"
         aria-label="Caută activități recurente"
         class="w-full sm:w-72"
       />
@@ -196,6 +196,14 @@ defineExpose({ openCreate })
                 size="sm"
               />
               <UBadge
+                v-if="obligation.isActive && obligation.clientArchived"
+                label="Suspendată – client arhivat"
+                icon="i-lucide-archive"
+                color="warning"
+                variant="subtle"
+                size="sm"
+              />
+              <UBadge
                 v-if="!obligation.isActive"
                 label="Inactivă"
                 color="neutral"
@@ -204,8 +212,8 @@ defineExpose({ openCreate })
               />
             </p>
             <p class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">
-              <span v-if="obligation.client && !clientId" class="inline-flex items-center gap-1">
-                <UIcon name="i-lucide-building-2" class="size-3.5" />{{ obligation.client.name }}
+              <span v-if="obligation.client && !clientId" class="inline-flex min-w-0 max-w-full items-center gap-1">
+                <UIcon name="i-lucide-building-2" class="size-3.5 shrink-0" /><span class="truncate">{{ obligation.client.name }}</span>
               </span>
               <span v-if="obligation.location" class="inline-flex items-center gap-1">
                 <UIcon name="i-lucide-map-pin" class="size-3.5" />{{ obligation.location.name }}

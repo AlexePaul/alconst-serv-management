@@ -54,6 +54,19 @@ const skippedLabel = computed(() => {
   return one ? 'Este făcut și acela – marchează-l ca finalizat' : 'Sunt făcute și acelea – marchează-le ca finalizate'
 })
 
+/** Bifa pusă din greșeală: activitățile redevin de făcut. */
+async function undo(targets: TaskDto[]) {
+  try {
+    for (const target of targets) {
+      await api(`/tasks/${target.id}`, { method: 'PATCH', body: { status: target.status } })
+    }
+    toast.add({ title: 'Bifa a fost anulată', color: 'neutral', icon: 'i-lucide-undo-2' })
+  } catch (error) {
+    toast.add({ title: 'Operațiunea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
+  }
+  emit('done')
+}
+
 async function finish(sheetsCompleted?: boolean) {
   const current = props.task
   if (!current || headcountError.value) return
@@ -84,7 +97,8 @@ async function finish(sheetsCompleted?: boolean) {
       title: isVisit.value ? 'Deplasare făcută' : 'Activitate făcută',
       description: details || current.title,
       color: 'success',
-      icon: 'i-lucide-check'
+      icon: 'i-lucide-check',
+      actions: [{ label: 'Anulează', color: 'neutral', variant: 'outline', onClick: () => { undo(targets) } }]
     })
     open.value = false
     emit('done')

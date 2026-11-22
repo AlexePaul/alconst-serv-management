@@ -39,6 +39,9 @@ const { data, status, error, refresh } = useLazyAsyncData(
 const { data: settings } = useLazyAsyncData('documents:settings', () => api<DocumentSettingsDto>('/documents/settings'))
 const maxUploadMb = computed(() => settings.value?.maxUploadMb ?? DEFAULT_MAX_UPLOAD_MB)
 
+/** Secțiunea unui client inexistent sau al altcuiva (ex. o adresă deschisă direct). */
+const notFound = computed(() => getApiError(error.value?.cause ?? error.value)?.statusCode === 404)
+
 const folders = computed(() => (showArchived.value ? [] : data.value?.folders ?? []))
 const files = computed(() => data.value?.files ?? [])
 const sectionName = computed(() => data.value?.section.name ?? '')
@@ -59,6 +62,8 @@ function openFolder(id: string | null) {
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 const uploading = ref<{ done: number, total: number } | null>(null)
 const dragging = ref(false)
+/** Pe telefon nu se pot trage fișiere: textul de ajutor nu le pomenește. */
+const canDrag = import.meta.client && window.matchMedia('(pointer: fine)').matches
 
 async function uploadFiles(list: FileList | File[] | null | undefined) {
   const selected = Array.from(list ?? [])
@@ -263,11 +268,11 @@ function fileDetails(file: DocumentFileDto): string {
     @dragleave.self="dragging = false"
     @drop.prevent="onDrop"
   >
-    <div class="mb-4 flex flex-wrap items-center gap-2">
-      <nav class="flex min-w-0 flex-1 flex-wrap items-center gap-1 text-sm" aria-label="Dosarul curent">
+    <div v-if="!notFound" class="mb-4 flex flex-wrap items-center gap-2">
+      <nav class="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-1 text-sm sm:basis-auto" aria-label="Dosarul curent">
         <button
           type="button"
-          class="inline-flex items-center gap-1.5 rounded px-1.5 py-1 font-medium hover:bg-elevated"
+          class="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded px-1.5 py-1 font-medium hover:bg-elevated"
           :class="data?.breadcrumbs.length ? 'text-muted' : 'text-highlighted'"
           @click="openFolder(null)"
         >
@@ -278,7 +283,7 @@ function fileDetails(file: DocumentFileDto): string {
           <UIcon name="i-lucide-chevron-right" class="size-4 shrink-0 text-dimmed" />
           <button
             type="button"
-            class="truncate rounded px-1.5 py-1 font-medium hover:bg-elevated"
+            class="min-w-0 max-w-full truncate rounded px-1.5 py-1 font-medium hover:bg-elevated"
             :class="index === (data?.breadcrumbs.length ?? 0) - 1 ? 'text-highlighted' : 'text-muted'"
             @click="openFolder(crumb.id)"
           >
@@ -311,7 +316,15 @@ function fileDetails(file: DocumentFileDto): string {
     </div>
 
     <UEmpty
-      v-if="error"
+      v-if="error && notFound"
+      icon="i-lucide-folder-x"
+      title="Secțiunea nu este disponibilă"
+      description="Clientul nu există sau documentele lui le văd doar responsabilii lui și administratorii."
+      :actions="[{ label: 'Înapoi la documente', icon: 'i-lucide-arrow-left', to: '/documente' }]"
+      variant="naked"
+    />
+    <UEmpty
+      v-else-if="error"
       icon="i-lucide-cloud-off"
       title="Documentele nu au putut fi încărcate"
       :description="apiErrorMessage(error.cause ?? error)"
@@ -339,7 +352,7 @@ function fileDetails(file: DocumentFileDto): string {
         v-if="isEmpty"
         icon="i-lucide-folder-open"
         :title="showArchived ? 'Niciun fișier arhivat' : 'Dosarul este gol'"
-        :description="showArchived ? undefined : `Trage fișiere aici sau folosește „Încarcă fișiere”. Dimensiunea maximă a unui fișier: ${maxUploadMb} MB.`"
+        :description="showArchived ? undefined : `${canDrag ? 'Trage fișiere aici sau folosește' : 'Apasă'} „Încarcă fișiere”. Dimensiunea maximă a unui fișier: ${maxUploadMb} MB.`"
         variant="naked"
       />
 

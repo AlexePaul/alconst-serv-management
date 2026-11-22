@@ -116,7 +116,7 @@ const columns = computed<TableColumn<ClientListItemDto>[]>(() => [
           <UInput
             v-model="search"
             icon="i-lucide-search"
-            placeholder="Caută după denumire, CUI sau contact"
+            placeholder="Caută client sau CUI"
             aria-label="Caută clienți"
             class="w-full sm:w-80"
           />

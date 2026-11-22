@@ -15,7 +15,12 @@ export function getApiError(error: unknown): ApiErrorBody | null {
 
 /** Mesaj în română, potrivit pentru a fi afișat utilizatorului. */
 export function apiErrorMessage(error: unknown): string {
-  return getApiError(error)?.message ?? NETWORK_ERROR
+  const body = getApiError(error)
+  if (!body) return NETWORK_ERROR
+  // „Verifică datele introduse.” nu spune ce e greșit: când eroarea privește un câmp, arătăm
+  // direct mesajul lui (ex. „Linkul de resetare nu este valid.”).
+  const fieldMessage = Object.values(body.fieldErrors ?? {}).flat()[0]
+  return fieldMessage ?? body.message
 }
 
 /** Erorile de validare de pe server, în formatul așteptat de `UForm.setErrors`. */

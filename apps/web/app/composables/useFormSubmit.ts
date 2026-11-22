@@ -24,6 +24,7 @@ export function useFormSubmit(form: Readonly<Ref<FormLike | null | undefined>>) 
       } else {
         errorMessage.value = apiErrorMessage(error)
       }
+      scrollToFirstError()
       return false
     } finally {
       loading.value = false

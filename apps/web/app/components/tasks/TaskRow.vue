@@ -17,6 +17,14 @@ const open = computed(() => isOpenTask(props.task.status))
 const due = computed(() => taskDueInfo(props.task, props.today))
 const timeRange = computed(() => formatTimeRange(props.task.startTime, props.task.endTime))
 const period = computed(() => taskPeriodLabel(props.task))
+/**
+ * La deplasări, titlul este de obicei doar „Deplasare”: pe primul rând apare clientul, informația
+ * de care are nevoie cine pleacă pe teren.
+ */
+const clientFirst = computed(() => props.task.kind === 'VISIT' && props.task.client !== null && !props.hideClient)
+const heading = computed(() => (clientFirst.value ? props.task.client!.name : props.task.title))
+/** Titlul, când spune mai mult decât tipul (ex. „Deplasare – instruire periodică”). */
+const subtitle = computed(() => (clientFirst.value && props.task.title.trim().toLowerCase() !== TASK_KIND_LABELS.VISIT.toLowerCase() ? props.task.title : null))
 </script>
 
 <template>
@@ -39,7 +47,7 @@ const period = computed(() => taskPeriodLabel(props.task))
     <div class="min-w-0 flex-1">
       <button type="button" class="block w-full text-left" @click="$emit('open')">
         <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span class="font-medium" :class="open ? 'text-highlighted' : 'text-muted line-through'">{{ task.title }}</span>
+          <span class="min-w-0 break-words font-medium" :class="open ? 'text-highlighted' : 'text-muted line-through'">{{ heading }}</span>
           <UBadge
             v-if="task.kind === 'VISIT'"
             :label="TASK_KIND_LABELS.VISIT"
@@ -64,7 +72,7 @@ const period = computed(() => taskPeriodLabel(props.task))
           />
           <UBadge
             v-if="task.isCover"
-            label="Înlocuire"
+            label="În locul unui coleg"
             icon="i-lucide-arrow-left-right"
             color="warning"
             variant="subtle"
@@ -91,7 +99,10 @@ const period = computed(() => taskPeriodLabel(props.task))
           <span v-if="timeRange" class="inline-flex items-center gap-1 font-medium text-default">
             <UIcon name="i-lucide-clock" class="size-3.5" />{{ timeRange }}
           </span>
-          <span v-if="task.client && !hideClient" class="inline-flex max-w-full min-w-0 items-center gap-1">
+          <span v-if="subtitle" class="inline-flex max-w-full min-w-0 items-center gap-1">
+            <UIcon name="i-lucide-clipboard-list" class="size-3.5 shrink-0" /><span class="truncate">{{ subtitle }}</span>
+          </span>
+          <span v-if="task.client && !hideClient && !clientFirst" class="inline-flex max-w-full min-w-0 items-center gap-1">
             <UIcon name="i-lucide-building-2" class="size-3.5 shrink-0" /><span class="truncate">{{ task.client.name }}</span>
           </span>
           <span v-if="task.location" class="inline-flex items-center gap-1">

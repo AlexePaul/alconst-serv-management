@@ -246,10 +246,12 @@ async function confirmDelete() {
     <template #body>
       <UForm
         ref="form"
+        novalidate
         :schema="schema"
         :state="state"
         class="space-y-5"
         @submit="onSubmit"
+        @error="scrollToFirstError()"
       >
         <FormError :message="errorMessage" />
 
@@ -440,7 +442,7 @@ async function confirmDelete() {
           </template>
         </UCollapsible>
 
-        <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
+        <div class="sticky -bottom-4 z-10 -mx-4 -mb-4 flex flex-wrap items-center justify-between gap-2 border-t border-default bg-default px-4 py-3 sm:-bottom-6 sm:-mx-6 sm:-mb-6 sm:px-6">
           <UButton
             v-if="task && !task.obligation && task.status === 'TODO' && !coverOnly"
             color="error"

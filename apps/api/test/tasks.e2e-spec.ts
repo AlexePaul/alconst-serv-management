@@ -388,6 +388,9 @@ describe('Obligații, task-uri și notificări (e2e)', () => {
       ]);
       expect(await titles('search=stefanescu')).toHaveLength(2);
       expect(await titles('search=peste 10')).toEqual(['Peste 10 zile']);
+      // Cuvintele se caută separat, în titlu sau în numele clientului.
+      expect(await titles('search=srl azi')).toEqual(['Azi, al Anei']);
+      expect(await titles('search=azi inexistent')).toEqual([]);
 
       const mine = await get('/api/tasks?assignee=me', ana.cookie).expect(200);
       expect(mine.body.items.map((task: Task) => task.title)).toEqual(['Azi, al Anei']);

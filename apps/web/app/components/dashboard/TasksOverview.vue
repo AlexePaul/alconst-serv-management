@@ -154,10 +154,10 @@ const { toggle: complete, busyId, dialogOpen, dialogTask, skipped } = useTaskCom
               <div class="min-w-0 flex-1">
                 <button type="button" class="block w-full text-left" @click="openTask(task)">
                   <p class="truncate text-sm font-medium text-highlighted">
-                    <UIcon v-if="task.kind === 'VISIT'" :name="TASK_KIND_ICONS.VISIT" class="mr-1 inline-block size-3.5 align-[-2px] text-primary" />{{ task.title }}
+                    <UIcon v-if="task.kind === 'VISIT'" :name="TASK_KIND_ICONS.VISIT" class="mr-1 inline-block size-3.5 align-[-2px] text-primary" />{{ task.kind === 'VISIT' && task.client ? task.client.name : task.title }}
                   </p>
                   <p class="truncate text-xs text-muted">
-                    {{ [formatTimeRange(task.startTime, task.endTime), task.client?.name, section.key === 'today' ? null : taskDueInfo(task, today).label, scope === 'all' && task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : null].filter(Boolean).join(' · ') || 'Fără client' }}
+                    {{ [formatTimeRange(task.startTime, task.endTime), task.kind === 'VISIT' && task.client ? (task.title === TASK_KIND_LABELS.VISIT ? null : task.title) : task.client?.name, section.key === 'today' ? null : taskDueInfo(task, today).label, scope === 'all' && task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : null].filter(Boolean).join(' · ') || (task.client ? '' : 'Fără client') }}
                   </p>
                 </button>
                 <div class="mt-1.5 empty:hidden">

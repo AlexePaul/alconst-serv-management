@@ -83,7 +83,7 @@ onMounted(refreshUnread)
             color="neutral"
             variant="outline"
             icon="i-lucide-check-check"
-            aria-label="Marchează toate ca citite"
+            label="Toate citite"
             class="sm:hidden"
             :disabled="!hasUnread"
             @click="markAllRead"

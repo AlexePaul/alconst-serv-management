@@ -340,11 +340,11 @@ const { toggle, busyId, dialogOpen, dialogTask, skipped } = useTaskCompletion(()
         </template>
 
         <!-- Săptămână -->
-        <div v-else-if="view === 'week'" class="grid gap-3 md:grid-cols-7 md:gap-0 md:overflow-hidden md:rounded-lg md:border md:border-default md:bg-default" :class="status === 'pending' ? 'opacity-70' : ''">
+        <div v-else-if="view === 'week'" class="grid grid-cols-1 gap-3 md:grid-cols-7 md:gap-0 md:overflow-hidden md:rounded-lg md:border md:border-default md:bg-default" :class="status === 'pending' ? 'opacity-70' : ''">
           <div
             v-for="(day, index) in days"
             :key="day"
-            class="rounded-lg border border-default bg-default md:min-h-96 md:rounded-none md:border-0 md:border-r md:last:border-r-0"
+            class="min-w-0 rounded-lg border border-default bg-default md:min-h-96 md:rounded-none md:border-0 md:border-r md:last:border-r-0"
           >
             <div class="flex items-center justify-between gap-2 border-b border-default px-3 py-2" :class="day === today ? 'bg-primary/5' : 'bg-elevated/40'">
               <button type="button" class="text-left text-sm" @click="openDay(day)">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FormSubmitEvent } from '@nuxt/ui'
+import type { FormErrorEvent, FormSubmitEvent } from '@nuxt/ui'
 import type { ClientDto } from '@alconst/shared'
 import { alignToMonthCycle, CUI_PATTERN, formatMonthList, MAX_EMPLOYEE_COUNT, monthCycleOptions, normalizeCui } from '@alconst/shared'
 import { z } from 'zod'
@@ -104,9 +104,19 @@ const responsibleItems = computed(() =>
   userOptions.value.map(user => ({ label: `${user.firstName} ${user.lastName}`, value: user.id }))
 )
 
+/** Câmpurile rare, strânse sub „Mai multe detalii”: secțiunea se deschide dacă unul are o eroare. */
+const DETAIL_FIELDS = new Set(['tradeRegisterNumber', 'legalRepresentative', 'email', 'notes'])
+const detailsOpen = ref(false)
+
+function onFormError(event: FormErrorEvent) {
+  if (event.errors.some(error => error.name && DETAIL_FIELDS.has(error.name))) detailsOpen.value = true
+  scrollToFirstError()
+}
+
 watch(open, (isOpen) => {
   if (!isOpen) return
   reset()
+  detailsOpen.value = isEdit.value
   const client = props.client
   Object.assign(state, {
     name: client?.name ?? '',
@@ -168,10 +178,12 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     <template #body>
       <UForm
         ref="form"
+        novalidate
         :schema="schema"
         :state="state"
         class="space-y-5"
         @submit="onSubmit"
+        @error="onFormError"
       >
         <FormError :message="errorMessage" />
 
@@ -255,7 +267,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           />
         </UFormField>
 
-        <UCollapsible class="rounded-lg border border-default" :default-open="isEdit">
+        <UCollapsible v-model:open="detailsOpen" class="rounded-lg border border-default">
           <UButton
             color="neutral"
             variant="ghost"

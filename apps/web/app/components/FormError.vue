@@ -5,6 +5,8 @@ defineProps<{ message: string | null }>()
 <template>
   <UAlert
     v-if="message"
+    data-form-error
+    role="alert"
     color="error"
     variant="subtle"
     icon="i-lucide-circle-alert"

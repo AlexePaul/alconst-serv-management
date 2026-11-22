@@ -10,6 +10,7 @@ import {
   type ClientListItemDto,
   type ClientsSummaryDto,
   normalizeSearch,
+  searchWords,
   type Paginated,
 } from '@alconst/shared';
 import { ActivityService } from '../activity/activity.service.js';
@@ -66,12 +67,11 @@ export class ClientsService {
   ) {}
 
   async list(query: ListClientsQuery, auth: AuthContext): Promise<Paginated<ClientListItemDto>> {
-    const search = query.search ? normalizeSearch(query.search) : '';
     const where: Prisma.ClientWhereInput = {
       AND: [
         this.access.scope(auth.user),
         statusWhere(query.status),
-        search ? { searchText: { contains: search } } : {},
+        ...searchWords(query.search).map((word) => ({ searchText: { contains: word } })),
         // Filtrul după responsabil are sens doar pentru administratori (angajații își văd doar clienții).
         query.responsibleId && auth.user.role === 'ADMIN'
           ? { assignments: { some: { userId: query.responsibleId } } }

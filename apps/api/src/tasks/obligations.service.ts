@@ -10,6 +10,7 @@ import {
   generationStart,
   nextOccurrence,
   normalizeSearch,
+  searchWords,
   type ObligationDto,
   occurrencePeriod,
   occurrencesBetween,
@@ -35,7 +36,7 @@ import { assertTimeRange } from './time-range.js';
 const OPEN = [...OPEN_TASK_STATUSES];
 
 const include = {
-  client: { select: { id: true, name: true } },
+  client: { select: { id: true, name: true, isActive: true } },
   location: { select: { id: true, name: true } },
   assignee: { select: { id: true, firstName: true, lastName: true } },
   // Cel mai apropiat task deschis = următorul termen real (poate fi reprogramat față de calcul).
@@ -60,20 +61,14 @@ export class ObligationsService {
   ) {}
 
   async list(query: ListObligationsQuery, auth: AuthContext): Promise<Paginated<ObligationDto>> {
-    const search = query.search ? normalizeSearch(query.search) : '';
     const where: Prisma.ObligationWhereInput = {
       AND: [
         this.access.obligationScope(auth.user),
         statusWhere(query.status),
         query.clientId ? { clientId: query.clientId } : {},
-        search
-          ? {
-              OR: [
-                { searchText: { contains: search } },
-                { client: { searchText: { contains: search } } },
-              ],
-            }
-          : {},
+        ...searchWords(query.search).map((word) => ({
+          OR: [{ searchText: { contains: word } }, { client: { searchText: { contains: word } } }],
+        })),
       ],
     };
     const [rows, total] = await Promise.all([
@@ -388,7 +383,8 @@ export class ObligationsService {
       title: row.title,
       description: row.description,
       kind: row.kind,
-      client: row.client,
+      client: row.client ? { id: row.client.id, name: row.client.name } : null,
+      clientArchived: row.client ? !row.client.isActive : false,
       location: row.location,
       assignee: row.assignee,
       priority: row.priority,

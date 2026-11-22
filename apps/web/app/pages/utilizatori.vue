@@ -158,7 +158,7 @@ const columns: TableColumn<UserDto>[] = [
           <UInput
             v-model="search"
             icon="i-lucide-search"
-            placeholder="Caută după nume sau email"
+            placeholder="Caută nume sau email"
             aria-label="Caută utilizatori"
             class="w-full sm:w-72"
           />

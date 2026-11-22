@@ -70,12 +70,15 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       />
 
       <UForm
+
         v-else
         ref="form"
+        novalidate
         :schema="schema"
         :state="state"
         class="space-y-5"
         @submit="onSubmit"
+        @error="scrollToFirstError()"
       >
         <UAlert
           v-if="errorMessage"

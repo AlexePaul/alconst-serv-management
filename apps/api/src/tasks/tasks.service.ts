@@ -4,6 +4,7 @@ import {
   addDays,
   formatTimeRange,
   normalizeSearch,
+  searchWords,
   OPEN_TASK_STATUSES,
   type Paginated,
   type TaskDto,
@@ -95,7 +96,6 @@ export class TasksService {
 
   async list(query: ListTasksQuery, auth: AuthContext): Promise<Paginated<TaskDto>> {
     const status = query.status ?? 'open';
-    const search = query.search ? normalizeSearch(query.search) : '';
     const dueDate: Prisma.DateTimeFilter = {
       ...(query.from ? { gte: parseDateOnly(query.from) } : {}),
       ...(query.to ? { lte: parseDateOnly(query.to) } : {}),
@@ -117,14 +117,9 @@ export class TasksService {
         query.obligationId ? { obligationId: query.obligationId } : {},
         query.kind ? { kind: query.kind } : {},
         query.from || query.to ? { dueDate } : {},
-        search
-          ? {
-              OR: [
-                { searchText: { contains: search } },
-                { client: { searchText: { contains: search } } },
-              ],
-            }
-          : {},
+        ...searchWords(query.search).map((word) => ({
+          OR: [{ searchText: { contains: word } }, { client: { searchText: { contains: word } } }],
+        })),
       ],
     };
 

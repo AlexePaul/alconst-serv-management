@@ -141,8 +141,8 @@ function location(result: DocumentSearchResultDto): string {
           <p v-else-if="visibleSections.length === 0" class="text-sm text-muted">
             Nicio secțiune cu acest nume.
           </p>
-          <ul v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <li v-for="section in visibleSections" :key="section.clientId ?? GENERAL">
+          <ul v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <li v-for="section in visibleSections" :key="section.clientId ?? GENERAL" class="min-w-0">
               <button
                 type="button"
                 class="flex w-full items-center gap-3 rounded-lg border border-default bg-default p-3 text-left transition-colors hover:border-accented hover:bg-elevated/50"

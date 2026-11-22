@@ -13,6 +13,7 @@ import {
   type DocumentSectionDto,
   fileExtension,
   normalizeSearch,
+  searchWords,
 } from '@alconst/shared';
 import { ActivityService } from '../activity/activity.service.js';
 import { ClientAccessService } from '../clients/client-access.service.js';
@@ -166,7 +167,7 @@ export class DocumentsService {
     const rows = await this.prisma.db.documentFile.findMany({
       where: {
         archivedAt: null,
-        searchText: { contains: normalizeSearch(q) },
+        AND: searchWords(q).map((word) => ({ searchText: { contains: word } })),
         ...(clientId ? { clientId } : this.visible(auth.user)),
       },
       include: { ...fileInclude, client: { select: { name: true } } },

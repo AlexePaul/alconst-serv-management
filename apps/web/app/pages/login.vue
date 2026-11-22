@@ -58,10 +58,13 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     />
 
     <UForm
+
+      novalidate
       :schema="schema"
       :state="state"
       class="mt-6 space-y-5"
       @submit="onSubmit"
+      @error="scrollToFirstError()"
     >
       <UFormField label="Email" name="email">
         <UInput

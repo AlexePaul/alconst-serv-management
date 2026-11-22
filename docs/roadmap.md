@@ -83,6 +83,21 @@ Angajații folosesc aplicația mai ales de pe telefon.
       unui formular; verificare din oră în oră
 - [x] Bandă de avertizare fără internet; datele se reîncarcă singure la revenirea în aplicație
 - [x] Bife mai mari, ușor de atins cu degetul; iconițele din text afișate corect
+- [x] Parcurgere completă pe telefon (iPhone și Android emulate), ca angajat și ca administrator,
+      cu reparații:
+  - butonul „Înapoi” al telefonului închide fereastra deschisă, nu părăsește pagina;
+  - butoanele de salvare rămân vizibile jos în formularele lungi, iar la o eroare pagina se
+    derulează singură la câmpul greșit (și deschide „Mai multe detalii”, dacă e acolo);
+  - câmpuri și butoane mai mari pe ecranele tactile; mesajele apar jos, deasupra barei de navigare;
+  - „Anulează” imediat după bifarea unei activități;
+  - la deplasări, primul rând este clientul, nu cuvântul „Deplasare”;
+  - paginile nu mai fug în lateral la clienții cu nume lungi (Documente, Calendar);
+  - filele clientului: Activități și Documente primele, fila aleasă rămâne în adresă;
+  - căutarea cu mai multe cuvinte („fabrica sanatate”) găsește rezultatele;
+  - activitățile recurente ale unui client arhivat apar „Suspendate”;
+  - mesajele de eroare spun ce anume e greșit, fără bulele în engleză ale browserului;
+  - cu parolă temporară, meniul este ascuns până la schimbarea ei;
+  - frecvențele „La 2 luni” și „La 4 luni” în formularul de client.
 - [x] Verificare de tip QA a regulilor de business, cu reparații:
   - fostul responsabil al unui client predat nu mai vede și nu mai schimbă activitățile lui;
   - schimbarea responsabililor mută și activitățile celui scos;

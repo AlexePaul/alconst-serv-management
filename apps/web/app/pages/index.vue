@@ -41,7 +41,7 @@ const today = formatLongDate(new Date())
               color="neutral"
               variant="outline"
               icon="i-lucide-plus"
-              label="Adaugă ceva de făcut"
+              label="Adaugă activitate"
             />
             <UButton
               v-if="isAdmin"
@@ -54,13 +54,13 @@ const today = formatLongDate(new Date())
           </div>
         </section>
 
-        <PhoneSetupCard />
-
         <DashboardSystemStatus v-if="isAdmin" />
 
         <DashboardTransferRequests @changed="refreshNuxtData(['dashboard:clients-summary', 'dashboard:tasks-overview'])" />
 
         <DashboardTasksOverview />
+
+        <PhoneSetupCard />
 
         <DashboardClientsSummary />
 

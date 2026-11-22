@@ -130,7 +130,7 @@ defineExpose({ openCreate, openById, refresh, showMissingSheets })
       <UInput
         v-model="search"
         icon="i-lucide-search"
-        placeholder="Caută după titlu sau client"
+        placeholder="Caută titlu sau client"
         aria-label="Caută în lista de făcut"
         class="w-full sm:w-72"
       />
@@ -138,13 +138,13 @@ defineExpose({ openCreate, openById, refresh, showMissingSheets })
         v-model="status"
         :items="statusItems"
         aria-label="Filtrează după status"
-        class="w-44 shrink-0"
+        class="min-w-0 flex-1 sm:w-44 sm:flex-none"
       />
       <USelect
         v-model="assignee"
         :items="assigneeItems"
         aria-label="Filtrează după responsabil"
-        class="w-48 shrink-0"
+        class="min-w-0 flex-1 sm:w-48 sm:flex-none"
       />
       <UButton
         v-if="clientId"

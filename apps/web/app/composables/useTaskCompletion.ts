@@ -34,12 +34,15 @@ export function useTaskCompletion(onDone: () => unknown) {
           return
         }
       }
+      const previous = task.status
       await api(`/tasks/${task.id}`, { method: 'PATCH', body: { status: open ? 'DONE' : 'TODO' } })
       toast.add({
         title: open ? 'Activitate făcută' : 'Activitate redeschisă',
         description: task.title,
         color: 'success',
-        icon: 'i-lucide-check'
+        icon: 'i-lucide-check',
+        // O bifă pusă din greșeală se anulează dintr-o atingere, fără a căuta activitatea.
+        actions: open ? [{ label: 'Anulează', color: 'neutral', variant: 'outline', onClick: () => { undo(task, previous) } }] : undefined
       })
       await onDone()
     } catch (error) {
@@ -49,5 +52,15 @@ export function useTaskCompletion(onDone: () => unknown) {
     }
   }
 
-  return { toggle, busyId, dialogOpen, dialogTask, skipped }
+  async function undo(task: TaskDto, status: TaskDto['status']) {
+    try {
+      await api(`/tasks/${task.id}`, { method: 'PATCH', body: { status } })
+      toast.add({ title: 'Bifa a fost anulată', description: task.title, color: 'neutral', icon: 'i-lucide-undo-2' })
+      await onDone()
+    } catch (error) {
+      toast.add({ title: 'Operațiunea nu a reușit', description: apiErrorMessage(error), color: 'error', icon: 'i-lucide-circle-alert' })
+    }
+  }
+
+  return { toggle, undo, busyId, dialogOpen, dialogTask, skipped }
 }

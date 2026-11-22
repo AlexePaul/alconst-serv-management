@@ -4,6 +4,12 @@ export default defineAppConfig({
     colors: {
       primary: 'brand',
       neutral: 'slate'
+    },
+    modal: {
+      slots: {
+        // Un titlu cu descriere lungă nu se mai suprapune cu primul câmp pe telefon.
+        header: 'shrink-0'
+      }
     }
   }
 })

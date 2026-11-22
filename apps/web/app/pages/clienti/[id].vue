@@ -24,15 +24,24 @@ const notFound = computed(() => {
 
 // --- File -------------------------------------------------------------------------------------
 
-const tab = ref('details')
+// Fila aleasă rămâne în adresă: la reîncărcare sau la „Înapoi” se revine pe aceeași filă.
+const TAB_VALUES = ['details', 'activities', 'documents', 'locations', 'contracts']
+const router = useRouter()
+const tab = computed<string>({
+  get: () => (typeof route.query.fila === 'string' && TAB_VALUES.includes(route.query.fila) ? route.query.fila : 'details'),
+  set: (value) => {
+    router.replace({ query: { ...route.query, fila: value === 'details' ? undefined : value } })
+  }
+})
 /** Lista de task-uri se reîncarcă atunci când o obligație generează sau șterge task-uri. */
 const tasksList = useTemplateRef('tasksList')
 const tabs = computed<TabsItem[]>(() => [
+  // Pe telefon încap primele trei: cele folosite cel mai des pe teren sunt primele.
   { label: 'Detalii', value: 'details', icon: 'i-lucide-info', slot: 'details' },
-  { label: 'Puncte de lucru', value: 'locations', icon: 'i-lucide-map-pin', badge: client.value?.locationCount || undefined, slot: 'locations' },
-  { label: 'Contracte', value: 'contracts', icon: 'i-lucide-file-signature', slot: 'contracts' },
+  { label: 'Activități', value: 'activities', icon: 'i-lucide-list-checks', slot: 'activities' },
   { label: 'Documente', value: 'documents', icon: 'i-lucide-folder-open', slot: 'documents' },
-  { label: 'Activități', value: 'activities', icon: 'i-lucide-list-checks', slot: 'activities' }
+  { label: 'Puncte de lucru', value: 'locations', icon: 'i-lucide-map-pin', badge: client.value?.locationCount || undefined, slot: 'locations' },
+  { label: 'Contracte', value: 'contracts', icon: 'i-lucide-file-signature', slot: 'contracts' }
 ])
 
 // --- Acțiuni ---------------------------------------------------------------------------------

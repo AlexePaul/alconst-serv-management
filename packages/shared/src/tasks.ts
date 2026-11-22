@@ -381,6 +381,8 @@ export interface ObligationDto {
   description: string | null;
   kind: TaskKind;
   client: ClientRefDto | null;
+  /** Clientul este arhivat: activitatea este suspendată până la reactivarea lui. */
+  clientArchived: boolean;
   location: { id: string; name: string } | null;
   assignee: UserRefDto | null;
   priority: TaskPriority;

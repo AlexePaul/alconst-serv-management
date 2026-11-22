@@ -96,7 +96,9 @@ export const RECURRENCE_PRESETS = [
   { value: 'WEEK:1', label: 'Săptămânal', unit: 'WEEK', interval: 1 },
   { value: 'WEEK:2', label: 'La 2 săptămâni', unit: 'WEEK', interval: 2 },
   { value: 'MONTH:1', label: 'Lunar', unit: 'MONTH', interval: 1 },
+  { value: 'MONTH:2', label: 'La 2 luni', unit: 'MONTH', interval: 2 },
   { value: 'MONTH:3', label: 'La 3 luni', unit: 'MONTH', interval: 3 },
+  { value: 'MONTH:4', label: 'La 4 luni', unit: 'MONTH', interval: 4 },
   { value: 'MONTH:6', label: 'La 6 luni', unit: 'MONTH', interval: 6 },
   { value: 'YEAR:1', label: 'Anual', unit: 'YEAR', interval: 1 }
 ] as const satisfies { value: string, label: string, unit: RecurrenceUnit, interval: number }[]

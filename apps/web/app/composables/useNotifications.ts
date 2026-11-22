@@ -17,14 +17,17 @@ export function useUnreadNotifications() {
     }
   }
 
-  /** Pornește reîmprospătarea periodică; se apelează o singură dată, din layout. */
-  function startPolling(): void {
+  /**
+   * Pornește reîmprospătarea periodică; se apelează o singură dată, din layout. `enabled` permite
+   * oprirea ei (ex. cât timp utilizatorul trebuie să își schimbe parola temporară).
+   */
+  function startPolling(enabled: () => boolean = () => true): void {
     let timer: ReturnType<typeof setInterval> | undefined
     const onVisible = () => {
-      if (document.visibilityState === 'visible') refresh()
+      if (document.visibilityState === 'visible' && enabled()) refresh()
     }
     onMounted(() => {
-      refresh()
+      if (enabled()) refresh()
       timer = setInterval(onVisible, POLL_INTERVAL_MS)
       document.addEventListener('visibilitychange', onVisible)
     })
